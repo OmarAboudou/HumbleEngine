@@ -1,3 +1,5 @@
+using HumbleEngine.Core.Resources;
+
 namespace HumbleEngine.Core.Scenes;
 
 /// <summary>
@@ -23,6 +25,7 @@ public sealed class SceneLoader
 {
     private readonly SceneParser _parser;
     private readonly SceneValidator _validator;
+    private readonly StreamSystem? _streamSystem;
 
     /// <summary>Crée un loader sans validation de types.</summary>
     public SceneLoader() : this(new SceneParser(), new SceneValidator()) { }
@@ -36,6 +39,13 @@ public sealed class SceneLoader
     {
         _parser = parser;
         _validator = validator;
+    }
+    
+    /// <summary>Crée un loader avec résolution d'URI via un <see cref="StreamSystem"/>.</summary>
+    public SceneLoader(TypeResolver typeResolver, StreamSystem streamSystem)
+        : this(new SceneParser(), new SceneValidator(typeResolver))
+    {
+        _streamSystem = streamSystem;
     }
 
     /// <summary>
@@ -58,5 +68,25 @@ public sealed class SceneLoader
             return parseResult;
 
         return _validator.Validate(parseResult.Document, parseResult.Diagnostics);
+    }
+    
+    /// <summary>
+    /// Charge une scène depuis une URI résolue via le <see cref="StreamSystem"/>.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// Levée si aucun <see cref="StreamSystem"/> n'a été fourni au constructeur.
+    /// </exception>
+    public async Task<SceneLoadResult> LoadFromUriAsync(string uri)
+    {
+        if (_streamSystem is null)
+            throw new InvalidOperationException(
+                "Aucun StreamSystem n'est configuré. Utilisez le constructeur " +
+                "SceneLoader(TypeResolver, StreamSystem) pour activer le chargement par URI.");
+
+        await using var stream = await _streamSystem.LoadAsync(uri).ConfigureAwait(false);
+        using var reader = new StreamReader(stream);
+        var json = await reader.ReadToEndAsync().ConfigureAwait(false);
+
+        return Load(json);
     }
 }
