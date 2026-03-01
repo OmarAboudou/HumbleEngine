@@ -6,7 +6,7 @@ namespace HumbleEngine.Core;
 ///   - l'attachement et le détachement des nodes
 ///   - l'injection de la référence Tree sur chaque node
 ///   - la file d'opérations différées (modifications pendant un tick)
-///   - l'orchestration du cycle de vie (étape 3)
+///   - l'orchestration du cycle de vie
 /// </summary>
 public sealed class NodeTree
 {
@@ -21,7 +21,8 @@ public sealed class NodeTree
 
     /// <summary>
     /// Définit le node racine de cet arbre.
-    /// Injecte la référence Tree sur toute la hiérarchie existante du node.
+    /// Injecte la référence Tree sur toute la hiérarchie existante du node,
+    /// puis déclenche le cycle de vie complet (Entering → Entered → Ready).
     /// </summary>
     public void SetRoot(Node root)
     {
@@ -31,6 +32,11 @@ public sealed class NodeTree
 
         Root = root;
         InjectTree(root);
+
+        // Propagation du cycle de vie sur toute la hiérarchie existante.
+        root.PropagateTreeEntering();
+        root.PropagateTreeEntered();
+        root.PropagateReady();
     }
 
     // -------------------------------------------------------------------------
@@ -38,7 +44,7 @@ public sealed class NodeTree
     // -------------------------------------------------------------------------
 
     // On représente chaque opération en attente comme une simple Action.
-    // C'est suffisant pour l'étape 1 — on affinera la représentation
+    // C'est suffisant pour l'instant — on affinera la représentation
     // (type discriminé, log rejouable) dans une phase ultérieure.
     private readonly Queue<Action> _pendingOperations = new();
 
@@ -53,6 +59,26 @@ public sealed class NodeTree
             operation();
     }
 
+    /// <summary>
+    /// Avance d'un tick logique. Applique d'abord les changements structurels
+    /// en attente, puis propage OnProcess sur tout l'arbre.
+    /// </summary>
+    public void Process(float delta)
+    {
+        FlushPendingChanges();
+        Root?.PropagateProcess(delta);
+    }
+
+    /// <summary>
+    /// Avance d'un tick physique. Applique d'abord les changements structurels
+    /// en attente, puis propage OnPhysicsProcess sur tout l'arbre.
+    /// </summary>
+    public void PhysicsProcess(float delta)
+    {
+        FlushPendingChanges();
+        Root?.PropagatePhysicsProcess(delta);
+    }
+
     // -------------------------------------------------------------------------
     // Enqueue — appelés par Node.AddChild / Node.RemoveChild
     // -------------------------------------------------------------------------
@@ -63,6 +89,14 @@ public sealed class NodeTree
         {
             parent.AttachChild(child, index);
             InjectTree(child);
+
+            // Propagation du cycle de vie dans l'ordre défini par la spec :
+            // 1. OnTreeEntering — parent → enfants
+            // 2. OnTreeEntered  — enfants → parent
+            // 3. OnReady        — enfants → parent (une seule fois par node)
+            child.PropagateTreeEntering();
+            child.PropagateTreeEntered();
+            child.PropagateReady();
         });
     }
 
@@ -70,8 +104,15 @@ public sealed class NodeTree
     {
         _pendingOperations.Enqueue(() =>
         {
+            // OnTreeExiting est appelé AVANT de retirer Tree — le node
+            // peut encore accéder à Tree dans ce callback.
+            child.PropagateTreeExiting();
+
             WithdrawTree(child);
             parent.DetachChild(child);
+
+            // OnTreeExited est appelé APRÈS le retrait — Tree est null.
+            child.PropagateTreeExited();
         });
     }
 
