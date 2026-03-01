@@ -19,7 +19,7 @@ file class SceneValidatorTests
         IReadOnlyList<SceneElement>? children = null,
         IReadOnlyDictionary<string, SceneSlotDefinition>? slots = null) =>
         new(id, type,
-            new Dictionary<string, string>(),
+            new Dictionary<string, TypeRef>(),
             new Dictionary<string, object?>(),
             slots ?? new Dictionary<string, SceneSlotDefinition>(),
             children ?? Array.Empty<SceneElement>());

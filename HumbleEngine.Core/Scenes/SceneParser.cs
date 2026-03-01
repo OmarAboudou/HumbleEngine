@@ -9,6 +9,10 @@ namespace HumbleEngine.Core.Scenes;
 ///
 /// Le parsing est tolérant aux erreurs partielles : si un élément est malformé,
 /// un diagnostic est enregistré et le parsing continue sur le reste du document.
+///
+/// Les <c>generic_bindings</c> acceptent deux formes JSON :
+/// une chaîne simple pour les types non génériques, et un objet structuré
+/// pour les types génériques fermés (potentiellement profonds).
 /// </summary>
 public sealed class SceneParser
 {
@@ -65,8 +69,6 @@ public sealed class SceneParser
         if (kind == SceneKind.Inherited && string.IsNullOrWhiteSpace(extendsScene))
             ctx.Error("SCN0005", "Une scène héritée doit déclarer 'extends_scene'.", "$");
 
-        // Selon le kind, on attend soit "root" (BaseScene) soit les trois
-        // dictionnaires d'overrides (InheritedScene) — jamais les deux.
         SceneElement? root = null;
         var replaceVirtuals = new Dictionary<string, SceneElement>();
         var fillSlots = new Dictionary<string, IReadOnlyList<SceneElement>>();
@@ -139,7 +141,7 @@ public sealed class SceneParser
     {
         var id = ctx.RequireString(obj, "id", path);
         var typeName = ctx.RequireString(obj, "type", path);
-        var genericBindings = ParseStringDict(obj, "generic_bindings");
+        var genericBindings = ParseGenericBindings(obj, path, ctx);
         var properties = ParseProperties(obj);
         var slots = ParseSlots(obj, path, ctx);
         var children = ParseElementList(obj, "children", path, ctx);
@@ -167,7 +169,7 @@ public sealed class SceneParser
     {
         var id = ctx.RequireString(obj, "id", path);
         var scenePath = ctx.RequireString(obj, "scene_path", path);
-        var genericBindings = ParseStringDict(obj, "generic_bindings");
+        var genericBindings = ParseGenericBindings(obj, path, ctx);
         var propertyOverrides = new Dictionary<string, object?>();
         var slotOverrides = new Dictionary<string, IReadOnlyList<SceneElement>>();
 
@@ -197,7 +199,84 @@ public sealed class SceneParser
     }
 
     // -------------------------------------------------------------------------
-    // Overrides d'une InheritedScene — trois dictionnaires distincts
+    // Parsing des generic_bindings — deux formes acceptées
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Parse le dictionnaire <c>generic_bindings</c> d'un node ou d'une EmbeddedScene.
+    /// Chaque valeur peut être une chaîne simple (type non générique) ou un objet
+    /// structuré récursif (type générique fermé).
+    /// </summary>
+    private static IReadOnlyDictionary<string, TypeRef> ParseGenericBindings(
+        JsonObject obj, string path, ParseContext ctx)
+    {
+        var result = new Dictionary<string, TypeRef>();
+
+        if (obj["generic_bindings"] is not JsonObject bindingsObj) return result;
+
+        foreach (var (paramName, valueNode) in bindingsObj)
+        {
+            var bindingPath = $"{path}.generic_bindings.{paramName}";
+            var typeRef = ParseTypeRef(valueNode, bindingPath, ctx);
+            if (typeRef is not null)
+                result[paramName] = typeRef;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Parse un <see cref="TypeRef"/> depuis un nœud JSON.
+    /// Accepte deux formes :
+    /// <list type="bullet">
+    ///   <item>Une chaîne JSON : <c>"Game.Sword"</c> → <c>TypeRef.Simple("Game.Sword")</c></item>
+    ///   <item>Un objet JSON : <c>{ "type": "Game.Inventory`1", "args": ["Game.Sword"] }</c></item>
+    /// </list>
+    /// La deuxième forme est récursive — chaque élément de <c>args</c> est lui-même
+    /// parsé comme un <see cref="TypeRef"/>, permettant des génériques arbitrairement profonds.
+    /// </summary>
+    private static TypeRef? ParseTypeRef(JsonNode? node, string path, ParseContext ctx)
+    {
+        // Forme simple : "Game.Sword"
+        if (node is JsonValue val && val.TryGetValue<string>(out var simpleTypeName))
+        {
+            if (string.IsNullOrWhiteSpace(simpleTypeName))
+            {
+                ctx.Error("SCN0003", "Le nom de type ne peut pas être vide.", path);
+                return null;
+            }
+            return TypeRef.Simple(simpleTypeName);
+        }
+
+        // Forme structurée : { "type": "Game.Inventory`1", "args": [...] }
+        if (node is JsonObject obj)
+        {
+            var typeName = ctx.RequireString(obj, "type", path);
+            if (typeName is null) return null;
+
+            var args = new List<TypeRef>();
+
+            if (obj["args"] is JsonArray argsArray)
+            {
+                for (var i = 0; i < argsArray.Count; i++)
+                {
+                    // Récursion : chaque argument est lui-même un TypeRef.
+                    var arg = ParseTypeRef(argsArray[i], $"{path}.args[{i}]", ctx);
+                    if (arg is not null) args.Add(arg);
+                }
+            }
+
+            return new TypeRef(typeName, args);
+        }
+
+        ctx.Error("SCN0003",
+            "Un TypeRef doit être une chaîne (type simple) ou un objet { \"type\", \"args\" } (type générique).",
+            path);
+        return null;
+    }
+
+    // -------------------------------------------------------------------------
+    // Overrides d'une InheritedScene
     // -------------------------------------------------------------------------
 
     private static Dictionary<string, SceneElement> ParseReplaceVirtuals(
@@ -236,7 +315,8 @@ public sealed class SceneParser
                     if (el is not null) items.Add(el);
                 }
             else
-                ctx.Error("SCN0003", $"L'entrée '{targetId}' de 'fill_slots' doit être un objet avec une clé 'items'.", path);
+                ctx.Error("SCN0003",
+                    $"L'entrée '{targetId}' de 'fill_slots' doit être un objet avec une clé 'items'.", path);
 
             result[targetId] = items;
         }
@@ -343,18 +423,6 @@ public sealed class SceneParser
 
         foreach (var (key, value) in propsObj)
             result[key] = ExtractPrimitiveValue(value);
-
-        return result;
-    }
-
-    private static IReadOnlyDictionary<string, string> ParseStringDict(JsonObject obj, string key)
-    {
-        var result = new Dictionary<string, string>();
-        if (obj[key] is not JsonObject dictObj) return result;
-
-        foreach (var (k, v) in dictObj)
-            if (v?.GetValue<string>() is string s)
-                result[k] = s;
 
         return result;
     }
