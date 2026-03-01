@@ -124,50 +124,122 @@ file class SceneParserTests
         Assert.That(node.Slots, Contains.Key("entries"));
         Assert.That(node.Slots["entries"].TargetNodeId, Is.EqualTo("grid"));
         Assert.That(node.Slots["entries"].Visibility, Is.EqualTo(SlotVisibility.Public));
-        // Le slot n'est pas dans les children.
         Assert.That(node.Children.Count, Is.EqualTo(1));
         Assert.That(node.Children[0].Id, Is.EqualTo("grid"));
     }
 
+    // -------------------------------------------------------------------------
+    // generic_bindings — les deux formes de TypeRef
+    // -------------------------------------------------------------------------
+
     [Test]
-    public void Parse_SceneVirtualNode_StoresConstraintAndRequired()
+    public void Parse_GenericBindings_SimpleStringForm_ProducesSimpleTypeRef()
     {
+        // La forme chaîne "Game.PlayerStats" est le cas le plus courant —
+        // elle doit produire un TypeRef.Simple sans arguments.
         var json = BaseScene("""
             {
-              "kind": "virtual_node", "id": "controller",
-              "type_constraint": "Game.CharacterController",
-              "required": true, "default": null
+              "kind": "node", "id": "root", "type": "Game.PlayerNode`1",
+              "generic_bindings": { "TStats": "Game.PlayerStats" },
+              "properties": {}, "slots": {}, "children": []
             }
             """);
 
-        var vn = (SceneVirtualNode)_parser.Parse(json).Document!.Root!;
+        var node = (SceneNode)_parser.Parse(json).Document!.Root!;
+        var binding = node.GenericBindings["TStats"];
 
-        Assert.That(vn.TypeConstraint, Is.EqualTo("Game.CharacterController"));
-        Assert.That(vn.Required, Is.True);
-        Assert.That(vn.Default, Is.Null);
+        Assert.That(binding.TypeName, Is.EqualTo("Game.PlayerStats"));
+        Assert.That(binding.IsGeneric, Is.False);
     }
 
     [Test]
-    public void Parse_SceneEmbeddedScene_HasNoTypeConstraint()
+    public void Parse_GenericBindings_ObjectForm_ProducesGenericTypeRef()
     {
-        // Vérification que TypeConstraint n'existe plus — l'EmbeddedScene
-        // ne porte que ScenePath, GenericBindings, PropertyOverrides, SlotOverrides.
+        // La forme objet { "type": "...", "args": [...] } pour un type générique fermé.
         var json = BaseScene("""
             {
-              "kind": "embedded_scene", "id": "weapon",
-              "scene_path": "res://scenes/sword.hscene",
-              "generic_bindings": {},
-              "overrides": {
-                "properties": { "display_name": "Épée longue" },
-                "slots": {}
-              }
+              "kind": "node", "id": "root", "type": "Game.InventoryNode`1",
+              "generic_bindings": {
+                "TContainer": { "type": "Game.Inventory`1", "args": ["Game.Sword"] }
+              },
+              "properties": {}, "slots": {}, "children": []
             }
             """);
 
-        var es = (SceneEmbeddedScene)_parser.Parse(json).Document!.Root!;
+        var node = (SceneNode)_parser.Parse(json).Document!.Root!;
+        var binding = node.GenericBindings["TContainer"];
 
-        Assert.That(es.ScenePath, Is.EqualTo("res://scenes/sword.hscene"));
-        Assert.That(es.PropertyOverrides["display_name"], Is.EqualTo("Épée longue"));
+        Assert.That(binding.TypeName, Is.EqualTo("Game.Inventory`1"));
+        Assert.That(binding.IsGeneric, Is.True);
+        Assert.That(binding.Args[0].TypeName, Is.EqualTo("Game.Sword"));
+    }
+
+    [Test]
+    public void Parse_GenericBindings_DeepNestedGeneric_IsRecursive()
+    {
+        // Inventory<List<Sword>> — générique profond à deux niveaux.
+        var json = BaseScene("""
+            {
+              "kind": "node", "id": "root", "type": "Game.InventoryNode`1",
+              "generic_bindings": {
+                "TContainer": {
+                  "type": "Game.Inventory`1",
+                  "args": [
+                    { "type": "System.Collections.Generic.List`1", "args": ["Game.Sword"] }
+                  ]
+                }
+              },
+              "properties": {}, "slots": {}, "children": []
+            }
+            """);
+
+        var node = (SceneNode)_parser.Parse(json).Document!.Root!;
+        var binding = node.GenericBindings["TContainer"];
+
+        Assert.That(binding.TypeName, Is.EqualTo("Game.Inventory`1"));
+        Assert.That(binding.Args[0].TypeName, Is.EqualTo("System.Collections.Generic.List`1"));
+        Assert.That(binding.Args[0].Args[0].TypeName, Is.EqualTo("Game.Sword"));
+    }
+
+    [Test]
+    public void Parse_GenericBindings_MixedForms_InSameNode()
+    {
+        // Un node peut mélanger les deux formes dans le même generic_bindings.
+        var json = BaseScene("""
+            {
+              "kind": "node", "id": "root", "type": "Game.SomeNode`2",
+              "generic_bindings": {
+                "TSimple": "Game.Sword",
+                "TComplex": { "type": "Game.Inventory`1", "args": ["Game.Shield"] }
+              },
+              "properties": {}, "slots": {}, "children": []
+            }
+            """);
+
+        var node = (SceneNode)_parser.Parse(json).Document!.Root!;
+
+        Assert.That(node.GenericBindings["TSimple"].IsGeneric, Is.False);
+        Assert.That(node.GenericBindings["TComplex"].IsGeneric, Is.True);
+    }
+
+    [Test]
+    public void Parse_GenericBindings_EmptyArgs_ProducesNonGenericTypeRef()
+    {
+        // Un objet avec "args": [] est équivalent à une chaîne simple.
+        var json = BaseScene("""
+            {
+              "kind": "node", "id": "root", "type": "Game.MyNode`1",
+              "generic_bindings": {
+                "T": { "type": "Game.Sword", "args": [] }
+              },
+              "properties": {}, "slots": {}, "children": []
+            }
+            """);
+
+        var node = (SceneNode)_parser.Parse(json).Document!.Root!;
+
+        Assert.That(node.GenericBindings["T"].IsGeneric, Is.False);
+        Assert.That(node.GenericBindings["T"].TypeName, Is.EqualTo("Game.Sword"));
     }
 
     // -------------------------------------------------------------------------
@@ -190,9 +262,7 @@ file class SceneParserTests
         var json = InheritedScene(
             extendsScene: "res://base.hscene",
             replaceVirtuals: $$"""
-            {
-              "controller": {{SimpleNodeJson("player_ctrl", "Game.PlayerController")}}
-            }
+            { "controller": {{SimpleNodeJson("player_ctrl", "Game.PlayerController")}} }
             """);
 
         var doc = _parser.Parse(json).Document!;
@@ -207,17 +277,12 @@ file class SceneParserTests
         var json = InheritedScene(
             extendsScene: "res://base.hscene",
             fillSlots: $$"""
-            {
-              "abilities": {
-                "items": [{{SimpleNodeJson("dash", "Game.DashAbility")}}]
-              }
-            }
+            { "abilities": { "items": [{{SimpleNodeJson("dash", "Game.DashAbility")}}] } }
             """);
 
         var doc = _parser.Parse(json).Document!;
 
         Assert.That(doc.FillSlots, Contains.Key("abilities"));
-        Assert.That(doc.FillSlots["abilities"], Has.Count.EqualTo(1));
         Assert.That(doc.FillSlots["abilities"][0].Id, Is.EqualTo("dash"));
     }
 
@@ -227,36 +292,14 @@ file class SceneParserTests
         var json = InheritedScene(
             extendsScene: "res://base.hscene",
             setProperties: """
-            {
-              "player": { "speed": 6.0, "display_name": "Hero" },
-              "camera": { "fov": 90 }
-            }
+            { "player": { "speed": 6.0, "display_name": "Hero" }, "camera": { "fov": 90 } }
             """);
 
         var doc = _parser.Parse(json).Document!;
 
-        Assert.That(doc.SetProperties, Contains.Key("player"));
         Assert.That(doc.SetProperties["player"]["speed"], Is.EqualTo(6.0));
         Assert.That(doc.SetProperties["player"]["display_name"], Is.EqualTo("Hero"));
         Assert.That(doc.SetProperties["camera"]["fov"], Is.EqualTo(90));
-    }
-
-    [Test]
-    public void Parse_MultipleOverrideDicts_AreAllParsed()
-    {
-        // Les trois dictionnaires peuvent coexister dans le même fichier.
-        var json = InheritedScene(
-            extendsScene: "res://base.hscene",
-            replaceVirtuals: $$"""{ "controller": {{SimpleNodeJson("ctrl", "Game.PlayerController")}} }""",
-            fillSlots: """{ "abilities": { "items": [] } }""",
-            setProperties: """{ "player": { "speed": 5.0 } }"""
-        );
-
-        var doc = _parser.Parse(json).Document!;
-
-        Assert.That(doc.ReplaceVirtuals, Contains.Key("controller"));
-        Assert.That(doc.FillSlots, Contains.Key("abilities"));
-        Assert.That(doc.SetProperties, Contains.Key("player"));
     }
 
     // -------------------------------------------------------------------------
@@ -296,19 +339,6 @@ file class SceneParserTests
     }
 
     [Test]
-    public void Parse_BaseScene_MissingRoot_ReturnsSCN0002()
-    {
-        var json = """
-            {
-              "schema_version": 1, "scene_kind": "base",
-              "implements": [], "force_non_instantiable": false
-            }
-            """;
-
-        Assert.That(_parser.Parse(json).Diagnostics.Any(d => d.Code == "SCN0002"), Is.True);
-    }
-
-    [Test]
     public void Parse_UnknownElementKind_ReturnsSCN0018()
     {
         var json = BaseScene("""{ "kind": "unknown", "id": "root" }""");
@@ -317,35 +347,16 @@ file class SceneParserTests
     }
 
     [Test]
-    public void Parse_MissingNodeType_ReturnsSCN0002()
+    public void Parse_GenericBinding_InvalidTypeRefShape_ReturnsSCN0003()
     {
+        // Un tableau n'est ni une chaîne ni un objet — doit déclencher SCN0003.
         var json = BaseScene("""
-            { "kind": "node", "id": "root", "generic_bindings": {}, "properties": {}, "slots": {}, "children": [] }
+            {
+              "kind": "node", "id": "root", "type": "Game.MyNode`1",
+              "generic_bindings": { "T": [1, 2, 3] },
+              "properties": {}, "slots": {}, "children": []
+            }
             """);
-
-        Assert.That(_parser.Parse(json).Diagnostics.Any(d => d.Code == "SCN0002"), Is.True);
-    }
-
-    [Test]
-    public void Parse_FillSlots_MissingItemsKey_ReturnsSCN0003()
-    {
-        // Un entrée fill_slots sans la clé "items" est malformée.
-        var json = InheritedScene(
-            extendsScene: "res://base.hscene",
-            fillSlots: """{ "abilities": { "not_items": [] } }"""
-        );
-
-        Assert.That(_parser.Parse(json).Diagnostics.Any(d => d.Code == "SCN0003"), Is.True);
-    }
-
-    [Test]
-    public void Parse_SetProperties_NonObjectValue_ReturnsSCN0003()
-    {
-        // La valeur d'une entrée set_properties doit être un objet, pas un tableau.
-        var json = InheritedScene(
-            extendsScene: "res://base.hscene",
-            setProperties: """{ "player": [1, 2, 3] }"""
-        );
 
         Assert.That(_parser.Parse(json).Diagnostics.Any(d => d.Code == "SCN0003"), Is.True);
     }

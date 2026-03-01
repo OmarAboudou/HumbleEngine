@@ -53,7 +53,7 @@ public abstract record SceneElement(string Id);
 /// <param name="TypeName">Nom de type C# qualifié (ex: "Game.PlayerNode`1").</param>
 /// <param name="GenericBindings">
 /// Fermeture des paramètres génériques du type de ce node.
-/// Clé = nom du paramètre (ex: "TStats"), valeur = type C# qualifié.
+/// Clé = nom du paramètre (ex: "TStats"), valeur = référence de type récursive.
 /// </param>
 /// <param name="Properties">
 /// Valeurs des propriétés [Overridable] à appliquer à l'instanciation.
@@ -70,7 +70,7 @@ public abstract record SceneElement(string Id);
 public sealed record SceneNode(
     string Id,
     string TypeName,
-    IReadOnlyDictionary<string, string> GenericBindings,
+    IReadOnlyDictionary<string, TypeRef> GenericBindings,
     IReadOnlyDictionary<string, object?> Properties,
     IReadOnlyDictionary<string, SceneSlotDefinition> Slots,
     IReadOnlyList<SceneElement> Children
@@ -119,7 +119,10 @@ public sealed record SceneVirtualNode(
 /// </summary>
 /// <param name="Id">Identifiant unique de cette référence dans la scène.</param>
 /// <param name="ScenePath">Chemin vers le fichier .hscene référencé (ex: "res://scenes/sword.hscene").</param>
-/// <param name="GenericBindings">Fermeture de paramètres génériques de la scène référencée.</param>
+/// <param name="GenericBindings">
+/// Fermeture de paramètres génériques de la scène référencée.
+/// Clé = nom du paramètre, valeur = référence de type récursive.
+/// </param>
 /// <param name="PropertyOverrides">Overrides de propriétés [Overridable] de la scène référencée.</param>
 /// <param name="SlotOverrides">
 /// Remplissage des slots publics de la scène référencée.
@@ -128,7 +131,7 @@ public sealed record SceneVirtualNode(
 public sealed record SceneEmbeddedScene(
     string Id,
     string ScenePath,
-    IReadOnlyDictionary<string, string> GenericBindings,
+    IReadOnlyDictionary<string, TypeRef> GenericBindings,
     IReadOnlyDictionary<string, object?> PropertyOverrides,
     IReadOnlyDictionary<string, IReadOnlyList<SceneElement>> SlotOverrides
 ) : SceneElement(Id);
