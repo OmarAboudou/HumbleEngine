@@ -4,7 +4,7 @@ using NUnit.Framework;
 namespace HumbleEngine.Core.Tests.Scenes;
 
 [TestFixture]
-file class SceneParserTests
+internal sealed class SceneParserTests
 {
     private SceneParser _parser = null!;
 

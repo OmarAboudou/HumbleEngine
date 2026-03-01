@@ -205,7 +205,7 @@ public sealed class TypeResolver
     /// Utilise un cache pour éviter de parcourir tous les assemblies à chaque appel.
     /// Retourne le type ouvert (non fermé pour les génériques).
     /// </summary>
-    private Type? FindOpenType(string typeName)
+    public Type? FindOpenType(string typeName)
     {
         return _openTypeCache.GetOrAdd(typeName, name =>
         {

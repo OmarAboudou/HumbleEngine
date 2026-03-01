@@ -9,7 +9,7 @@ namespace HumbleEngine.Core.Tests.Scenes;
 /// (couverte respectivement par SceneParserTests et SceneValidatorTests).
 /// </summary>
 [TestFixture]
-file class SceneLoaderTests
+internal sealed class SceneLoaderTests
 {
     private SceneLoader _loader = null!;
 

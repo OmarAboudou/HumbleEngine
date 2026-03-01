@@ -444,15 +444,19 @@ public sealed class SceneParser
     /// L'ordre est important : bool avant int, int avant double,
     /// pour éviter que 4 soit lu comme 4.0.
     /// </summary>
-    private static object? ExtractPrimitiveValue(JsonNode? node) => node switch
+    private static object? ExtractPrimitiveValue(JsonNode? node)
     {
-        null => null,
-        JsonValue v when v.TryGetValue<bool>(out var b) => b,
-        JsonValue v when v.TryGetValue<int>(out var i) => i,
-        JsonValue v when v.TryGetValue<double>(out var d) => d,
-        JsonValue v when v.TryGetValue<string>(out var s) => s,
-        _ => node
-    };
+        if (node is not JsonValue v) return node;
+
+        // GetValue<T> retourne le primitif C# natif, pas un wrapper.
+        // L'ordre bool → int → double → string est important.
+        if (v.TryGetValue<bool>(out var b))   return b;
+        if (v.TryGetValue<long>(out var l))   return l;
+        if (v.TryGetValue<double>(out var d)) return d;
+        if (v.TryGetValue<string>(out var s)) return s;
+
+        return node;
+    }
 }
 
 // =============================================================================

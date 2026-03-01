@@ -6,17 +6,17 @@ namespace HumbleEngine.Core.Tests.Scenes;
 
 // Types de test déclarés dans le namespace de test pour simuler des types utilisateur.
 // On les utilise à la place de types comme "Game.Sword" qui n'existent pas réellement.
-file interface ITestItem { }
-file interface ITestContainer<T> { }
-file class TestSword : ITestItem { }
-file class TestShield : ITestItem { }
-file class TestInventory<TItem> where TItem : ITestItem { }
-file class TestBox<TItem, TLabel> where TItem : class, new() { }
-file struct TestValueItem { } // struct — pour tester la contrainte 'class'
-file class TestNoPublicCtor { private TestNoPublicCtor() { } } // pour tester new()
+internal interface ITestItem { }
+internal interface ITestContainer<T> { }
+internal sealed class TestSword : ITestItem { }
+internal sealed class TestShield : ITestItem { }
+internal sealed class TestInventory<TItem> where TItem : ITestItem { }
+internal sealed class TestBox<TItem, TLabel> where TItem : class, new() { }
+internal struct TestValueItem { } // struct — pour tester la contrainte 'class'
+internal sealed class TestNoPublicCtor { private TestNoPublicCtor() { } } // pour tester new()
 
 [TestFixture]
-file class TypeResolverTests
+internal sealed class TypeResolverTests
 {
     private TypeResolver _resolver = null!;
     private Assembly _testAssembly = null!;

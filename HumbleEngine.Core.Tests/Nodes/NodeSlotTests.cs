@@ -7,7 +7,7 @@ namespace HumbleEngine.Core.Tests;
 // Nodes de test
 // -------------------------------------------------------------------------
 
-file sealed class ContainerNode : Node
+internal sealed class ContainerNode : Node
 {
     // Node cible interne — c'est là que les enfants injectés atterrissent.
     public readonly InnerNode Inner = new();
@@ -17,20 +17,20 @@ file sealed class ContainerNode : Node
 }
 
 // Node cible interne du ContainerNode.
-file sealed class InnerNode : Node { }
+internal sealed class InnerNode : Node { }
 
 // Type injectable dans le slot Entries.
-file sealed class EntryNode : Node { }
+internal sealed class EntryNode : Node { }
 
 // Type incompatible — ne peut pas être injecté dans Entries.
-file sealed class OtherNode : Node { }
+internal sealed class OtherNode : Node { }
 
 // -------------------------------------------------------------------------
 // Tests
 // -------------------------------------------------------------------------
 
 [TestFixture]
-file class NodeSlotTests
+internal sealed class NodeSlotTests
 {
     private NodeTree _tree = null!;
     private ContainerNode _container = null!;

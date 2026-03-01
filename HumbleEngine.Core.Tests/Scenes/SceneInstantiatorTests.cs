@@ -8,7 +8,7 @@ namespace HumbleEngine.Core.Tests.Scenes;
 // On les déclare en file-scope pour ne pas polluer le namespace global.
 // -------------------------------------------------------------------------
 
-file class SimpleNode : Node
+internal sealed class SimpleNode : Node
 {
     [Overridable]
     [Exposed]
@@ -19,10 +19,10 @@ file class SimpleNode : Node
 }
 
 
-file class GenericNode<T> : Node where T : Node { }
+internal sealed class InstantiatorGenericNode<T> : Node where T : Node { }
 
 [TestFixture]
-file class SceneInstantiatorTests
+internal sealed class SceneInstantiatorTests
 {
     private TypeResolver _resolver = null!;
     private SceneInstantiator _instantiator = null!;
@@ -356,18 +356,18 @@ file class SceneInstantiatorTests
         {
             ["T"] = typeof(SimpleNode)
         };
-        var root = MakeNode("root", type: typeof(GenericNode<>).FullName!);
+        var root = MakeNode("root", type: typeof(InstantiatorGenericNode<>).FullName!);
 
         var node = _instantiator.Instantiate(InstantiableResult(root), genericArgs);
 
-        Assert.That(node, Is.InstanceOf(typeof(GenericNode<>).MakeGenericType(typeof(SimpleNode))));
+        Assert.That(node, Is.InstanceOf(typeof(InstantiatorGenericNode<>).MakeGenericType(typeof(SimpleNode))));
     }
 
     [Test]
     public void Instantiate_GenericNode_WithoutArgument_Throws()
     {
         // GenericNode<T> sans binding ni argument fourni → erreur SCN0012 à l'instanciation.
-        var root = MakeNode("root", type: typeof(GenericNode<>).FullName!);
+        var root = MakeNode("root", type: typeof(InstantiatorGenericNode<>).FullName!);
 
         Assert.Throws<InvalidOperationException>(() =>
             _instantiator.Instantiate(InstantiableResult(root)));

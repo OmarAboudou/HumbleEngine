@@ -51,6 +51,20 @@ public sealed record TypeRef(string TypeName, IReadOnlyList<TypeRef> Args)
     /// </summary>
     public bool IsGeneric => Args.Count > 0;
 
+    public bool Equals(TypeRef? other) =>
+        other is not null &&
+        TypeName == other.TypeName &&
+        Args.SequenceEqual(other.Args);
+    
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(TypeName);
+        foreach (var arg in Args)
+            hash.Add(arg);
+        return hash.ToHashCode();
+    }
+    
     /// <summary>
     /// Retourne une représentation lisible du type, analogue à la syntaxe C#.
     /// Utile pour les messages de diagnostic et le débogage.

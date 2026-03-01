@@ -5,7 +5,7 @@ namespace HumbleEngine.Core.Tests;
 
 // Node concret minimal pour pouvoir instancier Node (abstraite) dans les tests.
 // Le modificateur 'file' limite sa visibilité à ce fichier uniquement.
-file sealed class TestNode : Node
+internal sealed class TestNode : Node
 {
     public TestNode() { }
     public TestNode(Guid id) : base(id) { }

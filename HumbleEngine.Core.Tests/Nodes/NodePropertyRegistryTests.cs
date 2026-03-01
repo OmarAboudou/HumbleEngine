@@ -7,7 +7,7 @@ namespace HumbleEngine.Core.Tests;
 // Nodes de test représentant différentes configurations de membres
 // -------------------------------------------------------------------------
 
-file class BaseTestNode : Node
+internal class BaseTestNode : Node
 {
     // [Exposed] seul — visible dans l'inspecteur, non modifiable depuis une scène.
     // Compatible avec une propriété calculée sans setter.
@@ -39,7 +39,7 @@ file class BaseTestNode : Node
     public string GetWriteOnlyConfig() => WriteOnlyConfig;
 }
 
-file sealed class DerivedTestNode : BaseTestNode
+internal sealed class DerivedTestNode : BaseTestNode
 {
     // Propriété ajoutée dans la classe dérivée — vérifie que l'héritage fonctionne.
     [Exposed]
@@ -47,7 +47,7 @@ file sealed class DerivedTestNode : BaseTestNode
     public int MaxHealth { get; private set; } = 100;
 }
 
-file sealed class MisconfiguredNode : Node
+internal sealed class MisconfiguredNode : Node
 {
     // [Overridable] sur propriété sans setter — erreur de configuration détectable.
     [Overridable]

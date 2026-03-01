@@ -6,7 +6,7 @@ namespace HumbleEngine.Core.Tests;
 // Node de test qui enregistre l'ordre d'invocation de chaque callback.
 // On utilise une liste partagée passée au constructeur pour pouvoir
 // observer l'ordre global entre plusieurs nodes.
-file sealed class LifecycleNode : Node
+internal sealed class LifecycleNode : Node
 {
     private readonly List<string> _log;
     private readonly string _name;
@@ -283,13 +283,13 @@ public class NodeLifecycleTests
 }
 
 // Nodes utilitaires pour les tests qui nécessitent des callbacks personnalisés.
-file sealed class CheckingNode : Node
+internal sealed class CheckingNode : Node
 {
     public Action? OnExitingCallback { get; set; }
     protected override void OnTreeExiting() => OnExitingCallback?.Invoke();
 }
 
-file sealed class TreeCapturingNode : Node
+internal sealed class TreeCapturingNode : Node
 {
     public Action? OnExitingCallback { get; set; }
     public Action? OnExitedCallback { get; set; }

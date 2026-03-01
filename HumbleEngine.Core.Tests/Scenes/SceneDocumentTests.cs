@@ -4,7 +4,7 @@ using NUnit.Framework;
 namespace HumbleEngine.Core.Tests.Scenes;
 
 [TestFixture]
-file class SceneDocumentTests
+internal sealed class SceneDocumentTests
 {
     // -------------------------------------------------------------------------
     // Helpers

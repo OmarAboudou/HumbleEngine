@@ -4,7 +4,7 @@ using NUnit.Framework;
 namespace HumbleEngine.Core.Tests.Scenes;
 
 [TestFixture]
-file class TypeRefTests
+internal sealed class TypeRefTests
 {
     // -------------------------------------------------------------------------
     // Construction et propriétés de base

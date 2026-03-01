@@ -153,11 +153,14 @@ public sealed class SceneInstantiator
                 $"[{sceneNode.Id}] Type introuvable : '{sceneNode.TypeName}'. " +
                 "Vérifiez que l'assembly contenant ce type est enregistré dans le TypeResolver.");
 
-        if (openTypeResult is not TypeResolveResult.Success openTypeSuccess)
+        if (openTypeResult is TypeResolveResult.TypeNotFound)
             throw new InvalidOperationException(
-                $"[{sceneNode.Id}] Impossible de résoudre '{sceneNode.TypeName}' : {openTypeResult}");
+                $"[{sceneNode.Id}] Type introuvable : '{sceneNode.TypeName}'. " +
+                "Vérifiez que l'assembly contenant ce type est enregistré dans le TypeResolver.");
 
-        var openType = openTypeSuccess.Type;
+        var openType = openTypeResult is TypeResolveResult.Success s
+            ? s.Type
+            : _typeResolver.FindOpenType(sceneNode.TypeName)!;;
 
         // Si le type n'est pas générique, on le retourne directement.
         if (!openType.IsGenericTypeDefinition)
