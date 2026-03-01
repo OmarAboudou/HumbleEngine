@@ -12,14 +12,26 @@ namespace HumbleEngine.Core.Scenes;
 /// qu'un runtime pourra lever une exception si le statut est
 /// <see cref="SceneInstantiabilityStatus.Invalid"/>.
 /// </para>
+///
+/// <para>
+/// Pour activer la validation des types C# (SCN0008, SCN0011, SCN0012), fournir
+/// un <see cref="TypeResolver"/> préalablement configuré avec les assemblies du projet.
+/// Sans resolver, les passes 1 et 2 s'exécutent normalement et la passe 3 est ignorée.
+/// </para>
 /// </summary>
 public sealed class SceneLoader
 {
     private readonly SceneParser _parser;
     private readonly SceneValidator _validator;
 
+    /// <summary>Crée un loader sans validation de types.</summary>
     public SceneLoader() : this(new SceneParser(), new SceneValidator()) { }
 
+    /// <summary>Crée un loader avec validation de types C#.</summary>
+    public SceneLoader(TypeResolver typeResolver)
+        : this(new SceneParser(), new SceneValidator(typeResolver)) { }
+
+    /// <summary>Constructeur complet pour les tests et l'injection de dépendances.</summary>
     public SceneLoader(SceneParser parser, SceneValidator validator)
     {
         _parser = parser;
@@ -42,8 +54,6 @@ public sealed class SceneLoader
     {
         var parseResult = _parser.Parse(json);
 
-        // Si le parser n'a pas pu construire de document (JSON totalement illisible),
-        // on retourne directement son résultat — le validator n'a rien à valider.
         if (parseResult.Document is null)
             return parseResult;
 

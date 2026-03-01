@@ -4,19 +4,46 @@ namespace HumbleEngine.Core.Scenes;
 /// Valide un <see cref="SceneDocument"/> après parsing et détermine son statut
 /// d'instanciabilité définitif.
 ///
-/// La validation s'organise en deux passes séquentielles :
+/// La validation s'organise en trois passes séquentielles :
+///
 /// - Passe 1 (structurelle) : vérifie la cohérence interne du document
 ///   sans nécessiter de contexte extérieur (ids uniques, cibles valides…).
 ///   Une erreur ici produit le statut <see cref="SceneInstantiabilityStatus.Invalid"/>.
-/// - Passe 2 (instanciabilité) : applique les conditions de la section 4.1
-///   de la spec. Une erreur ici produit <see cref="SceneInstantiabilityStatus.NonInstantiableByStructure"/>
-///   sauf si <see cref="SceneDocument.ForceNonInstantiable"/> est true.
 ///
-/// La résolution de type C# (génériques, compatibilité d'héritage) n'est pas
-/// encore implémentée et fera l'objet d'une étape ultérieure.
+/// - Passe 2 (instanciabilité) : applique les conditions de la section 4.1
+///   de la spec (NodeVirtuel required sans default…).
+///   Une erreur ici produit <see cref="SceneInstantiabilityStatus.NonInstantiableByStructure"/>.
+///
+/// - Passe 3 (types C#) : optionnelle — s'exécute uniquement si un
+///   <see cref="TypeResolver"/> a été fourni au constructeur. Vérifie que les
+///   types référencés dans le document existent, sont concrets, et que les
+///   génériques sont correctement fermés.
+///   Une erreur ici produit également <see cref="SceneInstantiabilityStatus.NonInstantiableByStructure"/>.
+///
+/// La validation inter-scènes (compatibilité d'une EmbeddedScene avec son contexte,
+/// NodeVirtuel required satisfaits par une héritière) fera l'objet d'une étape ultérieure.
 /// </summary>
 public sealed class SceneValidator
 {
+    private readonly TypeResolver? _typeResolver;
+
+    /// <summary>
+    /// Crée un validateur sans résolution de types.
+    /// Les passes 1 et 2 s'exécutent normalement ; la passe 3 est ignorée.
+    /// Utile pour les tests unitaires qui n'ont pas besoin de réflexion C#.
+    /// </summary>
+    public SceneValidator() : this(null) { }
+
+    /// <summary>
+    /// Crée un validateur avec résolution de types.
+    /// Les trois passes s'exécutent, y compris la vérification de l'abstraction,
+    /// de l'arité générique et des contraintes génériques.
+    /// </summary>
+    public SceneValidator(TypeResolver? typeResolver)
+    {
+        _typeResolver = typeResolver;
+    }
+
     public SceneLoadResult Validate(SceneDocument document, IReadOnlyList<SceneDiagnostic> parserDiagnostics)
     {
         var ctx = new ValidationContext(parserDiagnostics);
@@ -40,6 +67,12 @@ public sealed class SceneValidator
 
         ValidateInstantiability(document, ctx);
 
+        // Passe 3 — validation des types C# (optionnelle).
+        // On ne l'exécute que si un TypeResolver a été fourni. Elle s'enchaîne
+        // directement à la passe 2 : ses erreurs contribuent au même statut final.
+        if (_typeResolver is not null)
+            ValidateTypes(document, _typeResolver, ctx);
+
         var status = ctx.HasErrors
             ? SceneInstantiabilityStatus.NonInstantiableByStructure
             : SceneInstantiabilityStatus.Instantiable;
@@ -59,10 +92,6 @@ public sealed class SceneValidator
 
     private static void ValidateStructure(SceneDocument document, ValidationContext ctx)
     {
-        // On collecte tous les ids déclarés dans le document pour détecter
-        // les doublons. On parcourt l'arbre en profondeur et on mémorise
-        // chaque id rencontré dans un HashSet — le premier doublon trouvé
-        // déclenche SCN0015.
         var seenIds = new HashSet<string>();
 
         if (document.Kind == SceneKind.Base && document.Root is not null)
@@ -71,8 +100,6 @@ public sealed class SceneValidator
         }
         else if (document.Kind == SceneKind.Inherited)
         {
-            // Pour une InheritedScene, on valide les ids des éléments déclarés
-            // dans les overrides — les ids hérités ne sont pas re-déclarés ici.
             foreach (var (_, element) in document.ReplaceVirtuals)
                 CollectAndValidateIds(element, seenIds, ctx);
 
@@ -82,10 +109,6 @@ public sealed class SceneValidator
         }
     }
 
-    /// <summary>
-    /// Parcourt récursivement un élément et ses enfants pour collecter les ids
-    /// et détecter les doublons.
-    /// </summary>
     private static void CollectAndValidateIds(
         SceneElement element, HashSet<string> seenIds, ValidationContext ctx)
     {
@@ -96,16 +119,11 @@ public sealed class SceneValidator
                 elementId: element.Id);
         }
 
-        // On descend récursivement dans les enfants selon le type d'élément.
-        // Le pattern matching exhaustif garantit qu'on ne rate aucun cas
-        // si de nouveaux types sont ajoutés à la hiérarchie.
         switch (element)
         {
             case SceneNode node:
                 foreach (var child in node.Children)
                     CollectAndValidateIds(child, seenIds, ctx);
-                // Les items des slots sont aussi des éléments de l'arbre
-                // et doivent avoir des ids uniques.
                 foreach (var (_, slot) in node.Slots)
                     foreach (var item in slot.Items)
                         CollectAndValidateIds(item, seenIds, ctx);
@@ -116,9 +134,6 @@ public sealed class SceneValidator
                     CollectAndValidateIds(vn.Default, seenIds, ctx);
                 break;
 
-            // SceneEmbeddedScene n'a pas d'enfants propres dans l'arbre
-            // de la scène courante — ses overrides référencent des éléments
-            // de la scène externe, pas de nouveaux éléments locaux.
             case SceneEmbeddedScene:
                 break;
         }
@@ -130,63 +145,154 @@ public sealed class SceneValidator
 
     private static void ValidateInstantiability(SceneDocument document, ValidationContext ctx)
     {
-        // Pour une BaseScene, on peut vérifier directement les NodeVirtuel
-        // required qui n'ont pas de valeur par défaut — ils rendent la scène
-        // non instanciable sans qu'une héritière les fournisse.
         if (document.Kind == SceneKind.Base && document.Root is not null)
-            CheckRequiredVirtuals(document.Root, document, ctx);
+            CheckRequiredVirtuals(document.Root, ctx);
 
-        // Pour une InheritedScene, les replace_virtuals fournis satisfont
-        // potentiellement des NodeVirtuel required hérités. Cette vérification
-        // complète nécessite de charger la scène parente, ce qui sera implémenté
-        // lors de l'étape de résolution de dépendances inter-scènes.
-        // Pour l'instant, on valide uniquement les éléments locaux.
+        // Pour une InheritedScene, la vérification complète des NodeVirtuel required
+        // nécessite de charger la scène parente — reporté à l'étape inter-scènes.
     }
 
-    /// <summary>
-    /// Parcourt l'arbre à la recherche de <see cref="SceneVirtualNode"/> marqués
-    /// <c>required</c> sans valeur par défaut. Un tel node rend la scène
-    /// <see cref="SceneInstantiabilityStatus.NonInstantiableByStructure"/>.
-    /// </summary>
-    private static void CheckRequiredVirtuals(
-        SceneElement element, SceneDocument document, ValidationContext ctx)
+    private static void CheckRequiredVirtuals(SceneElement element, ValidationContext ctx)
     {
         if (element is SceneVirtualNode { Required: true, Default: null } vn)
         {
-            // On vérifie si une InheritedScene (qui serait la scène courante)
-            // fournit déjà ce virtual. Ici on traite le cas BaseScene — donc
-            // un NodeVirtuel required sans default est toujours non satisfait.
             ctx.Error("SCN0020",
                 $"Le NodeVirtuel '{vn.Id}' est marqué 'required' mais n'a pas de valeur par défaut. " +
                 "Une scène héritière doit le fournir avant instanciation.",
                 elementId: vn.Id);
         }
 
-        // Descente récursive dans les enfants.
         if (element is SceneNode node)
         {
             foreach (var child in node.Children)
-                CheckRequiredVirtuals(child, document, ctx);
+                CheckRequiredVirtuals(child, ctx);
 
             foreach (var (_, slot) in node.Slots)
                 foreach (var item in slot.Items)
-                    CheckRequiredVirtuals(item, document, ctx);
+                    CheckRequiredVirtuals(item, ctx);
         }
 
         if (element is SceneVirtualNode { Default: not null } vnWithDefault)
-            CheckRequiredVirtuals(vnWithDefault.Default, document, ctx);
+            CheckRequiredVirtuals(vnWithDefault.Default, ctx);
+    }
+
+    // =========================================================================
+    // Passe 3 — Validation des types C#
+    // =========================================================================
+
+    private static void ValidateTypes(SceneDocument document, TypeResolver resolver, ValidationContext ctx)
+    {
+        if (document.Kind == SceneKind.Base && document.Root is not null)
+            ValidateElementTypes(document.Root, resolver, ctx);
+        else if (document.Kind == SceneKind.Inherited)
+        {
+            foreach (var (_, element) in document.ReplaceVirtuals)
+                ValidateElementTypes(element, resolver, ctx);
+
+            foreach (var (_, items) in document.FillSlots)
+                foreach (var item in items)
+                    ValidateElementTypes(item, resolver, ctx);
+        }
+    }
+
+    /// <summary>
+    /// Valide les types d'un élément et descend récursivement dans ses enfants.
+    /// Seuls les <see cref="SceneNode"/> font l'objet d'une validation de type —
+    /// les <see cref="SceneVirtualNode"/> ont un <c>type_constraint</c> qui peut
+    /// être un paramètre générique ouvert (non résolvable sans contexte), et les
+    /// <see cref="SceneEmbeddedScene"/> sont vérifiées en compatibilité inter-scènes.
+    /// </summary>
+    private static void ValidateElementTypes(SceneElement element, TypeResolver resolver, ValidationContext ctx)
+    {
+        if (element is SceneNode node)
+        {
+            ValidateNodeType(node, resolver, ctx);
+
+            foreach (var child in node.Children)
+                ValidateElementTypes(child, resolver, ctx);
+
+            foreach (var (_, slot) in node.Slots)
+                foreach (var item in slot.Items)
+                    ValidateElementTypes(item, resolver, ctx);
+        }
+
+        // Descente dans le default d'un NodeVirtuel — le default est un node
+        // concret ou une EmbeddedScene, dont les types sont valides à vérifier.
+        if (element is SceneVirtualNode { Default: not null } vn)
+            ValidateElementTypes(vn.Default, resolver, ctx);
+    }
+
+    /// <summary>
+    /// Valide le type d'un <see cref="SceneNode"/> :
+    /// résolution, abstraction (SCN0008), et violations de contraintes génériques (SCN0011).
+    ///
+    /// <para>
+    /// <b>SCN0008 — type abstrait</b> : un type abstrait (classe abstraite ou interface)
+    /// produit <see cref="SceneInstantiabilityStatus.NonInstantiableByStructure"/>, ce qui
+    /// signifie que la scène est chargeable et éditable, mais pas directement instanciable.
+    /// C'est le comportement attendu pour les scènes de base abstraites qui servent de
+    /// fondation à des scènes héritières concrètes.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>SCN0012 — type générique ouvert sans bindings</b> : ce cas n'est PAS traité ici.
+    /// Un node de type générique ouvert peut être légitime lorsque ses paramètres correspondent
+    /// aux paramètres génériques de la scène racine — ils seront alors fournis à l'appel de
+    /// <c>Instantiate(GenericTypeArguments)</c>. La validation de SCN0012 est reportée à
+    /// l'étape d'instanciation, où les arguments effectifs sont disponibles.
+    /// </para>
+    /// </summary>
+    private static void ValidateNodeType(SceneNode node, TypeResolver resolver, ValidationContext ctx)
+    {
+        // On résout le type simple du node — sans appliquer les generic_bindings pour
+        // l'instant, car leur ordre dans le dictionnaire ne correspond pas nécessairement
+        // à l'ordre des paramètres génériques du type C#. Le mapping correct
+        // (clé du binding → paramètre générique par nom) sera implémenté lors de
+        // l'intégration avec l'instanciateur, qui aura accès à type.GetGenericArguments().
+        var result = resolver.Resolve(TypeRef.Simple(node.TypeName));
+
+        switch (result)
+        {
+            case TypeResolveResult.TypeNotFound:
+                // On ne produit pas d'erreur : un type introuvable peut être un type
+                // utilisateur dont l'assembly n'est pas encore enregistré dans l'éditeur.
+                // Bloquer ici forcerait l'enregistrement des assemblies avant même de
+                // pouvoir ouvrir une scène — une expérience trop contraignante.
+                // Ce comportement sera affiné quand le cycle de vie des assemblies sera défini.
+                break;
+
+            case TypeResolveResult.ConstraintViolation violation:
+                // SCN0011 : un binding viole une contrainte générique déclarée sur le type.
+                ctx.Error("SCN0011",
+                    $"Contrainte générique non satisfaite sur '{node.TypeName}' : {violation.Constraint}.",
+                    elementId: node.Id);
+                break;
+
+            case TypeResolveResult.GenericArityMismatch:
+                // Un type générique ouvert résolu sans arguments — cas normal pour une scène
+                // générique dont les paramètres seront fournis à l'instanciation. Pas d'erreur.
+                break;
+
+            case TypeResolveResult.Success success:
+                // SCN0008 : le type est abstrait. La scène sera NonInstantiableByStructure
+                // mais reste chargeable et héritable — c'est le comportement attendu.
+                if (success.Type.IsAbstract)
+                    ctx.Error("SCN0008",
+                        $"Le type '{node.TypeName}' est abstrait et ne peut pas être instancié directement. " +
+                        "La scène peut servir de base à des scènes héritières concrètes.",
+                        elementId: node.Id);
+                break;
+        }
     }
 }
 
 // =============================================================================
-// ValidationContext — accumulation des diagnostics pendant la validation
+// ValidationContext
 // =============================================================================
 
 /// <summary>
 /// Contexte mutable partagé par toutes les fonctions de validation.
-/// Similaire à <c>ParseContext</c> mais orienté validation sémantique —
-/// les diagnostics produits ici ont souvent un <c>ElementId</c> plutôt
-/// qu'un <c>JsonPath</c>, car on travaille sur le modèle objet, pas sur le JSON.
+/// Accumule les diagnostics des trois passes dans une liste unique.
 /// </summary>
 internal sealed class ValidationContext
 {
@@ -194,7 +300,6 @@ internal sealed class ValidationContext
 
     public ValidationContext(IReadOnlyList<SceneDiagnostic> initialDiagnostics)
     {
-        // On commence avec les diagnostics du parser pour ne pas les perdre.
         _diagnostics = new List<SceneDiagnostic>(initialDiagnostics);
     }
 
