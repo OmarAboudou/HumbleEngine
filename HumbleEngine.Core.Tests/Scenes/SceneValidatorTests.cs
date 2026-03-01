@@ -3,6 +3,14 @@ using NUnit.Framework;
 
 namespace HumbleEngine.Core.Tests.Scenes;
 
+// Types de test déclarés localement pour simuler des types utilisateur.
+// On reprend la même convention que TypeResolverTests pour la cohérence.
+file interface ITestController { }
+file abstract class AbstractController : ITestController { }
+file class ConcreteController : ITestController { }
+file class GenericNode<T> where T : ITestController { }
+
+
 [TestFixture]
 file class SceneValidatorTests
 {
@@ -17,9 +25,10 @@ file class SceneValidatorTests
 
     private static SceneNode SimpleNode(string id, string type = "Game.MyNode",
         IReadOnlyList<SceneElement>? children = null,
-        IReadOnlyDictionary<string, SceneSlotDefinition>? slots = null) =>
+        IReadOnlyDictionary<string, SceneSlotDefinition>? slots = null,
+        IReadOnlyDictionary<string, TypeRef>? genericBindings = null) =>
         new(id, type,
-            new Dictionary<string, TypeRef>(),
+            genericBindings ?? new Dictionary<string, TypeRef>(),
             new Dictionary<string, object?>(),
             slots ?? new Dictionary<string, SceneSlotDefinition>(),
             children ?? Array.Empty<SceneElement>());
@@ -57,6 +66,17 @@ file class SceneValidatorTests
     private SceneLoadResult Validate(SceneDocument doc) =>
         _validator.Validate(doc, Array.Empty<SceneDiagnostic>());
 
+    // Retourne le nom qualifié complet d'un type de test, utilisable par le TypeResolver.
+    private static string NameOf<T>() => typeof(T).FullName!;
+
+    // Crée un validateur avec passe 3 active, en enregistrant l'assembly de test.
+    private static SceneValidator ValidatorWithTypeResolution()
+    {
+        var resolver = new TypeResolver();
+        resolver.RegisterAssembly(typeof(SceneValidatorTests).Assembly);
+        return new SceneValidator(resolver);
+    }
+
     // -------------------------------------------------------------------------
     // Cas nominal — scène valide et instanciable
     // -------------------------------------------------------------------------
@@ -91,7 +111,7 @@ file class SceneValidatorTests
             Kind: SceneKind.Base,
             ExtendsScene: null,
             Implements: Array.Empty<string>(),
-            ForceNonInstantiable: true, // ← le flag
+            ForceNonInstantiable: true,
             Root: SimpleNode("root"),
             ReplaceVirtuals: new Dictionary<string, SceneElement>(),
             FillSlots: new Dictionary<string, IReadOnlyList<SceneElement>>(),
@@ -101,7 +121,6 @@ file class SceneValidatorTests
         var result = Validate(doc);
 
         Assert.That(result.Status, Is.EqualTo(SceneInstantiabilityStatus.NonInstantiableForced));
-        // ForceNonInstantiable ne produit pas d'erreur — c'est un choix explicite.
         Assert.That(result.Diagnostics, Is.Empty);
     }
 
@@ -112,11 +131,10 @@ file class SceneValidatorTests
     [Test]
     public void Validate_DuplicateId_InChildren_ReturnsSCN0015()
     {
-        // Deux enfants avec le même id — le second doit déclencher SCN0015.
         var root = SimpleNode("root", children: new SceneElement[]
         {
             SimpleNode("child"),
-            SimpleNode("child") // ← doublon
+            SimpleNode("child")
         });
 
         var result = Validate(BaseDocument(root));
@@ -128,7 +146,6 @@ file class SceneValidatorTests
     [Test]
     public void Validate_DuplicateId_BetweenRootAndChild_ReturnsSCN0015()
     {
-        // L'enfant a le même id que la racine.
         var root = SimpleNode("shared_id", children: new SceneElement[]
         {
             SimpleNode("shared_id")
@@ -142,7 +159,6 @@ file class SceneValidatorTests
     [Test]
     public void Validate_DuplicateId_InSlotItems_ReturnsSCN0015()
     {
-        // Les items d'un slot partagent l'espace d'ids avec le reste de l'arbre.
         var slot = new SceneSlotDefinition(
             AcceptedType: "Game.IEntry",
             TargetNodeId: "grid",
@@ -176,12 +192,11 @@ file class SceneValidatorTests
     [Test]
     public void Validate_DuplicateId_InReplaceVirtuals_ReturnsSCN0015()
     {
-        // Dans une InheritedScene, les éléments des overrides ont aussi des ids uniques.
         var doc = InheritedDocument(
             replaceVirtuals: new Dictionary<string, SceneElement>
             {
                 ["ctrl1"] = SimpleNode("same_id"),
-                ["ctrl2"] = SimpleNode("same_id") // ← doublon
+                ["ctrl2"] = SimpleNode("same_id")
             }
         );
 
@@ -197,7 +212,6 @@ file class SceneValidatorTests
     [Test]
     public void Validate_RequiredVirtual_WithoutDefault_ReturnsSCN0020()
     {
-        // Un NodeVirtuel required sans default rend la scène NonInstantiableByStructure.
         var root = SimpleNode("root", children: new SceneElement[]
         {
             VirtualNode("controller", required: true, def: null)
@@ -212,7 +226,6 @@ file class SceneValidatorTests
     [Test]
     public void Validate_RequiredVirtual_WithDefault_IsInstantiable()
     {
-        // Avec un default, le NodeVirtuel required est satisfait — la scène est instanciable.
         var root = SimpleNode("root", children: new SceneElement[]
         {
             VirtualNode("controller", required: true, def: SimpleNode("ai_ctrl", "Game.AiController"))
@@ -227,7 +240,6 @@ file class SceneValidatorTests
     [Test]
     public void Validate_OptionalVirtual_WithoutDefault_IsInstantiable()
     {
-        // Un NodeVirtuel non-required sans default est valide — l'emplacement reste vide.
         var root = SimpleNode("root", children: new SceneElement[]
         {
             VirtualNode("controller", required: false, def: null)
@@ -241,7 +253,6 @@ file class SceneValidatorTests
     [Test]
     public void Validate_RequiredVirtual_Nested_ReturnsSCN0020()
     {
-        // Le validateur descend en profondeur — un required nested doit aussi être détecté.
         var child = SimpleNode("child", children: new SceneElement[]
         {
             VirtualNode("nested_ctrl", required: true)
@@ -278,14 +289,157 @@ file class SceneValidatorTests
     [Test]
     public void Validate_PreservesParserDiagnostics()
     {
-        // Le validateur reçoit les diagnostics du parser et les conserve dans le résultat.
         var parserError = new SceneDiagnostic("SCN0002", SceneDiagnosticSeverity.Error, "Clé manquante");
         var doc = BaseDocument(SimpleNode("root"));
 
         var result = _validator.Validate(doc, new[] { parserError });
 
         Assert.That(result.Diagnostics.Any(d => d.Code == "SCN0002"), Is.True);
-        // Avec une erreur de parser, on court-circuite directement vers Invalid.
         Assert.That(result.Status, Is.EqualTo(SceneInstantiabilityStatus.Invalid));
+    }
+
+    // -------------------------------------------------------------------------
+    // Passe 3 — Validation des types C# (SCN0008, SCN0011, SCN0012)
+    //
+    // Ces tests utilisent ValidatorWithTypeResolution() pour activer la passe 3.
+    // Les types de test (ConcreteController, AbstractController, etc.) sont déclarés
+    // en tête de fichier avec le modificateur "file" pour éviter la pollution du namespace.
+    // -------------------------------------------------------------------------
+
+    [Test]
+    public void Validate_WithTypeResolver_ConcreteType_IsInstantiable()
+    {
+        // Un type concret résolvable et non abstrait — la passe 3 ne doit pas produire d'erreur.
+        var validator = ValidatorWithTypeResolution();
+        var root = SimpleNode("root", type: NameOf<ConcreteController>());
+
+        var result = validator.Validate(BaseDocument(root), Array.Empty<SceneDiagnostic>());
+
+        Assert.That(result.Status, Is.EqualTo(SceneInstantiabilityStatus.Instantiable));
+        Assert.That(result.Diagnostics.Any(d => d.Code == "SCN0008"), Is.False);
+    }
+
+    [Test]
+    public void Validate_WithTypeResolver_AbstractType_ReturnsSCN0008()
+    {
+        // Un type abstrait produit SCN0008 et NonInstantiableByStructure.
+        // La scène reste chargeable et héritable — c'est le comportement attendu
+        // pour une scène de base abstraite destinée à être spécialisée.
+        var validator = ValidatorWithTypeResolution();
+        var root = SimpleNode("root", type: NameOf<AbstractController>());
+
+        var result = validator.Validate(BaseDocument(root), Array.Empty<SceneDiagnostic>());
+
+        Assert.That(result.Status, Is.EqualTo(SceneInstantiabilityStatus.NonInstantiableByStructure));
+        Assert.That(result.Diagnostics.Any(d => d.Code == "SCN0008"), Is.True);
+        Assert.That(result.Diagnostics.First(d => d.Code == "SCN0008").ElementId, Is.EqualTo("root"));
+    }
+
+    [Test]
+    public void Validate_WithTypeResolver_Interface_ReturnsSCN0008()
+    {
+        // Une interface est abstraite au sens C# (IsAbstract = true).
+        var validator = ValidatorWithTypeResolution();
+        var root = SimpleNode("root", type: NameOf<ITestController>());
+
+        var result = validator.Validate(BaseDocument(root), Array.Empty<SceneDiagnostic>());
+
+        Assert.That(result.Diagnostics.Any(d => d.Code == "SCN0008"), Is.True);
+    }
+
+    [Test]
+    public void Validate_WithTypeResolver_OpenGenericWithoutBindings_ProducesNoError()
+    {
+        // Un type générique ouvert sans bindings est valide à ce stade — ses paramètres
+        // peuvent correspondre aux paramètres génériques de la scène racine et seront
+        // fournis lors de l'appel à Instantiate(GenericTypeArguments).
+        // SCN0012 sera vérifié à l'instanciation, pas au chargement.
+        var validator = ValidatorWithTypeResolution();
+        var root = SimpleNode("root", type: typeof(GenericNode<>).FullName!);
+
+        var result = validator.Validate(BaseDocument(root), Array.Empty<SceneDiagnostic>());
+
+        Assert.That(result.Diagnostics.Any(d => d.Code == "SCN0012"), Is.False);
+    }
+
+    [Test]
+    public void Validate_WithTypeResolver_GenericBindingConstraintViolation_ReturnsSCN0011()
+    {
+        // GenericNode<T> where T : ITestController — on passe System.String
+        // qui n'implémente pas ITestController → SCN0011.
+        var validator = ValidatorWithTypeResolution();
+        var bindings = new Dictionary<string, TypeRef>
+        {
+            ["T"] = TypeRef.Simple("System.String")
+        };
+        var root = SimpleNode("root", type: typeof(GenericNode<>).FullName!, genericBindings: bindings);
+
+        var result = validator.Validate(BaseDocument(root), Array.Empty<SceneDiagnostic>());
+
+        Assert.That(result.Diagnostics.Any(d => d.Code == "SCN0011"), Is.True);
+    }
+
+    [Test]
+    public void Validate_WithTypeResolver_UnknownType_ProducesNoError()
+    {
+        // Un type inconnu ne produit pas d'erreur — l'assembly utilisateur peut
+        // ne pas encore être enregistré. On ne bloque pas le chargement de la scène.
+        var validator = ValidatorWithTypeResolution();
+        var root = SimpleNode("root", type: "Game.UnknownNode");
+
+        var result = validator.Validate(BaseDocument(root), Array.Empty<SceneDiagnostic>());
+
+        Assert.That(result.Status, Is.EqualTo(SceneInstantiabilityStatus.Instantiable));
+        Assert.That(result.Diagnostics, Is.Empty);
+    }
+
+    [Test]
+    public void Validate_WithTypeResolver_AbstractType_InNestedChild_ReturnsSCN0008()
+    {
+        // La passe 3 descend récursivement dans les enfants.
+        var child = SimpleNode("child", type: NameOf<AbstractController>());
+        var root = SimpleNode("root", children: new SceneElement[] { child });
+        var validator = ValidatorWithTypeResolution();
+
+        var result = validator.Validate(BaseDocument(root), Array.Empty<SceneDiagnostic>());
+
+        Assert.That(result.Diagnostics.Any(d => d.Code == "SCN0008"
+            && d.ElementId == "child"), Is.True);
+    }
+
+    [Test]
+    public void Validate_WithoutTypeResolver_AbstractType_ProducesNoError()
+    {
+        // Sans TypeResolver, la passe 3 est ignorée — même un type abstrait passe.
+        var root = SimpleNode("root", type: NameOf<AbstractController>());
+
+        var result = Validate(BaseDocument(root));
+
+        Assert.That(result.Status, Is.EqualTo(SceneInstantiabilityStatus.Instantiable));
+        Assert.That(result.Diagnostics.Any(d => d.Code == "SCN0008"), Is.False);
+    }
+
+    [Test]
+    public void Validate_WithTypeResolver_ForceNonInstantiable_SkipsTypePasse()
+    {
+        // force_non_instantiable = true court-circuite avant la passe 3 —
+        // SCN0008 n'est pas émis même avec un type abstrait.
+        var validator = ValidatorWithTypeResolution();
+        var doc = new SceneDocument(
+            SchemaVersion: 1,
+            Kind: SceneKind.Base,
+            ExtendsScene: null,
+            Implements: Array.Empty<string>(),
+            ForceNonInstantiable: true,
+            Root: SimpleNode("root", type: NameOf<AbstractController>()),
+            ReplaceVirtuals: new Dictionary<string, SceneElement>(),
+            FillSlots: new Dictionary<string, IReadOnlyList<SceneElement>>(),
+            SetProperties: new Dictionary<string, IReadOnlyDictionary<string, object?>>()
+        );
+
+        var result = validator.Validate(doc, Array.Empty<SceneDiagnostic>());
+
+        Assert.That(result.Status, Is.EqualTo(SceneInstantiabilityStatus.NonInstantiableForced));
+        Assert.That(result.Diagnostics.Any(d => d.Code == "SCN0008"), Is.False);
     }
 }
