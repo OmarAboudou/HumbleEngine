@@ -334,6 +334,40 @@ public abstract class Node
     }
 
     // -------------------------------------------------------------------------
+    // Slots
+    // -------------------------------------------------------------------------
+
+    // Cache des instances NodeSlot<T> déjà créées pour ce node.
+    // La clé est le node cible — chaque node cible ne peut avoir qu'un seul
+    // slot associé sur un node donné. On utilise un Dictionary<Node, object>
+    // parce que NodeSlot<T> est générique et qu'on ne peut pas stocker
+    // des types génériques ouverts dans un Dictionary typé.
+    private Dictionary<Node, object>? _slotCache;
+
+    /// <summary>
+    /// Résout ou crée le NodeSlot&lt;T&gt; pointant vers le node cible donné.
+    /// Le résultat est mis en cache — deux appels successifs avec le même
+    /// node cible retournent toujours la même instance.
+    ///
+    /// À appeler depuis les propriétés [Slot] des nodes concrets :
+    /// <code>
+    /// [Slot]
+    /// public NodeSlot&lt;InventoryEntry&gt; Entries => GetSlot&lt;InventoryEntry&gt;(_grid);
+    /// </code>
+    /// </summary>
+    protected NodeSlot<T> GetSlot<T>(Node target) where T : Node
+    {
+        _slotCache ??= new Dictionary<Node, object>();
+
+        if (_slotCache.TryGetValue(target, out var cached))
+            return (NodeSlot<T>)cached;
+
+        var slot = new NodeSlot<T>(target);
+        _slotCache[target] = slot;
+        return slot;
+    }
+
+    // -------------------------------------------------------------------------
     // Debug
     // -------------------------------------------------------------------------
 
