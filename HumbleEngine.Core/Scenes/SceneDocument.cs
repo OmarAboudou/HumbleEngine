@@ -38,12 +38,6 @@ public enum SlotVisibility { Public, Protected }
 // Éléments structurels — hiérarchie de records
 // =============================================================================
 
-// On utilise des records abstraits plutôt qu'une interface ou une classe abstraite
-// pour deux raisons. Premièrement, les records donnent l'égalité structurelle
-// gratuitement, ce qui simplifie les tests. Deuxièmement, le pattern matching
-// exhaustif sur une hiérarchie de records sealed est idiomatique en C# moderne
-// et produit un code de validation très lisible.
-
 /// <summary>
 /// Élément de base de l'arborescence d'une scène.
 /// Tous les éléments partagent un identifiant unique dans la scène.
@@ -53,7 +47,7 @@ public abstract record SceneElement(string Id);
 
 /// <summary>
 /// Node concret, fixe — son type ne peut pas être remplacé par une héritière.
-/// Peut contenir des enfants (sous-arborescence) et des overrides de propriétés.
+/// Ses slots sont déclarés séparément de ses enfants structurels.
 /// </summary>
 /// <param name="Id">Identifiant unique de ce node dans la scène.</param>
 /// <param name="TypeName">Nom de type C# qualifié (ex: "Game.PlayerNode`1").</param>
@@ -65,14 +59,36 @@ public abstract record SceneElement(string Id);
 /// Valeurs des propriétés [Overridable] à appliquer à l'instanciation.
 /// Clé = nom de propriété en snake_case, valeur = valeur JSON brute.
 /// </param>
-/// <param name="Children">Enfants directs de ce node dans l'arborescence.</param>
+/// <param name="Slots">
+/// Slots exposés par ce node. Clé = id du slot, valeur = définition du slot.
+/// Séparé des Children — un slot n'est pas un enfant structurel du node.
+/// </param>
+/// <param name="Children">
+/// Enfants directs de ce node dans l'arborescence : autres nodes, virtual nodes,
+/// et embedded scenes. Ne contient jamais de slots.
+/// </param>
 public sealed record SceneNode(
     string Id,
     string TypeName,
     IReadOnlyDictionary<string, string> GenericBindings,
     IReadOnlyDictionary<string, object?> Properties,
+    IReadOnlyDictionary<string, SceneSlotDefinition> Slots,
     IReadOnlyList<SceneElement> Children
 ) : SceneElement(Id);
+
+/// <summary>
+/// Définition d'un slot déclaré sur un node.
+/// </summary>
+/// <param name="AcceptedType">Type contraint des éléments injectables (nom de type C# qualifié).</param>
+/// <param name="TargetNodeId">Id du node interne vers lequel les enfants sont effectivement ajoutés.</param>
+/// <param name="Visibility">Visibilité du slot — détermine qui peut y injecter des éléments.</param>
+/// <param name="Items">Éléments déjà injectés dans ce slot.</param>
+public sealed record SceneSlotDefinition(
+    string AcceptedType,
+    string TargetNodeId,
+    SlotVisibility Visibility,
+    IReadOnlyList<SceneElement> Items
+);
 
 /// <summary>
 /// Emplacement overridable par une scène héritière — analogue à une méthode virtual/abstract.
@@ -96,32 +112,13 @@ public sealed record SceneVirtualNode(
 ) : SceneElement(Id);
 
 /// <summary>
-/// Point d'insertion nommé et typé — cardinalité 0..N.
-/// Injecter dans un slot = ajouter comme enfant du node cible.
-/// </summary>
-/// <param name="Id">Identifiant unique de ce slot dans la scène.</param>
-/// <param name="AcceptedType">Type contraint des éléments injectables (nom de type C# qualifié).</param>
-/// <param name="TargetNodeId">Id du node interne vers lequel les enfants sont effectivement ajoutés.</param>
-/// <param name="Visibility">Visibilité du slot — détermine qui peut y injecter des éléments.</param>
-/// <param name="Items">Éléments déjà injectés dans ce slot (depuis la scène courante ou une parente).</param>
-public sealed record SceneSlot(
-    string Id,
-    string AcceptedType,
-    string TargetNodeId,
-    SlotVisibility Visibility,
-    IReadOnlyList<SceneElement> Items
-) : SceneElement(Id);
-
-/// <summary>
 /// Référence à une scène externe, utilisée là où un node est attendu.
 /// Peut surcharger les propriétés et slots publics de la scène référencée.
+/// La compatibilité de type est vérifiée par le validateur via le système de types C# —
+/// aucune contrainte de type explicite n'est nécessaire dans le JSON.
 /// </summary>
 /// <param name="Id">Identifiant unique de cette référence dans la scène.</param>
 /// <param name="ScenePath">Chemin vers le fichier .hscene référencé (ex: "res://scenes/sword.hscene").</param>
-/// <param name="TypeConstraint">
-/// Contrainte de type optionnelle sur la scène référencée.
-/// Null = pas de contrainte supplémentaire.
-/// </param>
 /// <param name="GenericBindings">Fermeture de paramètres génériques de la scène référencée.</param>
 /// <param name="PropertyOverrides">Overrides de propriétés [Overridable] de la scène référencée.</param>
 /// <param name="SlotOverrides">
@@ -131,7 +128,6 @@ public sealed record SceneSlot(
 public sealed record SceneEmbeddedScene(
     string Id,
     string ScenePath,
-    string? TypeConstraint,
     IReadOnlyDictionary<string, string> GenericBindings,
     IReadOnlyDictionary<string, object?> PropertyOverrides,
     IReadOnlyDictionary<string, IReadOnlyList<SceneElement>> SlotOverrides
@@ -143,28 +139,42 @@ public sealed record SceneEmbeddedScene(
 
 /// <summary>
 /// Représentation en mémoire d'un fichier .hscene après parsing.
-/// C'est le modèle de données sur lequel s'appuient la validation
-/// et l'instanciation. Immuable après construction.
+/// Immuable après construction.
+///
+/// Pour une BaseScene, <see cref="Root"/> est non null et les trois dictionnaires
+/// d'overrides sont vides. Pour une InheritedScene, <see cref="Root"/> est null
+/// et les trois dictionnaires portent les modifications à appliquer sur la structure héritée.
 /// </summary>
 /// <param name="SchemaVersion">Version du schéma JSON (actuellement 1).</param>
 /// <param name="Kind">Indique si la scène est une BaseScene ou une InheritedScene.</param>
 /// <param name="ExtendsScene">
-/// Chemin vers la scène parente pour une InheritedScene.
-/// Null pour une BaseScene.
+/// Chemin vers la scène parente pour une InheritedScene. Null pour une BaseScene.
 /// </param>
 /// <param name="Implements">Noms des contrats implémentés par cette scène.</param>
-/// <param name="GenericBindings">Fermeture de paramètres génériques au niveau de la scène.</param>
 /// <param name="ForceNonInstantiable">
 /// Si true, la scène est NonInstantiableForced même si sa structure est valide.
-/// Permet de déclarer des scènes abstraites destinées uniquement à l'héritage.
 /// </param>
-/// <param name="Root">Node racine de la scène — son type définit le type de la scène entière.</param>
+/// <param name="Root">Node racine pour une BaseScene. Null pour une InheritedScene.</param>
+/// <param name="ReplaceVirtuals">
+/// Remplacement de NodeVirtuel hérités.
+/// Clé = id du NodeVirtuel ciblé, valeur = élément remplaçant.
+/// </param>
+/// <param name="FillSlots">
+/// Injection dans des slots hérités.
+/// Clé = id du slot ciblé, valeur = éléments à injecter.
+/// </param>
+/// <param name="SetProperties">
+/// Modification de propriétés [Overridable] sur des nodes hérités.
+/// Clé = id du node ciblé, valeur = dictionnaire (nom de propriété → valeur).
+/// </param>
 public sealed record SceneDocument(
     int SchemaVersion,
     SceneKind Kind,
     string? ExtendsScene,
     IReadOnlyList<string> Implements,
-    IReadOnlyDictionary<string, string> GenericBindings,
     bool ForceNonInstantiable,
-    SceneElement Root
+    SceneElement? Root,
+    IReadOnlyDictionary<string, SceneElement> ReplaceVirtuals,
+    IReadOnlyDictionary<string, IReadOnlyList<SceneElement>> FillSlots,
+    IReadOnlyDictionary<string, IReadOnlyDictionary<string, object?>> SetProperties
 );
