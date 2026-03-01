@@ -433,6 +433,8 @@ Les overrides sont exprimés via trois dictionnaires distincts, chacun indexé p
 
 ### 9.1 API de chargement
 
+`SceneLoader` expose une seule méthode de chargement. Elle retourne toujours un résultat — y compris lorsque le JSON est illisible ou que la scène est invalide. C'est le consommateur qui décide quoi faire du résultat selon son contexte : un éditeur inspectera les diagnostics pour entrer en mode réparation, un runtime pourra lever une exception si le statut est `Invalid`.
+
 ```csharp
 public sealed record SceneDiagnostic(
     string Code,
@@ -448,8 +450,10 @@ public sealed record SceneLoadResult(
     SceneInstantiabilityStatus Status,
     IReadOnlyList<SceneDiagnostic> Diagnostics);
 
-SceneLoadResult LoadForEditor(string scenePath);
-SceneLoadResult LoadForRuntime(string scenePath);
+// Charge et valide une scène. Ne lève jamais d'exception.
+// Document est null uniquement si le JSON est totalement illisible.
+SceneLoadResult Load(string json);
+
 SceneInstance Instantiate(SceneLoadResult loadResult, GenericTypeArguments? genericArguments = null);
 ```
 
