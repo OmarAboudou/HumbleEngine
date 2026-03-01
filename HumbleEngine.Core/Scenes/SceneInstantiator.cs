@@ -46,7 +46,7 @@ public sealed class SceneInstantiator
     /// si un type ne peut pas être résolu, ou si les paramètres génériques requis
     /// ne sont pas tous fournis (SCN0012).
     /// </exception>
-    public Node Instantiate(
+    public async Task<Node> Instantiate(
         SceneLoadResult loadResult,
         IReadOnlyDictionary<string, Type>? genericArguments = null)
     {
@@ -68,8 +68,7 @@ public sealed class SceneInstantiator
             throw new InvalidOperationException("La BaseScene n'a pas de node racine.");
 
         var ctx = new InstantiationContext(genericArguments ?? new Dictionary<string, Type>());
-        return InstantiateElement(loadResult.Document.Root, ctx);
-    }
+        return await InstantiateElement(loadResult.Document.Root, ctx).ConfigureAwait(false);    }
 
     // =========================================================================
     // Traversée récursive des éléments
@@ -79,21 +78,20 @@ public sealed class SceneInstantiator
     /// Instancie un élément de scène et retourne le <see cref="Node"/> correspondant.
     /// Retourne <c>null</c> pour les <see cref="SceneVirtualNode"/> sans valeur par défaut.
     /// </summary>
-    private Node? InstantiateElement(SceneElement element, InstantiationContext ctx) =>
+    private async Task<Node?> InstantiateElement(SceneElement element, InstantiationContext ctx) =>
         element switch
         {
-            SceneNode node           => InstantiateNode(node, ctx),
-            SceneVirtualNode vn      => InstantiateVirtualNode(vn, ctx),
-            SceneEmbeddedScene scene => InstantiateEmbeddedScene(scene, ctx),
+            SceneNode node           => await InstantiateNode(node, ctx),
+            SceneVirtualNode vn      => await InstantiateVirtualNode(vn, ctx),
+            SceneEmbeddedScene scene => await InstantiateEmbeddedScene(scene, ctx).ConfigureAwait(false),
             _ => throw new InvalidOperationException(
                 $"Type d'élément inconnu : {element.GetType().Name}")
         };
-
     // -------------------------------------------------------------------------
     // SceneNode
     // -------------------------------------------------------------------------
 
-    private Node InstantiateNode(SceneNode sceneNode, InstantiationContext ctx)
+    private async Task<Node> InstantiateNode(SceneNode sceneNode, InstantiationContext ctx)
     {
         // 1. Résoudre le type C# en tenant compte des generic_bindings et des
         //    genericArguments fournis à l'instanciation.
@@ -119,7 +117,7 @@ public sealed class SceneInstantiator
         //    de la résolution des slots à l'étape suivante.
         foreach (var child in sceneNode.Children)
         {
-            var childNode = InstantiateElement(child, ctx);
+            var childNode = await InstantiateElement(child, ctx).ConfigureAwait(false);
             if (childNode is not null)
                 node.AddChild(childNode);
         }
@@ -127,8 +125,7 @@ public sealed class SceneInstantiator
         // 6. Instancier les items des slots et les injecter dans le node cible.
         //    À ce stade, tous les enfants directs du node sont dans le registre.
         foreach (var (_, slot) in sceneNode.Slots)
-            InstantiateSlotItems(slot, ctx, sceneNode.Id);
-
+            await InstantiateSlotItems(slot, ctx, sceneNode.Id).ConfigureAwait(false);
         return node;
     }
 
@@ -340,7 +337,7 @@ public sealed class SceneInstantiator
     /// Injecter dans un slot = ajouter comme enfant du node cible (spec §7).
     /// Le node cible est retrouvé dans le registre du contexte par son id de scène.
     /// </summary>
-    private void InstantiateSlotItems(
+    private async Task InstantiateSlotItems(
         SceneSlotDefinition slot, InstantiationContext ctx, string parentSceneId)
     {
         if (slot.Items.Count == 0) return;
@@ -358,7 +355,7 @@ public sealed class SceneInstantiator
 
         foreach (var item in slot.Items)
         {
-            var itemNode = InstantiateElement(item, ctx);
+            var itemNode = await InstantiateElement(item, ctx).ConfigureAwait(false);
             if (itemNode is not null)
                 targetNode.AddChild(itemNode);
         }
@@ -368,32 +365,31 @@ public sealed class SceneInstantiator
     // SceneVirtualNode
     // -------------------------------------------------------------------------
 
-    private Node? InstantiateVirtualNode(SceneVirtualNode vn, InstantiationContext ctx)
+    private async Task<Node?> InstantiateVirtualNode(SceneVirtualNode vn, InstantiationContext ctx)
     {
         // Un NodeVirtuel sans default laisse l'emplacement vide — c'est valide
         // pour les nodes non-required. Les required sans default ont déjà été
         // rejetés par le validateur (SCN0020), on ne peut pas arriver ici avec un
         // required sans default dans une scène Instantiable.
         if (vn.Default is null) return null;
-
-        return InstantiateElement(vn.Default, ctx);
+        return await InstantiateElement(vn.Default, ctx).ConfigureAwait(false);
     }
 
     // -------------------------------------------------------------------------
     // SceneEmbeddedScene
     // -------------------------------------------------------------------------
 
-    private Node InstantiateEmbeddedScene(SceneEmbeddedScene embeddedScene, InstantiationContext ctx)
+    private async Task<Node> InstantiateEmbeddedScene(SceneEmbeddedScene embeddedScene, InstantiationContext ctx)
     {
         // 1. Charger la scène référencée.
-        var loadResult = LoadEmbeddedScene(embeddedScene.ScenePath);
+        var loadResult = await LoadEmbeddedScene(embeddedScene.ScenePath);
 
         // 2. Résoudre les generic_bindings de l'EmbeddedScene pour construire
         //    les genericArguments à passer à l'instanciation récursive.
         var embeddedArgs = ResolveEmbeddedGenericArgs(embeddedScene, ctx);
 
         // 3. Instancier récursivement la scène référencée.
-        var embeddedNode = Instantiate(loadResult, embeddedArgs);
+        var embeddedNode = await Instantiate(loadResult, embeddedArgs);
 
         // 4. Appliquer les overrides de propriétés déclarés sur l'EmbeddedScene.
         ApplyProperties(embeddedNode, embeddedScene.PropertyOverrides, embeddedScene.Id);
@@ -406,15 +402,9 @@ public sealed class SceneInstantiator
         return embeddedNode;
     }
 
-    private SceneLoadResult LoadEmbeddedScene(string scenePath)
+    private async Task<SceneLoadResult> LoadEmbeddedScene(string scenePath)
     {
-        // TODO: le SceneLoader actuel prend du JSON en entrée, pas un chemin de fichier.
-        // La résolution des chemins "res://" vers du JSON nécessite un système de ressources
-        // qui sera implémenté lors de l'intégration du pipeline de ressources.
-        // Pour l'instant on lève une exception explicite.
-        throw new NotImplementedException(
-            $"La résolution du chemin de scène '{scenePath}' n'est pas encore implémentée. " +
-            "Le pipeline de ressources (res://) fera l'objet d'une étape ultérieure.");
+        return await _sceneLoader.LoadFromUriAsync(scenePath).ConfigureAwait(false);
     }
 
     private IReadOnlyDictionary<string, Type> ResolveEmbeddedGenericArgs(

@@ -95,7 +95,7 @@ internal sealed class SceneInstantiatorTests
             SceneInstantiabilityStatus.NonInstantiableByStructure,
             Array.Empty<SceneDiagnostic>());
 
-        Assert.Throws<InvalidOperationException>(() => _instantiator.Instantiate(result));
+        Assert.Throws<InvalidOperationException>(() => _instantiator.Instantiate(result).GetAwaiter().GetResult());
     }
 
     [Test]
@@ -106,7 +106,7 @@ internal sealed class SceneInstantiatorTests
             SceneInstantiabilityStatus.Invalid,
             Array.Empty<SceneDiagnostic>());
 
-        Assert.Throws<InvalidOperationException>(() => _instantiator.Instantiate(result));
+        Assert.Throws<InvalidOperationException>(() => _instantiator.Instantiate(result).GetAwaiter().GetResult());
     }
 
     [Test]
@@ -126,7 +126,7 @@ internal sealed class SceneInstantiatorTests
         var result = new SceneLoadResult(doc, SceneInstantiabilityStatus.Instantiable,
             Array.Empty<SceneDiagnostic>());
 
-        Assert.Throws<NotImplementedException>(() => _instantiator.Instantiate(result));
+        Assert.Throws<NotImplementedException>(() => _instantiator.Instantiate(result).GetAwaiter().GetResult());
     }
 
     // -------------------------------------------------------------------------
@@ -134,33 +134,33 @@ internal sealed class SceneInstantiatorTests
     // -------------------------------------------------------------------------
 
     [Test]
-    public void Instantiate_SimpleNode_ReturnsCorrectType()
+    public async Task Instantiate_SimpleNode_ReturnsCorrectType()
     {
         var result = InstantiableResult(MakeNode("root"));
 
-        var node = _instantiator.Instantiate(result);
+        var node = await _instantiator.Instantiate(result);
 
         Assert.That(node, Is.InstanceOf<SimpleNode>());
     }
 
     [Test]
-    public void Instantiate_SimpleNode_HasNoChildren()
+    public async Task Instantiate_SimpleNode_HasNoChildren()
     {
         var result = InstantiableResult(MakeNode("root"));
 
-        var node = _instantiator.Instantiate(result);
+        var node = await _instantiator.Instantiate(result);
 
         Assert.That(node.Children, Is.Empty);
     }
 
     [Test]
-    public void Instantiate_SimpleNode_IsDetached()
+    public async Task Instantiate_SimpleNode_IsDetached()
     {
         // Le node retourné ne doit pas être dans un NodeTree — c'est au consommateur
         // de l'attacher. Tree == null garantit cet invariant.
         var result = InstantiableResult(MakeNode("root"));
 
-        var node = _instantiator.Instantiate(result);
+        var node = await _instantiator.Instantiate(result);
 
         Assert.That(node.Tree, Is.Null);
         Assert.That(node.Parent, Is.Null);
@@ -171,23 +171,23 @@ internal sealed class SceneInstantiatorTests
     // -------------------------------------------------------------------------
 
     [Test]
-    public void Instantiate_WithStringProperty_AppliesValue()
+    public async Task Instantiate_WithStringProperty_AppliesValue()
     {
         var props = new Dictionary<string, object?> { ["label"] = "hello" };
         var result = InstantiableResult(MakeNode("root", properties: props));
 
-        var node = (SimpleNode)_instantiator.Instantiate(result);
+        var node = (SimpleNode)await _instantiator.Instantiate(result);
 
         Assert.That(node.Label, Is.EqualTo("hello"));
     }
 
     [Test]
-    public void Instantiate_WithFloatProperty_AppliesValue()
+    public async Task Instantiate_WithFloatProperty_AppliesValue()
     {
         var props = new Dictionary<string, object?> { ["speed"] = 4.5 };
         var result = InstantiableResult(MakeNode("root", properties: props));
 
-        var node = (SimpleNode)_instantiator.Instantiate(result);
+        var node = (SimpleNode)await _instantiator.Instantiate(result);
 
         Assert.That(node.Speed, Is.EqualTo(4.5f).Within(0.001f));
     }
@@ -198,7 +198,7 @@ internal sealed class SceneInstantiatorTests
         var props = new Dictionary<string, object?> { ["nonexistent"] = "value" };
         var result = InstantiableResult(MakeNode("root", properties: props));
 
-        Assert.Throws<InvalidOperationException>(() => _instantiator.Instantiate(result));
+        Assert.Throws<InvalidOperationException>(() => _instantiator.Instantiate(result).GetAwaiter().GetResult());
     }
 
     // -------------------------------------------------------------------------
@@ -206,7 +206,7 @@ internal sealed class SceneInstantiatorTests
     // -------------------------------------------------------------------------
 
     [Test]
-    public void Instantiate_WithChildren_AttachesCorrectly()
+    public async Task Instantiate_WithChildren_AttachesCorrectly()
     {
         var root = MakeNode("root", children: new SceneElement[]
         {
@@ -214,24 +214,24 @@ internal sealed class SceneInstantiatorTests
             MakeNode("child2")
         });
 
-        var node = _instantiator.Instantiate(InstantiableResult(root));
+        var node = await _instantiator.Instantiate(InstantiableResult(root));
 
         Assert.That(node.Children, Has.Count.EqualTo(2));
         Assert.That(node.Children.All(c => c is SimpleNode), Is.True);
     }
 
     [Test]
-    public void Instantiate_WithChildren_ParentIsSet()
+    public async Task Instantiate_WithChildren_ParentIsSet()
     {
         var root = MakeNode("root", children: new SceneElement[] { MakeNode("child") });
 
-        var node = _instantiator.Instantiate(InstantiableResult(root));
+        var node = await _instantiator.Instantiate(InstantiableResult(root));
 
         Assert.That(node.Children[0].Parent, Is.SameAs(node));
     }
 
     [Test]
-    public void Instantiate_ChildrenOrderPreserved()
+    public async Task Instantiate_ChildrenOrderPreserved()
     {
         // L'ordre des enfants est un invariant garanti par la spec.
         var root = MakeNode("root", children: new SceneElement[]
@@ -241,7 +241,7 @@ internal sealed class SceneInstantiatorTests
             MakeNode("c")
         });
 
-        var node = _instantiator.Instantiate(InstantiableResult(root));
+        var node = await _instantiator.Instantiate(InstantiableResult(root));
 
         // On vérifie l'ordre en inspectant les propriétés Label des enfants,
         // qu'on distingue par leurs ids (tous SimpleNode par défaut).
@@ -253,14 +253,14 @@ internal sealed class SceneInstantiatorTests
     // -------------------------------------------------------------------------
 
     [Test]
-    public void Instantiate_VirtualNode_WithDefault_InstantiatesDefault()
+    public async Task Instantiate_VirtualNode_WithDefault_InstantiatesDefault()
     {
         var root = MakeNode("root", children: new SceneElement[]
         {
             MakeVirtualNode("ctrl", def: MakeNode("ctrl_impl"))
         });
 
-        var node = _instantiator.Instantiate(InstantiableResult(root));
+        var node = await _instantiator.Instantiate(InstantiableResult(root));
 
         // Le default du NodeVirtuel doit être instancié et attaché comme enfant.
         Assert.That(node.Children, Has.Count.EqualTo(1));
@@ -268,14 +268,14 @@ internal sealed class SceneInstantiatorTests
     }
 
     [Test]
-    public void Instantiate_VirtualNode_WithoutDefault_ProducesNoChild()
+    public async Task Instantiate_VirtualNode_WithoutDefault_ProducesNoChild()
     {
         var root = MakeNode("root", children: new SceneElement[]
         {
             MakeVirtualNode("ctrl", def: null)
         });
 
-        var node = _instantiator.Instantiate(InstantiableResult(root));
+        var node = await _instantiator.Instantiate(InstantiableResult(root));
 
         // Un NodeVirtuel sans default ne doit pas ajouter d'enfant.
         Assert.That(node.Children, Is.Empty);
@@ -286,7 +286,7 @@ internal sealed class SceneInstantiatorTests
     // -------------------------------------------------------------------------
 
     [Test]
-    public void Instantiate_SlotWithItems_InjectsIntoTargetNode()
+    public async Task Instantiate_SlotWithItems_InjectsIntoTargetNode()
     {
         // Le slot "items" pointe vers le node "target" (enfant du root).
         // Les items du slot doivent être ajoutés comme enfants de "target", pas de "root".
@@ -300,7 +300,7 @@ internal sealed class SceneInstantiatorTests
             children: new SceneElement[] { MakeNode("target") },
             slots: new Dictionary<string, SceneSlotDefinition> { ["items"] = slot });
 
-        var node = _instantiator.Instantiate(InstantiableResult(root));
+        var node = await _instantiator.Instantiate(InstantiableResult(root));
 
         // root a un enfant "target"
         Assert.That(node.Children, Has.Count.EqualTo(1));
@@ -322,11 +322,11 @@ internal sealed class SceneInstantiatorTests
             slots: new Dictionary<string, SceneSlotDefinition> { ["items"] = slot });
 
         Assert.Throws<InvalidOperationException>(() =>
-            _instantiator.Instantiate(InstantiableResult(root)));
+            _instantiator.Instantiate(InstantiableResult(root)).GetAwaiter().GetResult());
     }
 
     [Test]
-    public void Instantiate_SlotWithNoItems_NoChildrenAdded()
+    public async Task Instantiate_SlotWithNoItems_NoChildrenAdded()
     {
         var slot = new SceneSlotDefinition(
             AcceptedType: NameOf<SimpleNode>(),
@@ -338,7 +338,7 @@ internal sealed class SceneInstantiatorTests
             children: new SceneElement[] { MakeNode("target") },
             slots: new Dictionary<string, SceneSlotDefinition> { ["items"] = slot });
 
-        var node = _instantiator.Instantiate(InstantiableResult(root));
+        var node = await _instantiator.Instantiate(InstantiableResult(root));
         var target = node.Children[0];
 
         Assert.That(target.Children, Is.Empty);
@@ -349,7 +349,7 @@ internal sealed class SceneInstantiatorTests
     // -------------------------------------------------------------------------
 
     [Test]
-    public void Instantiate_GenericNode_WithArgument_ClosesType()
+    public async Task Instantiate_GenericNode_WithArgument_ClosesType()
     {
         // GenericNode<SimpleNode> — l'argument est fourni via genericArguments.
         var genericArgs = new Dictionary<string, Type>
@@ -358,19 +358,18 @@ internal sealed class SceneInstantiatorTests
         };
         var root = MakeNode("root", type: typeof(InstantiatorGenericNode<>).FullName!);
 
-        var node = _instantiator.Instantiate(InstantiableResult(root), genericArgs);
+        var node = await _instantiator.Instantiate(InstantiableResult(root), genericArgs);
 
         Assert.That(node, Is.InstanceOf(typeof(InstantiatorGenericNode<>).MakeGenericType(typeof(SimpleNode))));
     }
 
     [Test]
-    public void Instantiate_GenericNode_WithoutArgument_Throws()
+    public async Task Instantiate_GenericNode_WithoutArgument_Throws()
     {
         // GenericNode<T> sans binding ni argument fourni → erreur SCN0012 à l'instanciation.
         var root = MakeNode("root", type: typeof(InstantiatorGenericNode<>).FullName!);
 
-        Assert.Throws<InvalidOperationException>(() =>
-            _instantiator.Instantiate(InstantiableResult(root)));
+        Assert.Throws<InvalidOperationException>(() => _instantiator.Instantiate(InstantiableResult(root)).GetAwaiter().GetResult());
     }
 
     [Test]
@@ -381,6 +380,6 @@ internal sealed class SceneInstantiatorTests
         var root = MakeNode("root", type: "Game.CompletelyUnknownNode");
 
         Assert.Throws<InvalidOperationException>(() =>
-            _instantiator.Instantiate(InstantiableResult(root)));
+            _instantiator.Instantiate(InstantiableResult(root)).GetAwaiter().GetResult());
     }
 }
