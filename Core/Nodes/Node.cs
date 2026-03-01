@@ -208,6 +208,132 @@ public abstract class Node
     }
 
     // -------------------------------------------------------------------------
+    // Cycle de vie
+    // -------------------------------------------------------------------------
+
+    // OnReady n'est invoqué qu'une seule fois par node, même si le node
+    // est retiré puis réattaché à un arbre. Ce flag le garantit.
+    private bool _readyInvoked;
+
+    /// <summary>
+    /// Appelé au début de l'entrée dans le NodeTree.
+    /// Propagation : parent → enfants.
+    /// À ce stade, les enfants ne sont pas encore entrés.
+    /// </summary>
+    protected virtual void OnTreeEntering() { }
+
+    /// <summary>
+    /// Appelé après que tout le sous-arbre est entré dans le NodeTree.
+    /// Propagation : enfants → parent.
+    /// À ce stade, tous les enfants ont déjà reçu OnTreeEntering.
+    /// </summary>
+    protected virtual void OnTreeEntered() { }
+
+    /// <summary>
+    /// Appelé une seule fois après OnTreeEntered, lors du premier attachement.
+    /// Propagation : enfants → parent.
+    /// Garantie : quand OnReady s'exécute sur ce node, tous ses enfants
+    /// ont déjà reçu leur propre OnReady.
+    /// </summary>
+    protected virtual void OnReady() { }
+
+    /// <summary>
+    /// Appelé à chaque tick logique.
+    /// </summary>
+    /// <param name="delta">Temps écoulé depuis le dernier tick, en secondes.</param>
+    protected virtual void OnProcess(float delta) { }
+
+    /// <summary>
+    /// Appelé à chaque tick physique.
+    /// </summary>
+    /// <param name="delta">Temps écoulé depuis le dernier tick physique, en secondes.</param>
+    protected virtual void OnPhysicsProcess(float delta) { }
+
+    /// <summary>
+    /// Appelé avant la sortie effective du NodeTree.
+    /// Propagation : enfants → parent.
+    /// Tree est encore accessible à ce stade.
+    /// </summary>
+    protected virtual void OnTreeExiting() { }
+
+    /// <summary>
+    /// Appelé après la sortie effective du NodeTree.
+    /// Propagation : enfants → parent.
+    /// Tree est null à ce stade.
+    /// </summary>
+    protected virtual void OnTreeExited() { }
+
+    // Méthodes internes appelées par NodeTree pour orchestrer le cycle de vie.
+    // On les sépare des callbacks virtuels pour garder le contrôle
+    // sur l'ordre exact de propagation — NodeTree ne doit pas avoir
+    // à connaître les détails de propagation, il délègue à Node.
+
+    internal void PropagateTreeEntering()
+    {
+        // Parent d'abord, puis enfants — l'onde descend.
+        OnTreeEntering();
+        foreach (var child in _children)
+            child.PropagateTreeEntering();
+    }
+
+    internal void PropagateTreeEntered()
+    {
+        // Enfants d'abord, puis parent — l'onde remonte.
+        foreach (var child in _children)
+            child.PropagateTreeEntered();
+        OnTreeEntered();
+    }
+
+    internal void PropagateReady()
+    {
+        // Enfants d'abord, puis parent — même logique que OnTreeEntered.
+        foreach (var child in _children)
+            child.PropagateReady();
+
+        // OnReady n'est invoqué qu'une seule fois, même après un
+        // retrait et réattachement ultérieur.
+        if (!_readyInvoked)
+        {
+            _readyInvoked = true;
+            OnReady();
+        }
+    }
+
+    internal void PropagateProcess(float delta)
+    {
+        // Process n'a pas d'ordre de propagation défini dans la spec —
+        // on choisit parent → enfants par convention, cohérent avec
+        // l'ordre naturel de mise à jour (le parent peut affecter ses enfants).
+        OnProcess(delta);
+        foreach (var child in _children)
+            child.PropagateProcess(delta);
+    }
+
+    internal void PropagatePhysicsProcess(float delta)
+    {
+        OnPhysicsProcess(delta);
+        foreach (var child in _children)
+            child.PropagatePhysicsProcess(delta);
+    }
+
+    internal void PropagateTreeExiting()
+    {
+        // Enfants d'abord, puis parent — l'onde remonte.
+        // Tree est encore accessible ici (retiré après OnTreeExited).
+        foreach (var child in _children)
+            child.PropagateTreeExiting();
+        OnTreeExiting();
+    }
+
+    internal void PropagateTreeExited()
+    {
+        // Enfants d'abord, puis parent.
+        foreach (var child in _children)
+            child.PropagateTreeExited();
+        OnTreeExited();
+    }
+
+    // -------------------------------------------------------------------------
     // Debug
     // -------------------------------------------------------------------------
 
