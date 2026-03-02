@@ -115,6 +115,7 @@ Une scène contient quatre types d'éléments dans son arborescence :
 - Node standard, type fixe, non remplaçable par héritage.
 - Ne peut pas être **supprimé** dans une scène héritière.
 - Ses propriétés `[Overridable]` peuvent être overridées dans une héritière via `set_properties`.
+- Une scène héritière peut également ajouter des enfants à n'importe quel node hérité via add_children. Ces enfants sont propres à l'héritière — la scène parente n'en a pas connaissance.
 - Ses slots sont déclarés dans une section `slots` séparée des `children` — un slot n'est pas un enfant structurel du node.
 
 ### 5.2 NodeVirtuel
@@ -204,6 +205,7 @@ graph TD
 - Fermeture partielle des génériques de la scène parente.
 - Remplissage des `Slot` hérités (selon leur visibilité) via `fill_slots`.
 - Raffinement du type racine vers un type plus spécialisé.
+- Ajout d'enfants à des nodes hérités via add_children
 
 ### 6.2 Ce qui est interdit
 
@@ -302,7 +304,20 @@ Un contrat de scène est l'équivalent d'une **interface C#** appliquée aux sc�
   "force_non_instantiable": false,
   "replace_virtuals": {},
   "fill_slots": {},
-  "set_properties": {}
+  "set_properties": {},
+  "add_children": {
+    "player": [
+      {
+        "kind": "node",
+        "id": "extra_component",
+        "type": "Game.ExtraComponent",
+        "generic_bindings": {},
+        "properties": {},
+        "slots": {},
+        "children": []
+      }
+    ]
+  }
 }
 ```
 
@@ -483,3 +498,4 @@ SceneInstance Instantiate(SceneLoadResult loadResult, GenericTypeArguments? gene
 11. Un `NodeVirtuel` est visible uniquement par la scène et ses héritières.
 12. Les `generic_bindings` vivent sur les nodes et les `EmbeddedScene` — jamais au niveau racine du document.
 13. Les slots sont déclarés dans une section `slots` dédiée sur le node — pas dans ses `children`.
+14. Une scène héritière peut ajouter des enfants à n'importe quel node hérité via add_children. Ces enfants sont propres à l'héritière et inconnus de la scène parente.

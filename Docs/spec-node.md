@@ -136,10 +136,21 @@ public int ExposedField = 7;
 [Overridable]
 public string DisplayName { get; private set; }
 
+// Overridable uniquement par la scène elle-même (dans l'éditeur) et ses héritières.
+// Invisible aux scènes englobantes.
+[Exposed]
+[Overridable(Visibility.Protected)]
+public CharacterController Controller { get; private set; }
+
 // Cas write-only : overridable depuis une scène, mais invisible dans l'inspecteur.
 // Utile pour les valeurs dont la lecture est volontairement masquée.
 [Overridable]
 public string Seed { private get; set; }
+
+// Cas write-only protected : overridable uniquement par la scène et ses héritières,
+// invisible dans l'inspecteur et invisible aux scènes englobantes.
+[Overridable(Visibility.Protected)]
+public string InternalSeed { private get; set; }
 
 // Champ overridable — le modificateur d'accès n'a pas d'importance,
 // le moteur écrit la valeur via réflexion.
@@ -198,5 +209,8 @@ public class InventoryNode : Control
 2. L'ordre des enfants est toujours conservé.
 3. Un `Node` n'appartient qu'à un seul `NodeTree` à la fois. Le transfert entre trees est autorisé uniquement après retrait explicite de l'arbre actuel.
 4. Le cycle de vie est toujours déclenché dans l'ordre défini, sans exception.
-5. `[Exposed]` et `[Overridable]` sont deux axes indépendants — cumulables. `[Overridable]` sans `[Exposed]` produit un membre write-only (modifiable depuis une scène, invisible dans l'inspecteur).
-6. Un slot injecte toujours comme enfant du node cible, jamais ailleurs.
+5. [Exposed] et [Overridable] sont deux axes indépendants — cumulables. 
+[Overridable] accepte une visibilité Public (défaut) ou Protected. 
+Protected limite la modification à la scène elle-même et ses héritières — les scènes englobantes ne peuvent pas y accéder.
+Sans [Exposed], le membre est assignable depuis l'éditeur mais sa valeur n'est pas affichée dans l'inspecteur — l'éditeur sait que le membre existe et peut le modifier, mais ne le lit pas.
+ 6. Un slot injecte toujours comme enfant du node cible, jamais ailleurs.
