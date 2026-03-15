@@ -32,10 +32,19 @@ public class Node
     internal void SetNodeTreeRecursively(NodeTree? tree)
     {
         this.NodeTree = tree;
-        foreach (Node child in this.GetChildren())
+        Stack<Node> nodeStack = new();
+        nodeStack.Push(this);
+
+        while (nodeStack.Count > 0)
         {
-            child.SetNodeTreeRecursively(tree);
+            Node current = nodeStack.Pop();
+            foreach (Node child in current.GetChildren())
+            {
+                nodeStack.Push(child);
+            }
+            current.NodeTree = tree;
         }
+        
     }
     
     #endregion
