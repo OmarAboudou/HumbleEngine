@@ -5,21 +5,24 @@ public class Node
     #region NodeHierarchy
 
     public Node? Parent { get; private set; }
-    public List<Node> Children { get; private set; } = [];
+    
+    private List<Node> _children = [];
+    public IReadOnlyList<Node> Children => this.GetChildren();
+    public IReadOnlyList<Node> GetChildren() => this._children; 
     
     public void AddChild(Node child)
     {
-        if (!Children.Contains(child))
+        if (!this._children.Contains(child))
         {
-            Children.Add(child);
+            this._children.Add(child);
         }    
     }
 
     public void RemoveChild(Node child)
     {
-        if (Children.Contains(child))
+        if (this._children.Contains(child))
         {
-            Children.Remove(child);
+            this._children.Remove(child);
         }
     }
     
