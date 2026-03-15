@@ -3,7 +3,8 @@ namespace HumbleEngine.Core;
 public class Node
 {
     #region NodeHierarchy
-
+    
+    internal NodeTree? NodeTree; 
     public Node? Parent { get; private set; }
     
     private List<Node> _children = [];
@@ -14,6 +15,7 @@ public class Node
     {
         if (!this._children.Contains(child))
         {
+            child.SetNodeTreeRecursively(this.NodeTree);
             this._children.Add(child);
         }    
     }
@@ -23,6 +25,16 @@ public class Node
         if (this._children.Contains(child))
         {
             this._children.Remove(child);
+            child.SetNodeTreeRecursively(null);
+        }
+    }
+
+    internal void SetNodeTreeRecursively(NodeTree? tree)
+    {
+        this.NodeTree = tree;
+        foreach (Node child in this.GetChildren())
+        {
+            child.SetNodeTreeRecursively(tree);
         }
     }
     
