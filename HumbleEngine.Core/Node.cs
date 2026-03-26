@@ -3,6 +3,7 @@ namespace HumbleEngine.Core;
 public class Node
 {
     public Node? Parent { get; private set; }
+    public NodeTree? Tree { get; internal set; }
     public IReadOnlyList<Node> Children => _children;
     private List<Node> _children = [];
 
