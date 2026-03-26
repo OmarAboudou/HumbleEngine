@@ -75,5 +75,7 @@ public class Node
         return true;
     }
     
+    public virtual void Process(double delta){}
+    public virtual void PhysicsProcess(double delta){}
     
 }
