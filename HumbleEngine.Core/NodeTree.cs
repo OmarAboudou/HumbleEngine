@@ -48,22 +48,7 @@ public class NodeTree
 
     #region Utils
 
-    public IEnumerable<Node> GetNodesInPrefixOrder()
-    {
-        Stack<Node> nodeStack = new();
-        nodeStack.Push(Root);
-        
-        while (nodeStack.Count > 0)
-        {
-            Node current = nodeStack.Pop();
-            yield return current;
-            
-            for (int i = current.Children.Count - 1; i >= 0; i--)
-            {
-                nodeStack.Push(current.Children[i]);
-            }
-        }
-    }
+    public IEnumerable<Node> GetNodesInPrefixOrder() => Root.GetSubtreeInPrefixOrder();
 
     #endregion
     

@@ -84,5 +84,26 @@ public class Node
     public virtual void PhysicsProcess(double delta){}
     
     #endregion
+
+    #region Utils
+
+    public IEnumerable<Node> GetSubtreeInPrefixOrder()
+    {
+        Stack<Node> nodeStack = new();
+        nodeStack.Push(this);
+        
+        while (nodeStack.Count > 0)
+        {
+            Node current = nodeStack.Pop();
+            yield return current;
+            
+            for (int i = current.Children.Count - 1; i >= 0; i--)
+            {
+                nodeStack.Push(current.Children[i]);
+            }
+        }
+    }
+
+    #endregion
     
 }
