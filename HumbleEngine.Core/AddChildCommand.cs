@@ -15,12 +15,8 @@ public record AddChildCommand(Node Parent, Node Child) : NodeTreeCommand
             Console.Error.WriteLine($"The parent node {Parent} is not inside the tree {tree}.");
             return;
         }
-
-        if (Child.Tree != null)
-        {
-            Console.Error.WriteLine($"The child node {Child} is still inside a tree");
-            return;
-        }
+        
+        if(!Parent.CanAddChild(Child)) return;
         
         Parent.AddChildRightAway(Child);
         Child.GetSubtreeInPrefixOrder().ForEach(node =>

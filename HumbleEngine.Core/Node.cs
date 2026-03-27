@@ -26,6 +26,12 @@ public class Node
     }
     public bool CanAddChild(Node child)
     {
+        if (child.Tree != null)
+        {
+            Console.Error.WriteLine($"The child node {child} is still inside a tree");
+            return false;
+        }
+        
         if (child == this)
         {
             Console.WriteLine($"the node {this} cannot add itself as a child.");

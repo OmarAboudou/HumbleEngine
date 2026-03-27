@@ -22,12 +22,8 @@ public record RemoveChildCommand(Node Parent, Node Child) : NodeTreeCommand
             return;
         }
 
-        if (!Parent.Children.Contains(Child))
-        {
-            Console.Error.WriteLine($"The child node {Child} is a child of the parent node {Parent}.");
-            return;
-        }
-
+        if(!Parent.CanRemoveChild(Child)) return;
+        
         Child.GetSubtreeInPrefixOrder().ForEach(node =>
         {
             node.TreeExiting();
