@@ -9,6 +9,27 @@ public class NodeTree
         root.Tree = this;
     }
 
+    #region Node Tree Commands
+
+    private readonly Queue<NodeTreeCommand> _commands = new();
+    public void QueueCommand(NodeTreeCommand command)
+    {
+        if (this._commands.Contains(command))
+        {
+            // TODO : Use log system
+            Console.WriteLine($"The command {command} is already queued.");
+            return;
+        }
+        this._commands.Enqueue(command);
+    }
+    public void FlushCommands()
+    {
+        this._commands.ForEach(ExecuteCommand);
+    }
+    private void ExecuteCommand(NodeTreeCommand command) => command.Execute(this);    
+
+    #endregion
+    
     public void Process(double delta) => this.GetNodesInPrefixOrder().ForEach(node => node.Process(delta));
     public void PhysicsProcess(double delta) => this.GetNodesInPrefixOrder().ForEach(node => node.PhysicsProcess(delta));
 
