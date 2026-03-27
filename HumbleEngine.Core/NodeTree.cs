@@ -2,7 +2,7 @@ namespace HumbleEngine.Core;
 
 public class NodeTree
 {
-    public Node Root { get; private set; }
+    public Node Root { get; }
     public NodeTree(Node root)
     {
         Root = root;
@@ -20,18 +20,33 @@ public class NodeTree
             Console.WriteLine($"The command {command} is already queued.");
             return;
         }
+        Console.WriteLine($"Queueing command {command}.");
         this._commands.Enqueue(command);
     }
-    public void FlushCommands()
+    private void FlushCommands()
     {
         this._commands.ForEach(ExecuteCommand);
     }
     private void ExecuteCommand(NodeTreeCommand command) => command.Execute(this);    
 
     #endregion
-    
-    public void Process(double delta) => this.GetNodesInPrefixOrder().ForEach(node => node.Process(delta));
-    public void PhysicsProcess(double delta) => this.GetNodesInPrefixOrder().ForEach(node => node.PhysicsProcess(delta));
+
+    #region Tree Processing
+
+    public void Process(double delta)
+    {
+        this.GetNodesInPrefixOrder().ForEach(node => node.Process(delta));
+        this.FlushCommands();
+    }
+    public void PhysicsProcess(double delta)
+    {
+        this.GetNodesInPrefixOrder().ForEach(node => node.PhysicsProcess(delta));
+        this.FlushCommands();
+    }
+
+    #endregion
+
+    #region Utils
 
     public IEnumerable<Node> GetNodesInPrefixOrder()
     {
@@ -49,5 +64,7 @@ public class NodeTree
             }
         }
     }
+
+    #endregion
     
 }
