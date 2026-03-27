@@ -36,7 +36,7 @@ public record RemoveChildCommand(Node Parent, Node Child) : NodeTreeCommand
         {
             node.Tree = null;
         });
-        Parent.RemoveChild(Child);
+        Parent.RemoveChildRightAway(Child);
 
     }
 }

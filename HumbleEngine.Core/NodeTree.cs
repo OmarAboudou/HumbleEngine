@@ -16,7 +16,6 @@ public class NodeTree
     {
         if (this._commands.Contains(command))
         {
-            // TODO : Use log system
             Console.WriteLine($"The command {command} is already queued.");
             return;
         }
