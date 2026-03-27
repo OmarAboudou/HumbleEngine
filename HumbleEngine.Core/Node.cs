@@ -7,6 +7,8 @@ public class Node
     public IReadOnlyList<Node> Children => _children;
     private List<Node> _children = [];
 
+    #region Tree Structure
+    
     public void AddChild(Node node)
     {
         bool canAdd = CanAddChild(node);        
@@ -37,7 +39,6 @@ public class Node
         return true;
     }
     
-
     public void RemoveChild(Node node)
     {
         bool canRemove = CanRemoveChild(node);
@@ -74,8 +75,14 @@ public class Node
         
         return true;
     }
+
+    #endregion
     
+    #region Processing
+
     public virtual void Process(double delta){}
     public virtual void PhysicsProcess(double delta){}
+    
+    #endregion
     
 }
