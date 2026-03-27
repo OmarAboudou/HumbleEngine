@@ -78,10 +78,13 @@ public class Node
 
     #endregion
     
-    #region Processing
+    #region Life Cycle
 
     public virtual void Process(double delta){}
     public virtual void PhysicsProcess(double delta){}
+    
+    public virtual void TreeEntered(){}
+    public virtual void TreeExiting(){}
     
     #endregion
 

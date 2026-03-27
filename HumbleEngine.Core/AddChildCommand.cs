@@ -27,6 +27,9 @@ public record AddChildCommand(Node Parent, Node Child) : NodeTreeCommand
         {
             node.Tree = tree;
         });
-        
+        Child.GetSubtreeInPrefixOrder().ForEach(node =>
+        {
+            node.TreeEntered();
+        });
     }
 }
