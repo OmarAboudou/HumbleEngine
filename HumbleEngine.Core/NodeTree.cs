@@ -3,25 +3,30 @@ namespace HumbleEngine.Core;
 public class NodeTree
 {
     public Node Root { get; private set; }
-
     public NodeTree(Node root)
     {
         Root = root;
         root.Tree = this;
     }
 
-    public void Process(double delta) => ExecuteInPrefixOrder(node => node.Process(delta));
-    public void PhysicsProcess(double delta) => ExecuteInPrefixOrder(node => node.PhysicsProcess(delta));
+    public void Process(double delta) => this.GetNodesInPrefixOrder().ForEach(node => node.Process(delta));
+    public void PhysicsProcess(double delta) => this.GetNodesInPrefixOrder().ForEach(node => node.PhysicsProcess(delta));
 
-    private void ExecuteInPrefixOrder(Action<Node> action)
+    public IEnumerable<Node> GetNodesInPrefixOrder()
     {
-        List<Node> nodesInPrefixOrder = [Root];
-        while (nodesInPrefixOrder.Count > 0)
+        Stack<Node> nodeStack = new();
+        nodeStack.Push(Root);
+        
+        while (nodeStack.Count > 0)
         {
-            Node current = nodesInPrefixOrder[0];
-            action(current);
-            nodesInPrefixOrder.RemoveAt(0);
-            nodesInPrefixOrder.AddRange(current.Children);
+            Node current = nodeStack.Pop();
+            yield return current;
+            
+            for (int i = current.Children.Count - 1; i >= 0; i--)
+            {
+                nodeStack.Push(current.Children[i]);
+            }
         }
     }
+    
 }
