@@ -1,9 +1,9 @@
 namespace HumbleEngine.Core;
 
-public class NodeTree
+public class AppTree
 {
     public Node Root { get; }
-    public NodeTree(Node root)
+    public AppTree(Node root)
     {
         Root = root;
         RegisterSubtree(Root);
