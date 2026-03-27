@@ -19,13 +19,6 @@ public record AddChildCommand(Node Parent, Node Child) : NodeTreeCommand
         if(!Parent.CanAddChild(Child)) return;
         
         Parent.AddChildRightAway(Child);
-        Child.GetSubtreeInPrefixOrder().ForEach(node =>
-        {
-            node.Tree = tree;
-        });
-        Child.GetSubtreeInPrefixOrder().ForEach(node =>
-        {
-            node.TreeEntered();
-        });
+        tree.RegisterSubtree(Child);
     }
 }
