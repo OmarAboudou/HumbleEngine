@@ -8,10 +8,6 @@ public class NodeTree
         Root = root;
         RegisterSubtree(Root);
     }
-    public void Shutdown()
-    {
-        UnregisterSubtree(Root);
-    }
     
     #region Node Tree Commands
 
