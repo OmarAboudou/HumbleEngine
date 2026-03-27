@@ -22,7 +22,7 @@ public record AddChildCommand(Node Parent, Node Child) : NodeTreeCommand
             return;
         }
         
-        Parent.AddChild(Child);
+        Parent.AddChildRightAway(Child);
         Child.GetSubtreeInPrefixOrder().ForEach(node =>
         {
             node.Tree = tree;

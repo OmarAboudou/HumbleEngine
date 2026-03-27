@@ -8,73 +8,102 @@ public class Node
     private List<Node> _children = [];
 
     #region Tree Structure
-    
-    public void AddChild(Node node)
+
+    #region Adding a child
+
+    public void AddChild(Node child)
     {
-        bool canAdd = CanAddChild(node);        
-        if(!canAdd) return;
-        
-        node.Parent = this;
-        this._children.Add(node);
+        if(!CanAddChild(child)) return;
+
+        if (Tree == null)
+        {
+            AddChildRightAway(child);
+        }
+        else
+        {
+            Tree.QueueCommand(new AddChildCommand(this, child));
+        }
     }
-    public bool CanAddChild(Node node)
+    public bool CanAddChild(Node child)
     {
-        if (node == this)
+        if (child == this)
         {
             Console.WriteLine($"the node {this} cannot add itself as a child.");
             return false;
         }
 
-        if (node.Parent != null)
+        if (child.Parent != null)
         {
-            Console.WriteLine($"The node {node} cannot be added as a child of the node {this}, because it already has a parent.");
+            Console.WriteLine($"The node {child} cannot be added as a child of the node {this}, because it already has a parent.");
             return false;
         }
 
-        if (Children.Contains(node))
+        if (Children.Contains(child))
         {
-            Console.WriteLine($"The node {node} is already a child of the node {this}.");
+            Console.WriteLine($"The node {child} is already a child of the node {this}.");
             return false;
         }
         return true;
     }
-    
-    public void RemoveChild(Node node)
+    internal void AddChildRightAway(Node child)
     {
-        bool canRemove = CanRemoveChild(node);
-        if (!canRemove) return;
+        child.Parent = this;
+        this._children.Add(child);
+    }    
+
+    #endregion
+
+    #region Removing a child
+
+    public void RemoveChild(Node child)
+    {
+        if(!CanRemoveChild(child)) return;
+
+        if (Tree == null)
+        {
+            RemoveChildRightAway(child);
+        }
+        else
+        {
+            Tree.QueueCommand(new RemoveChildCommand(this, child));
+        }
         
-        this._children.Remove(node);
-        node.Parent = null;
     }
-    public bool CanRemoveChild(Node node)
+    public bool CanRemoveChild(Node child)
     {
-        if (node == this)
+        if (child == this)
         {
             Console.WriteLine($"the node {this} cannot remove itself from its children.");
             return false;
         }
 
-        if (node.Parent == null)
+        if (child.Parent == null)
         {
-            Console.WriteLine($"The node {node} does not have a parent.");
+            Console.WriteLine($"The node {child} does not have a parent.");
             return false;
         }
         
-        if (node.Parent != this)
+        if (child.Parent != this)
         {
-            Console.WriteLine($"The node {node} does not have the node {this} as a parent.");
+            Console.WriteLine($"The node {child} does not have the node {this} as a parent.");
             return false;
         }
         
-        if (!Children.Contains(node))
+        if (!Children.Contains(child))
         {
-            Console.WriteLine($"The node {node} is not among the children of the node {this}.");
+            Console.WriteLine($"The node {child} is not among the children of the node {this}.");
             return false;
         }
         
         return true;
     }
+    internal void RemoveChildRightAway(Node child)
+    {
+        this._children.Remove(child);
+        child.Parent = null;
+    }    
+
+    #endregion
 
     #endregion
     
