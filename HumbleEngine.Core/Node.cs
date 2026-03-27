@@ -34,19 +34,19 @@ public class Node
         
         if (child == this)
         {
-            Console.WriteLine($"the node {this} cannot add itself as a child.");
+            Console.Error.WriteLine($"the node {this} cannot add itself as a child.");
             return false;
         }
 
         if (child.Parent != null)
         {
-            Console.WriteLine($"The node {child} cannot be added as a child of the node {this}, because it already has a parent.");
+            Console.Error.WriteLine($"The node {child} cannot be added as a child of the node {this}, because it already has a parent.");
             return false;
         }
 
         if (Children.Contains(child))
         {
-            Console.WriteLine($"The node {child} is already a child of the node {this}.");
+            Console.Error.WriteLine($"The node {child} is already a child of the node {this}.");
             return false;
         }
         return true;
@@ -79,25 +79,25 @@ public class Node
     {
         if (child == this)
         {
-            Console.WriteLine($"the node {this} cannot remove itself from its children.");
+            Console.Error.WriteLine($"the node {this} cannot remove itself from its children.");
             return false;
         }
 
         if (child.Parent == null)
         {
-            Console.WriteLine($"The node {child} does not have a parent.");
+            Console.Error.WriteLine($"The node {child} does not have a parent.");
             return false;
         }
-        
+
         if (child.Parent != this)
         {
-            Console.WriteLine($"The node {child} does not have the node {this} as a parent.");
+            Console.Error.WriteLine($"The node {child} does not have the node {this} as a parent.");
             return false;
         }
-        
+
         if (!Children.Contains(child))
         {
-            Console.WriteLine($"The node {child} is not among the children of the node {this}.");
+            Console.Error.WriteLine($"The node {child} is not among the children of the node {this}.");
             return false;
         }
         
