@@ -6,9 +6,13 @@ public class NodeTree
     public NodeTree(Node root)
     {
         Root = root;
-        RegisterSubtree(root);
+        RegisterSubtree(Root);
     }
-
+    public void Shutdown()
+    {
+        UnregisterSubtree(Root);
+    }
+    
     #region Node Tree Commands
 
     private readonly Queue<NodeTreeCommand> _commands = new();
