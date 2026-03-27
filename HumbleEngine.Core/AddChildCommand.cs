@@ -4,7 +4,6 @@ public record AddChildCommand(Node Parent, Node Child) : NodeTreeCommand
 {
     public void Execute(NodeTree tree)
     {
-        // TODO : Implement
         if (Parent.Tree == null)
         {
             Console.Error.WriteLine($"The parent node {Parent} is not inside a tree.");
