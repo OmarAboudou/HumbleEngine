@@ -27,12 +27,16 @@ public record RemoveChildCommand(Node Parent, Node Child) : NodeTreeCommand
             Console.Error.WriteLine($"The child node {Child} is a child of the parent node {Parent}.");
             return;
         }
-        
-        Parent.RemoveChild(Child);
+
+        Child.GetSubtreeInPrefixOrder().ForEach(node =>
+        {
+            node.TreeExiting();
+        });
         Child.GetSubtreeInPrefixOrder().ForEach(node =>
         {
             node.Tree = null;
         });
+        Parent.RemoveChild(Child);
 
     }
 }
