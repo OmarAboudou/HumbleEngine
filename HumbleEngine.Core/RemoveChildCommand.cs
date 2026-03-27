@@ -24,14 +24,7 @@ public record RemoveChildCommand(Node Parent, Node Child) : NodeTreeCommand
 
         if(!Parent.CanRemoveChild(Child)) return;
         
-        Child.GetSubtreeInPrefixOrder().ForEach(node =>
-        {
-            node.TreeExiting();
-        });
-        Child.GetSubtreeInPrefixOrder().ForEach(node =>
-        {
-            node.Tree = null;
-        });
+        tree.UnregisterSubtree(Child);
         Parent.RemoveChildRightAway(Child);
 
     }

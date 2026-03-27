@@ -6,7 +6,7 @@ public class NodeTree
     public NodeTree(Node root)
     {
         Root = root;
-        root.Tree = this;
+        RegisterSubtree(root);
     }
 
     #region Node Tree Commands
@@ -24,9 +24,40 @@ public class NodeTree
     }
     private void FlushCommands()
     {
-        this._commands.ForEach(ExecuteCommand);
+        int count = this._commands.Count;
+        for (int i = 0; i < count; i++)
+        {
+            this._commands.Dequeue().Execute(this);
+        }
     }
-    private void ExecuteCommand(NodeTreeCommand command) => command.Execute(this);    
+
+    #endregion
+
+    #region Subtree Registration
+
+    internal void RegisterSubtree(Node root)
+    {
+        root.GetSubtreeInPrefixOrder().ForEach(node =>
+        {
+            node.Tree = this;
+        });
+        root.GetSubtreeInPrefixOrder().ForEach(node =>
+        {
+            node.TreeEntered();
+        });
+    }
+
+    internal void UnregisterSubtree(Node root)
+    {
+        root.GetSubtreeInPrefixOrder().ForEach(node =>
+        {
+            node.TreeExiting();
+        });
+        root.GetSubtreeInPrefixOrder().ForEach(node =>
+        {
+            node.Tree = null;
+        });
+    }
 
     #endregion
 
