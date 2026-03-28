@@ -5,6 +5,11 @@ file class NodeThatAddsChildOnTreeEntered(Node child) : Node
     public override void TreeEntered() => AddChild(child);
 }
 
+file class OrderTrackingNode(List<Node> callOrder) : Node
+{
+    public override void TreeExiting() => callOrder.Add(this);
+}
+
 file class TrackingNode : Node
 {
     public bool TreeEnteredCalled { get; private set; }
@@ -99,6 +104,26 @@ public class NodeTreeTests
 
         Assert.That(child.Tree, Is.Null);
         Assert.That(grandChild.Tree, Is.Null);
+    }
+
+    [Test]
+    public void RemoveChild_AfterFlush_CallsTreeExitingInReversePrefixOrder()
+    {
+        var callOrder = new List<Node>();
+        var root = new OrderTrackingNode(callOrder);
+        var a = new OrderTrackingNode(callOrder);
+        var b = new OrderTrackingNode(callOrder);
+        var c = new OrderTrackingNode(callOrder);
+        a.AddChild(c);
+        root.AddChild(a);
+        root.AddChild(b);
+        var tree = new NodeTree(root);
+
+        root.RemoveChild(a);
+        tree.Process(0);
+
+        // Préfixe de a : a, c → inverse : c, a
+        Assert.That(callOrder, Is.EqualTo(new[] { c, a }));
     }
 
     [Test]

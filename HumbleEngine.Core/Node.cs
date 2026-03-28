@@ -282,7 +282,7 @@ public class Node
             Node current = nodeStack.Pop();
             result.Push(current);                                                                   
    
-            foreach (Node child in current.Children)                                                
+            foreach (Node child in current.Children.Reverse())                                         
                 nodeStack.Push(child);
         }
 

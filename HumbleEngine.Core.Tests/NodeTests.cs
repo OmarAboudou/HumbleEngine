@@ -237,6 +237,39 @@ public class NodeTests
     }
 
     [Test]
+    public void GetSubtreeInReversePrefixOrder_SingleNode_ReturnsSelf()
+    {
+        var node = new Node();
+
+        var result = node.GetSubtreeInReversePrefixOrder();
+
+        Assert.That(result, Is.EqualTo(new[] { node }));
+    }
+
+    [Test]
+    public void GetSubtreeInReversePrefixOrder_MultiLevelTree_ReturnsNodesInReversePrefixOrder()
+    {
+        //     root
+        //    /    \
+        //   a      b
+        //  / \
+        // c   d
+        var root = new Node();
+        var a = new Node();
+        var b = new Node();
+        var c = new Node();
+        var d = new Node();
+        root.AddChild(a);
+        root.AddChild(b);
+        a.AddChild(c);
+        a.AddChild(d);
+
+        var result = root.GetSubtreeInReversePrefixOrder();
+
+        Assert.That(result, Is.EqualTo(new[] { b, d, c, a, root }));
+    }
+
+    [Test]
     public void GetSubtreeInPrefixOrder_SingleNode_ReturnsSelf()
     {
         var node = new Node();
