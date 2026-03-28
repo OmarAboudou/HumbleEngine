@@ -29,6 +29,17 @@ public class Node
     public IReadOnlyList<Node> Children => _children;
     private List<Node> _children = [];
 
+    /// <summary>
+    /// The name of this node. Used for identification in logs and debug tools.
+    /// Defaults to the class name of the node (e.g. <c>"Player"</c> for a <c>Player</c> node).
+    /// </summary>
+    public string Name { get; set; }
+
+    /// <summary>
+    /// Creates a new node. <see cref="Name"/> is initialized to the node's class name.
+    /// </summary>
+    public Node() => Name = GetType().Name;
+
     #region Tree Structure
 
     #region Adding a child
@@ -254,7 +265,33 @@ public class Node
             }
         }
     }
-
-    #endregion
     
+    /// <summary>
+    /// Enumerates all nodes in this node's subtree (including itself) in the exact reverse of
+    /// depth-first prefix order. This guarantees that every child is yielded before its parent.
+    /// </summary>
+    /// <returns>An enumerable of nodes in reverse prefix order.</returns>
+    public IEnumerable<Node> GetSubtreeInReversePrefixOrder()                                             
+    {               
+        Stack<Node> nodeStack = new();
+        Stack<Node> result = new();                                                                 
+        nodeStack.Push(this);
+                                                                                                  
+        while (nodeStack.Count > 0)
+        {
+            Node current = nodeStack.Pop();
+            result.Push(current);                                                                   
+   
+            foreach (Node child in current.Children)                                                
+                nodeStack.Push(child);
+        }
+
+        while (result.Count > 0)                                                                    
+            yield return result.Pop();
+    }  
+
+    public override string ToString() => Name;
+    
+    #endregion
+
 }

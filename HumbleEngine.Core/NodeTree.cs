@@ -96,11 +96,12 @@ public class NodeTree
     /// <param name="root">The root of the subtree to unregister.</param>
     internal void UnregisterSubtree(Node root)
     {
-        root.GetSubtreeInPrefixOrder().ForEach(node =>
+        List<Node> nodes = root.GetSubtreeInPrefixOrder().Reverse().ToList();
+        nodes.ForEach(node =>
         {
             node.TreeExiting();
         });
-        root.GetSubtreeInPrefixOrder().ForEach(node =>
+        nodes.ForEach(node =>
         {
             node.Tree = null;
         });
