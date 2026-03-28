@@ -1,8 +1,35 @@
 namespace HumbleEngine.Core.Tests;
 
+class SubNode : Node;
+
 [TestFixture]
 public class NodeTests
 {
+    [Test]
+    public void Name_DefaultsToClassName()
+    {
+        var node = new Node();
+
+        Assert.That(node.Name, Is.EqualTo("Node"));
+    }
+
+    [Test]
+    public void Name_SubclassDefaultsToSubclassName()
+    {
+        var node = new SubNode();
+
+        Assert.That(node.Name, Is.EqualTo("SubNode"));
+    }
+
+    [Test]
+    public void ToString_ReturnsName()
+    {
+        var node = new Node();
+        node.Name = "Player";
+
+        Assert.That(node.ToString(), Is.EqualTo("Player"));
+    }
+
     [Test]
     public void AddChild_DetachedNode_SetsParentAndAddsToChildren()
     {
