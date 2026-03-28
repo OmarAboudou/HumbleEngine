@@ -38,13 +38,17 @@ public class Node
     /// </summary>
     /// <param name="child">The node to add as a child.</param>
     /// <remarks>
-    /// If this node is attached to an <see cref="NodeTree"/>, the operation is deferred
+    /// If this node is attached to a <see cref="NodeTree"/>, the operation is deferred
     /// via an <see cref="AddChildCommand"/>. Otherwise, it is applied immediately.
-    /// The operation is silently ignored if <see cref="CanAddChild"/> returns <c>false</c>.
     /// </remarks>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="child"/> is this node itself.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if <paramref name="child"/> is already inside a tree, already has a parent,
+    /// or is already among this node's children.
+    /// </exception>
     public void AddChild(Node child)
     {
-        if(!CanAddChild(child)) return;
+        ValidateAddChild(child);
 
         if (Tree == null)
         {
@@ -57,45 +61,48 @@ public class Node
     }
 
     /// <summary>
-    /// Checks whether <paramref name="child"/> can be added as a child of this node.
+    /// Attempts to add a node as a child of this node.
     /// </summary>
-    /// <param name="child">The candidate child node.</param>
-    /// <returns><c>true</c> if the child can be added; <c>false</c> otherwise.</returns>
+    /// <param name="child">The node to add as a child.</param>
+    /// <returns><c>true</c> if the child was successfully added or queued; <c>false</c> otherwise.</returns>
     /// <remarks>
-    /// Returns <c>false</c> and logs to <see cref="Console.Error"/> if:
-    /// <list type="bullet">
-    ///   <item><description><paramref name="child"/> is already inside a tree.</description></item>
-    ///   <item><description><paramref name="child"/> is this node itself.</description></item>
-    ///   <item><description><paramref name="child"/> already has a parent.</description></item>
-    ///   <item><description><paramref name="child"/> is already among this node's children.</description></item>
-    /// </list>
+    /// If this node is attached to a <see cref="NodeTree"/>, the operation is deferred
+    /// via an <see cref="AddChildCommand"/>. Otherwise, it is applied immediately.
     /// </remarks>
-    public bool CanAddChild(Node child)
+    public bool TryAddChild(Node child)
     {
-        if (child.Tree != null)
+        if (!IsAddChildValid(child)) return false;
+
+        if (Tree == null)
         {
-            Console.Error.WriteLine($"The child node {child} is still inside a tree");
-            return false;
+            AddChildRightAway(child);
+        }
+        else
+        {
+            Tree.QueueCommand(new AddChildCommand(this, child));
         }
 
-        if (child == this)
-        {
-            Console.Error.WriteLine($"the node {this} cannot add itself as a child.");
-            return false;
-        }
-
-        if (child.Parent != null)
-        {
-            Console.Error.WriteLine($"The node {child} cannot be added as a child of the node {this}, because it already has a parent.");
-            return false;
-        }
-
-        if (Children.Contains(child))
-        {
-            Console.Error.WriteLine($"The node {child} is already a child of the node {this}.");
-            return false;
-        }
         return true;
+    }
+
+    private void ValidateAddChild(Node child)
+    {
+        if (child == this)
+            throw new ArgumentException($"The node {this} cannot add itself as a child.", nameof(child));
+        if (child.Tree != null)
+            throw new InvalidOperationException($"The child node {child} is still inside a tree.");
+        if (child.Parent != null)
+            throw new InvalidOperationException($"The node {child} cannot be added as a child of the node {this}, because it already has a parent.");
+        if (Children.Contains(child))
+            throw new InvalidOperationException($"The node {child} is already a child of the node {this}.");
+    }
+
+    private bool IsAddChildValid(Node child)
+    {
+        return child != this
+               && child.Tree == null
+               && child.Parent == null
+               && !Children.Contains(child);
     }
 
     /// <summary>
@@ -117,13 +124,40 @@ public class Node
     /// </summary>
     /// <param name="child">The child node to remove.</param>
     /// <remarks>
-    /// If this node is attached to an <see cref="NodeTree"/>, the operation is deferred
+    /// If this node is attached to a <see cref="NodeTree"/>, the operation is deferred
     /// via a <see cref="RemoveChildCommand"/>. Otherwise, it is applied immediately.
-    /// The operation is silently ignored if <see cref="CanRemoveChild"/> returns <c>false</c>.
     /// </remarks>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="child"/> is this node itself.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown if <paramref name="child"/> has no parent, its parent is not this node,
+    /// or it is not among this node's children.
+    /// </exception>
     public void RemoveChild(Node child)
     {
-        if(!CanRemoveChild(child)) return;
+        ValidateRemoveChild(child);
+
+        if (Tree == null)
+        {
+            RemoveChildRightAway(child);
+        }
+        else
+        {
+            Tree.QueueCommand(new RemoveChildCommand(this, child));
+        }
+    }
+
+    /// <summary>
+    /// Attempts to remove a child node from this node.
+    /// </summary>
+    /// <param name="child">The child node to remove.</param>
+    /// <returns><c>true</c> if the child was successfully removed or queued for removal; <c>false</c> otherwise.</returns>
+    /// <remarks>
+    /// If this node is attached to a <see cref="NodeTree"/>, the operation is deferred
+    /// via a <see cref="RemoveChildCommand"/>. Otherwise, it is applied immediately.
+    /// </remarks>
+    public bool TryRemoveChild(Node child)
+    {
+        if (!IsRemoveChildValid(child)) return false;
 
         if (Tree == null)
         {
@@ -134,49 +168,26 @@ public class Node
             Tree.QueueCommand(new RemoveChildCommand(this, child));
         }
 
+        return true;
     }
 
-    /// <summary>
-    /// Checks whether <paramref name="child"/> can be removed from this node's children.
-    /// </summary>
-    /// <param name="child">The candidate child node to remove.</param>
-    /// <returns><c>true</c> if the child can be removed; <c>false</c> otherwise.</returns>
-    /// <remarks>
-    /// Returns <c>false</c> and logs to <see cref="Console.Error"/> if:
-    /// <list type="bullet">
-    ///   <item><description><paramref name="child"/> is this node itself.</description></item>
-    ///   <item><description><paramref name="child"/> has no parent.</description></item>
-    ///   <item><description><paramref name="child"/>'s parent is not this node.</description></item>
-    ///   <item><description><paramref name="child"/> is not among this node's children.</description></item>
-    /// </list>
-    /// </remarks>
-    public bool CanRemoveChild(Node child)
+    private void ValidateRemoveChild(Node child)
     {
         if (child == this)
-        {
-            Console.Error.WriteLine($"the node {this} cannot remove itself from its children.");
-            return false;
-        }
-
+            throw new ArgumentException($"The node {this} cannot remove itself from its children.", nameof(child));
         if (child.Parent == null)
-        {
-            Console.Error.WriteLine($"The node {child} does not have a parent.");
-            return false;
-        }
-
+            throw new InvalidOperationException($"The node {child} does not have a parent.");
         if (child.Parent != this)
-        {
-            Console.Error.WriteLine($"The node {child} does not have the node {this} as a parent.");
-            return false;
-        }
-
+            throw new InvalidOperationException($"The node {child} does not have the node {this} as a parent.");
         if (!Children.Contains(child))
-        {
-            Console.Error.WriteLine($"The node {child} is not among the children of the node {this}.");
-            return false;
-        }
+            throw new InvalidOperationException($"The node {child} is not among the children of the node {this}.");
+    }
 
-        return true;
+    private bool IsRemoveChildValid(Node child)
+    {
+        return child != this
+               && child.Parent == this
+               && Children.Contains(child);
     }
 
     /// <summary>

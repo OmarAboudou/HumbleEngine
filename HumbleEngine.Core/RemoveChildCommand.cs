@@ -12,27 +12,13 @@ public record RemoveChildCommand(Node Parent, Node Child) : NodeTreeCommand
     public void Execute(NodeTree tree)
     {
         if (Parent.Tree == null)
-        {
-            Console.Error.WriteLine($"The parent node {Parent} is not inside a tree.");
-            return;
-        }
-        
+            throw new InvalidOperationException($"The parent node {Parent} is not inside a tree.");
         if (Parent.Tree != tree)
-        {
-            Console.Error.WriteLine($"The parent node {Parent} is not inside the tree {tree}.");
-            return;
-        }
-
+            throw new InvalidOperationException($"The parent node {Parent} is not inside the tree {tree}.");
         if (Child.Tree != tree)
-        {
-            Console.Error.WriteLine($"The child node {Child} is not inside the tree {tree}.");
-            return;
-        }
+            throw new InvalidOperationException($"The child node {Child} is not inside the tree {tree}.");
 
-        if(!Parent.CanRemoveChild(Child)) return;
-        
         tree.UnregisterSubtree(Child);
         Parent.RemoveChildRightAway(Child);
-
     }
 }
