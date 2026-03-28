@@ -90,18 +90,17 @@ public class NodeTree
 
     /// <summary>
     /// Unregisters all nodes in <paramref name="root"/>'s subtree from this tree.
-    /// Calls <see cref="Node.TreeExiting"/> on each node first, then sets their
-    /// <see cref="Node.Tree"/> property to <c>null</c>.
+    /// Calls <see cref="Node.TreeExiting"/> on each node in reverse prefix order (children before
+    /// their parent), then sets their <see cref="Node.Tree"/> property to <c>null</c>.
     /// </summary>
     /// <param name="root">The root of the subtree to unregister.</param>
     internal void UnregisterSubtree(Node root)
     {
-        List<Node> nodes = root.GetSubtreeInPrefixOrder().Reverse().ToList();
-        nodes.ForEach(node =>
+        root.GetSubtreeInReversePrefixOrder().ForEach(node =>
         {
             node.TreeExiting();
         });
-        nodes.ForEach(node =>
+        root.GetSubtreeInReversePrefixOrder().ForEach(node =>
         {
             node.Tree = null;
         });
