@@ -1,8 +1,15 @@
 namespace HumbleEngine.Core;
 
+/// <summary>
+/// Command that removes <see cref="Child"/> from <see cref="Parent"/> inside a <see cref="NodeTree"/>.
+/// The child's entire subtree is unregistered from the tree before detaching.
+/// </summary>
+/// <param name="Parent">The node from which the child will be removed.</param>
+/// <param name="Child">The node to detach.</param>
 public record RemoveChildCommand(Node Parent, Node Child) : NodeTreeCommand
 {
-    public void Execute(AppTree tree)
+    /// <inheritdoc />
+    public void Execute(NodeTree tree)
     {
         if (Parent.Tree == null)
         {
