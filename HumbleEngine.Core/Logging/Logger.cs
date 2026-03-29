@@ -18,9 +18,8 @@ public static class Logger
         SetMinimumLogLevel(LogLevel.TRACE);
     }
 
-    public static void SetMinimumLogLevel(LogLevel level) 
-        => MinimumLogLevel = level > LogLevel.ERROR ? LogLevel.ERROR : level;
-
+    public static void SetMinimumLogLevel(LogLevel level) => MinimumLogLevel = GetCappedLogLevel(level);
+    
     #region Sink Management
 
     /// <inheritdoc cref="HashSet{ILogSink}.Add" />
@@ -41,7 +40,7 @@ public static class Logger
     
     public static void SetChannelLevel<TChannel>(LogLevel level) where TChannel : ILogChannel
     {
-        ChannelLevels[typeof(TChannel)] = level > LogLevel.ERROR ? LogLevel.ERROR : level;
+        ChannelLevels[typeof(TChannel)] = GetCappedLogLevel(level);
     }
     public static void ClearChannelLevel<TChannel>() where TChannel : ILogChannel
     {
@@ -76,6 +75,26 @@ public static class Logger
     public static void Warning<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.WARNING, message);
     public static void Error<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.ERROR, message);
     public static void Fatal<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.FATAL, message);
+
+    #endregion
+
+    #region Utils
+
+    private static LogLevel GetCappedLogLevel(LogLevel level)
+    {
+        LogLevel cap = LogLevel.WARNING;
+        if (level <= cap) return level;
+
+        string joinedSuppressedWarnings = 
+            String.Join(
+                ", ", 
+                Enum.GetValues<LogLevel>()
+                    .Where(v => v >= cap)
+                    .Select(Enum.GetName)
+            );
+        Warning<Global>($"Log level {Enum.GetName(level)} would silence {joinedSuppressedWarnings} which is forbidden. {Enum.GetName(cap)} will be used instead.");
+        return cap;
+    }
 
     #endregion
     
