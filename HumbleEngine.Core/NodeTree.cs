@@ -86,6 +86,10 @@ public class NodeTree
         {
             node.TreeEntered();
         });
+        root.GetSubtreeInReversePrefixOrder().ForEach(node =>
+        {
+            node.Ready();
+        });
     }
 
     /// <summary>
@@ -99,6 +103,10 @@ public class NodeTree
         root.GetSubtreeInReversePrefixOrder().ForEach(node =>
         {
             node.TreeExiting();
+        });
+        root.GetSubtreeInPrefixOrder().ForEach(node =>
+        {
+            node.Unready();
         });
         root.GetSubtreeInReversePrefixOrder().ForEach(node =>
         {
