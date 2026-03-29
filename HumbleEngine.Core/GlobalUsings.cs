@@ -1,1 +1,1 @@
-using static HumbleEngine.Core.LogSystem;
+using static HumbleEngine.Core.Logger;
