@@ -23,16 +23,11 @@ public static class Logger
 
     private static void Write<TChannel>(LogLevel level, string message) where TChannel : ILogChannel
     {
-        LogLevel minimumLevel = DefaultLogLevel;
-        if (ChannelLevels.TryGetValue(typeof(TChannel), out var logLevel))
+        if (ChannelLevels.TryGetValue(typeof(TChannel), out LogLevel channelLevel))
         {
-            minimumLevel = logLevel;
+            if(level < channelLevel) return;
         }
-        
-        if (minimumLevel > level)
-        {
-            return;   
-        }
+        if (level < DefaultLogLevel) return;
 
         LogEntry entry = level >= LogLevel.ERROR
             ? new LogEntry<TChannel>(Stopwatch.Elapsed, level, message, new StackTrace(skipFrames: 2, fNeedFileInfo: true))
