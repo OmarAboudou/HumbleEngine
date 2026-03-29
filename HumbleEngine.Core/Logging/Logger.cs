@@ -30,7 +30,7 @@ public static class Logger
         if (level < DefaultLogLevel) return;
 
         LogEntry entry = level >= LogLevel.ERROR
-            ? new LogEntry<TChannel>(Stopwatch.Elapsed, level, message, new StackTrace(skipFrames: 2, fNeedFileInfo: true))
+            ? new LogEntry<TChannel>(Stopwatch.Elapsed, level, message, new StackTrace(skipFrames: 3, fNeedFileInfo: true))
             : new LogEntry<TChannel>(Stopwatch.Elapsed, level, message);
         
         Sinks.ForEach(sink =>
