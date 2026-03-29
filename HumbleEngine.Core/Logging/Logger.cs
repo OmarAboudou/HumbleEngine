@@ -21,10 +21,34 @@ public static class Logger
         ChannelLevels.Remove(typeof(TChannel));
     }
 
-    
-    public static void Info(LogEntry entry)
+    private static void Write<TChannel>(LogLevel level, string message) where TChannel : ILogChannel
     {
+        LogLevel minimumLevel = DefaultLogLevel;
+        if (ChannelLevels.TryGetValue(typeof(TChannel), out var logLevel))
+        {
+            minimumLevel = logLevel;
+        }
         
+        if (minimumLevel > level)
+        {
+            return;   
+        }
+
+        LogEntry entry = level >= LogLevel.ERROR
+            ? new LogEntry<TChannel>(Stopwatch.Elapsed, level, message, new StackTrace(skipFrames: 2, fNeedFileInfo: true))
+            : new LogEntry<TChannel>(Stopwatch.Elapsed, level, message);
+        
+        Sinks.ForEach(sink =>
+        {
+            sink.Write(entry);
+        });
     }
+    
+    public static void Trace<TChannel>(string message) where TChannel : ILogChannel => Write<TChannel>(LogLevel.TRACE, message);
+    public static void Debug<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.DEBUG, message);
+    public static void Info<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.INFO, message);
+    public static void Warning<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.WARNING, message);
+    public static void Error<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.ERROR, message);
+    public static void Fatal<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.FATAL, message);
     
 }
