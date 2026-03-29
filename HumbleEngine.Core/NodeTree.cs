@@ -9,6 +9,32 @@ namespace HumbleEngine.Core;
 /// Structural changes (adding/removing children) that occur while nodes are attached to the tree
 /// are queued as <see cref="NodeTreeCommand"/> instances and executed at the end of each
 /// <see cref="Process"/> or <see cref="PhysicsProcess"/> call via <see cref="FlushCommands"/>.
+/// <para>
+/// The following table summarizes the order in which lifecycle callbacks are invoked
+/// when a subtree is registered or unregistered:
+/// </para>
+/// <list type="table">
+///   <listheader>
+///     <term>Callback</term>
+///     <description>Order</description>
+///   </listheader>
+///   <item>
+///     <term><see cref="Node.TreeEntered"/></term>
+///     <description>Prefix — parent before children</description>
+///   </item>
+///   <item>
+///     <term><see cref="Node.Ready"/></term>
+///     <description>Reverse prefix — children before parent</description>
+///   </item>
+///   <item>
+///     <term><see cref="Node.Unready"/></term>
+///     <description>Prefix — parent before children</description>
+///   </item>
+///   <item>
+///     <term><see cref="Node.TreeExiting"/></term>
+///     <description>Reverse prefix — children before parent</description>
+///   </item>
+/// </list>
 /// </remarks>
 public class NodeTree
 {
@@ -72,8 +98,12 @@ public class NodeTree
 
     /// <summary>
     /// Registers all nodes in <paramref name="root"/>'s subtree into this tree.
-    /// Sets their <see cref="Node.Tree"/> property, then calls <see cref="Node.TreeEntered"/>
-    /// on each node in prefix order.
+    /// Proceeds in three passes:
+    /// <list type="number">
+    ///   <item><description>Sets <see cref="Node.Tree"/> on all nodes in prefix order.</description></item>
+    ///   <item><description>Calls <see cref="Node.TreeEntered"/> on all nodes in prefix order (parent before children).</description></item>
+    ///   <item><description>Calls <see cref="Node.Ready"/> on all nodes in reverse prefix order (children before parent).</description></item>
+    /// </list>
     /// </summary>
     /// <param name="root">The root of the subtree to register.</param>
     internal void RegisterSubtree(Node root)
@@ -94,19 +124,23 @@ public class NodeTree
 
     /// <summary>
     /// Unregisters all nodes in <paramref name="root"/>'s subtree from this tree.
-    /// Calls <see cref="Node.TreeExiting"/> on each node in reverse prefix order (children before
-    /// their parent), then sets their <see cref="Node.Tree"/> property to <c>null</c>.
+    /// Proceeds in three passes:
+    /// <list type="number">
+    ///   <item><description>Calls <see cref="Node.Unready"/> on all nodes in prefix order (parent before children).</description></item>
+    ///   <item><description>Calls <see cref="Node.TreeExiting"/> on all nodes in reverse prefix order (children before parent).</description></item>
+    ///   <item><description>Sets <see cref="Node.Tree"/> to <c>null</c> on all nodes in reverse prefix order.</description></item>
+    /// </list>
     /// </summary>
     /// <param name="root">The root of the subtree to unregister.</param>
     internal void UnregisterSubtree(Node root)
     {
-        root.GetSubtreeInReversePrefixOrder().ForEach(node =>
-        {
-            node.TreeExiting();
-        });
         root.GetSubtreeInPrefixOrder().ForEach(node =>
         {
             node.Unready();
+        });
+        root.GetSubtreeInReversePrefixOrder().ForEach(node =>
+        {
+            node.TreeExiting();
         });
         root.GetSubtreeInReversePrefixOrder().ForEach(node =>
         {
