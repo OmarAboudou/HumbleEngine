@@ -1,0 +1,1 @@
+using static HumbleEngine.Core.LogSystem;
