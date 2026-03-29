@@ -5,16 +5,21 @@ namespace HumbleEngine.Core;
 public static class Logger
 {
     private static readonly Stopwatch Stopwatch = Stopwatch.StartNew();
-    
-    public static readonly HashSet<ILogSink> Sinks = new();
+
+    public static readonly HashSet<ILogSink> Sinks = [];
     
     public static LogLevel DefaultLogLevel { get; set; } = LogLevel.TRACE;
     
     private static readonly Dictionary<Type, LogLevel> ChannelLevels = new();
 
+    static Logger()
+    {
+        Sinks.Add(new ConsoleSink());
+    }
+    
     public static void SetChannelLevel<TChannel>(LogLevel level) where TChannel : ILogChannel
     {
-        ChannelLevels[typeof(TChannel)] = level;    
+        ChannelLevels[typeof(TChannel)] = level;
     }
     public static void ClearChannelLevel<TChannel>() where TChannel : ILogChannel
     {
