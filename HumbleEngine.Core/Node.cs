@@ -230,21 +230,49 @@ public class Node
     public virtual void PhysicsProcess(double delta){}
 
     /// <summary>
-    /// Called when this node enters an <see cref="NodeTree"/>. Override to run initialization
-    /// logic that depends on being inside a tree.
+    /// Called when this node enters a <see cref="NodeTree"/>, before its children have entered.
+    /// Override to run initialization logic that depends on being inside a tree but does not
+    /// require children to be ready yet.
     /// </summary>
+    /// <remarks>
+    /// At the time this is called, children may not yet have entered the tree.
+    /// Use <see cref="Ready"/> instead if your initialization depends on children being ready.
+    /// </remarks>
     public virtual void TreeEntered(){}
-    
-    
-    public virtual void Ready(){}
-    
-    
-    public virtual void Unready(){}
-    
+
     /// <summary>
-    /// Called when this node is about to leave its <see cref="NodeTree"/>. Override to run
-    /// cleanup logic before the node is detached from the tree.
+    /// Called after this node and all of its children have entered the tree and received
+    /// <see cref="TreeEntered"/>. Override to run initialization logic that requires
+    /// the entire subtree to be ready.
     /// </summary>
+    /// <remarks>
+    /// Unlike <see cref="TreeEntered"/>, <see cref="Ready"/> is guaranteed to be called
+    /// after all children in the subtree have already received their own <see cref="Ready"/>.
+    /// </remarks>
+    public virtual void Ready(){}
+
+    /// <summary>
+    /// Called when this node is about to leave its <see cref="NodeTree"/>, before its children
+    /// have been unreadied. Override to run cleanup logic that must happen before children are
+    /// invalidated.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="Unready"/> is the symmetric counterpart of <see cref="Ready"/>.
+    /// Unlike <see cref="TreeExiting"/>, which is called after children have exited,
+    /// <see cref="Unready"/> is called before children receive their own <see cref="Unready"/>.
+    /// </remarks>
+    public virtual void Unready(){}
+
+    /// <summary>
+    /// Called when this node is about to leave its <see cref="NodeTree"/>, after all of its
+    /// children have already received <see cref="TreeExiting"/>. Override to run cleanup logic
+    /// once the entire subtree has exited.
+    /// </summary>
+    /// <remarks>
+    /// At the time this is called, children have already received <see cref="TreeExiting"/>
+    /// and are about to be detached from the tree.
+    /// Use <see cref="Unready"/> instead if your cleanup must happen before children are invalidated.
+    /// </remarks>
     public virtual void TreeExiting(){}
     
     #endregion
