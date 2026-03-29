@@ -5,20 +5,27 @@ file class NodeThatAddsChildOnTreeEntered(Node child) : Node
     public override void TreeEntered() => AddChild(child);
 }
 
-file class OrderTrackingNode(List<Node> callOrder) : Node
+file class OrderTrackingNode(List<Node> callOrder, string trackedCallback) : Node
 {
-    public override void TreeExiting() => callOrder.Add(this);
+    public override void TreeEntered() { if (trackedCallback == nameof(TreeEntered)) callOrder.Add(this); }
+    public override void Ready() { if (trackedCallback == nameof(Ready)) callOrder.Add(this); }
+    public override void Unready() { if (trackedCallback == nameof(Unready)) callOrder.Add(this); }
+    public override void TreeExiting() { if (trackedCallback == nameof(TreeExiting)) callOrder.Add(this); }
 }
 
 file class TrackingNode : Node
 {
     public bool TreeEnteredCalled { get; private set; }
     public bool TreeExitingCalled { get; private set; }
+    public bool ReadyCalled { get; private set; }
+    public bool UnreadyCalled { get; private set; }
     public double? LastProcessDelta { get; private set; }
     public double? LastPhysicsProcessDelta { get; private set; }
 
     public override void TreeEntered() => TreeEnteredCalled = true;
     public override void TreeExiting() => TreeExitingCalled = true;
+    public override void Ready() => ReadyCalled = true;
+    public override void Unready() => UnreadyCalled = true;
     public override void Process(double delta) => LastProcessDelta = delta;
     public override void PhysicsProcess(double delta) => LastPhysicsProcessDelta = delta;
 }
@@ -60,6 +67,64 @@ public class NodeTreeTests
 
         Assert.That(root.TreeEnteredCalled, Is.True);
         Assert.That(child.TreeEnteredCalled, Is.True);
+    }
+
+    [Test]
+    public void Constructor_CallsReadyOnAllNodes()
+    {
+        var root = new TrackingNode();
+        var child = new TrackingNode();
+        root.AddChild(child);
+
+        new NodeTree(root);
+
+        Assert.That(root.ReadyCalled, Is.True);
+        Assert.That(child.ReadyCalled, Is.True);
+    }
+
+    [Test]
+    public void RemoveChild_AfterFlush_CallsUnreadyOnRemovedNodes()
+    {
+        var root = new Node();
+        var child = new TrackingNode();
+        root.AddChild(child);
+        var tree = new NodeTree(root);
+
+        root.RemoveChild(child);
+        tree.Process(0);
+
+        Assert.That(child.UnreadyCalled, Is.True);
+    }
+
+    [Test]
+    public void RemoveChild_AfterFlush_CallsUnreadyInPrefixOrder()
+    {
+        var callOrder = new List<Node>();
+        var root = new OrderTrackingNode(callOrder, nameof(Node.Unready));
+        var a = new OrderTrackingNode(callOrder, nameof(Node.Unready));
+        var c = new OrderTrackingNode(callOrder, nameof(Node.Unready));
+        a.AddChild(c);
+        root.AddChild(a);
+        var tree = new NodeTree(root);
+
+        root.RemoveChild(a);
+        tree.Process(0);
+
+        // Préfixe de a : a, c → Unready dans cet ordre
+        Assert.That(callOrder, Is.EqualTo(new[] { a, c }));
+    }
+
+    [Test]
+    public void AddChild_AfterFlush_CallsReadyOnNewNode()
+    {
+        var root = new Node();
+        var tree = new NodeTree(root);
+        var child = new TrackingNode();
+
+        root.AddChild(child);
+        tree.Process(0);
+
+        Assert.That(child.ReadyCalled, Is.True);
     }
 
     [Test]
@@ -107,13 +172,29 @@ public class NodeTreeTests
     }
 
     [Test]
+    public void Constructor_CallsReadyInReversePrefixOrder()
+    {
+        var callOrder = new List<Node>();
+        var root = new OrderTrackingNode(callOrder, nameof(Node.Ready));
+        var a = new OrderTrackingNode(callOrder, nameof(Node.Ready));
+        var c = new OrderTrackingNode(callOrder, nameof(Node.Ready));
+        a.AddChild(c);
+        root.AddChild(a);
+
+        new NodeTree(root);
+
+        // Préfixe de root : root, a, c → inverse : c, a, root
+        Assert.That(callOrder, Is.EqualTo(new[] { c, a, root }));
+    }
+
+    [Test]
     public void RemoveChild_AfterFlush_CallsTreeExitingInReversePrefixOrder()
     {
         var callOrder = new List<Node>();
-        var root = new OrderTrackingNode(callOrder);
-        var a = new OrderTrackingNode(callOrder);
-        var b = new OrderTrackingNode(callOrder);
-        var c = new OrderTrackingNode(callOrder);
+        var root = new OrderTrackingNode(callOrder, nameof(Node.TreeExiting));
+        var a = new OrderTrackingNode(callOrder, nameof(Node.TreeExiting));
+        var b = new OrderTrackingNode(callOrder, nameof(Node.TreeExiting));
+        var c = new OrderTrackingNode(callOrder, nameof(Node.TreeExiting));
         a.AddChild(c);
         root.AddChild(a);
         root.AddChild(b);
