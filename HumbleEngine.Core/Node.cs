@@ -222,7 +222,7 @@ public class Node
     /// </summary>
     /// <param name="delta">The elapsed time in seconds since the previous frame.</param>
     public virtual void Process(double delta){}
-
+    
     /// <summary>
     /// Called every physics tick. Override to implement physics-related logic.
     /// </summary>
@@ -234,7 +234,13 @@ public class Node
     /// logic that depends on being inside a tree.
     /// </summary>
     public virtual void TreeEntered(){}
-
+    
+    
+    public virtual void Ready(){}
+    
+    
+    public virtual void Unready(){}
+    
     /// <summary>
     /// Called when this node is about to leave its <see cref="NodeTree"/>. Override to run
     /// cleanup logic before the node is detached from the tree.
