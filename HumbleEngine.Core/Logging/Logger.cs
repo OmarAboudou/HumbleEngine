@@ -8,7 +8,7 @@ public static class Logger
 
     public static readonly HashSet<ILogSink> Sinks = [];
     
-    public static LogLevel DefaultLogLevel { get; set; } = LogLevel.TRACE;
+    public static LogLevel MinimumLogLevel { get; set; } = LogLevel.TRACE;
     
     private static readonly Dictionary<Type, LogLevel> ChannelLevels = new();
 
@@ -32,7 +32,7 @@ public static class Logger
         {
             if(level < channelLevel) return;
         }
-        if (level < DefaultLogLevel) return;
+        else if (level < MinimumLogLevel) return;
 
         LogEntry<TChannel> entry = level >= LogLevel.ERROR
             ? new LogEntry<TChannel>(Stopwatch.Elapsed, level, message, new StackTrace(skipFrames: 3, fNeedFileInfo: true))
