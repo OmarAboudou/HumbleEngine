@@ -1,6 +1,6 @@
 namespace HumbleEngine.Core;
 
-public enum LogLevel
+public static class LogSystem
 {
     
 }
