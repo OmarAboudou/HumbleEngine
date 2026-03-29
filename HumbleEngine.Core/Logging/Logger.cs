@@ -6,25 +6,51 @@ public static class Logger
 {
     private static readonly Stopwatch Stopwatch = Stopwatch.StartNew();
 
-    public static readonly HashSet<ILogSink> Sinks = [];
+    private static readonly HashSet<ILogSink> Sinks = [];
     
-    public static LogLevel MinimumLogLevel { get; set; } = LogLevel.TRACE;
+    public static LogLevel MinimumLogLevel { get; private set; }
     
-    private static readonly Dictionary<Type, LogLevel> ChannelLevels = new();
+    private static readonly Dictionary<Type, LogLevel> ChannelLevels = [];
 
     static Logger()
     {
-        Sinks.Add(new ConsoleSink());
+        AddSink(new ConsoleSink());
+        SetMinimumLogLevel(LogLevel.TRACE);
     }
+
+    public static void SetMinimumLogLevel(LogLevel level) 
+        => MinimumLogLevel = level > LogLevel.ERROR ? LogLevel.ERROR : level;
+
+    #region Sink Management
+
+    /// <inheritdoc cref="HashSet{ILogSink}.Add" />
+    public static bool AddSink(ILogSink sink)
+    {
+        return Sinks.Add(sink);
+    }
+
+    /// <inheritdoc cref="HashSet{ILogSink}.Remove" />
+    public static bool RemoveSink(ILogSink sink)
+    {
+        return Sinks.Remove(sink);
+    }
+
+    #endregion
+    
+    #region Configure Channel Level
     
     public static void SetChannelLevel<TChannel>(LogLevel level) where TChannel : ILogChannel
     {
-        ChannelLevels[typeof(TChannel)] = level;
+        ChannelLevels[typeof(TChannel)] = level > LogLevel.ERROR ? LogLevel.ERROR : level;
     }
     public static void ClearChannelLevel<TChannel>() where TChannel : ILogChannel
     {
         ChannelLevels.Remove(typeof(TChannel));
-    }
+    }    
+    
+    #endregion
+
+    #region Creating Entries
 
     private static void Write<TChannel>(LogLevel level, string message) where TChannel : ILogChannel
     {
@@ -50,5 +76,7 @@ public static class Logger
     public static void Warning<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.WARNING, message);
     public static void Error<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.ERROR, message);
     public static void Fatal<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.FATAL, message);
+
+    #endregion
     
 }
