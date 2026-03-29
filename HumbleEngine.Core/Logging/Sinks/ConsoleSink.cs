@@ -36,7 +36,6 @@ public class ConsoleSink : ILogSink
         {
             this._stringBuilder.Append(entry.StackTrace);
         }
-        Console.Write(this._stringBuilder.ToString());
         
         Console.ForegroundColor = previousColor;
     }

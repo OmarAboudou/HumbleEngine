@@ -2,5 +2,5 @@ namespace HumbleEngine.Core;
 
 public interface ILogChannel
 {
-    public static abstract string ChannelName();
+    public static abstract string ChannelName { get; }
 }
