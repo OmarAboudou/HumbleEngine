@@ -3,7 +3,7 @@ namespace HumbleEngine.Core;
 /// <summary>
 /// General-purpose extension methods used across the engine.
 /// </summary>
-public static class Utils
+public static class ExtensionMethods
 {
     /// <summary>
     /// Executes <paramref name="action"/> on each element of the sequence.
