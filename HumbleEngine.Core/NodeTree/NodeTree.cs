@@ -71,10 +71,10 @@ public class NodeTree
     {
         if (this._commands.Contains(command))
         {
-            Console.WriteLine($"The command {command} is already queued.");
+            Logger.Warning<NodeTreeChannel>($"The command {command} is already queued and will not be queued once again.");
             return;
         }
-        Console.WriteLine($"Queueing command {command}.");
+        Logger.Trace<NodeTreeChannel>($"Queueing command {command}.");
         this._commands.Enqueue(command);
     }
 
