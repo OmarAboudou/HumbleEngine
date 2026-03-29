@@ -1,6 +1,6 @@
 namespace HumbleEngine.Core;
 
-public struct Global : ILogChannel
+public struct GlobalChannel : ILogChannel
 {
     public static string ChannelName => "GLOBAL";
 }

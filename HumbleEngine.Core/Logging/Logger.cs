@@ -92,7 +92,7 @@ public static class Logger
                     .Where(v => v >= cap)
                     .Select(Enum.GetName)
             );
-        Warning<Global>($"Log level {Enum.GetName(level)} would silence {joinedSuppressedWarnings} which is forbidden. {Enum.GetName(cap)} will be used instead.");
+        Warning<GlobalChannel>($"Log level {Enum.GetName(level)} would silence {joinedSuppressedWarnings} which is forbidden. {Enum.GetName(cap)} will be used instead.");
         return cap;
     }
 
