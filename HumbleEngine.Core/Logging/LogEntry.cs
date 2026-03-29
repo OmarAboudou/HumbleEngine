@@ -6,5 +6,6 @@ public record LogEntry(
     TimeSpan TimeSpan,
     LogLevel Level,
     ILogChannel Channel,
-    string Message
+    string Message,
+    StackTrace? StackTrace
 );
