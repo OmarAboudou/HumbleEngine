@@ -2,34 +2,34 @@ using System.Diagnostics;
 
 namespace HumbleEngine.Core;
 
-public static class Logger
+public class Logger
 {
-    private static readonly Stopwatch Stopwatch = Stopwatch.StartNew();
+    private readonly Stopwatch Stopwatch = Stopwatch.StartNew();
 
-    private static readonly HashSet<ILogSink> Sinks = [];
+    private readonly HashSet<ILogSink> Sinks = [];
     
-    public static LogLevel MinimumLogLevel { get; private set; }
+    public LogLevel MinimumLogLevel { get; private set; }
     
-    private static readonly Dictionary<Type, LogLevel> ChannelLevels = [];
+    private readonly Dictionary<Type, LogLevel> ChannelLevels = [];
 
-    static Logger()
+    public Logger()
     {
-        AddSink(new ConsoleSink());
-        SetMinimumLogLevel(LogLevel.TRACE);
+        this.AddSink(new ConsoleSink());
+        this.SetMinimumLogLevel(LogLevel.TRACE);
     }
 
-    public static void SetMinimumLogLevel(LogLevel level) => MinimumLogLevel = GetCappedLogLevel(level);
+    public void SetMinimumLogLevel(LogLevel level) => MinimumLogLevel = GetCappedLogLevel(level);
     
     #region Sink Management
 
     /// <inheritdoc cref="HashSet{ILogSink}.Add" />
-    public static bool AddSink(ILogSink sink)
+    public bool AddSink(ILogSink sink)
     {
         return Sinks.Add(sink);
     }
 
     /// <inheritdoc cref="HashSet{ILogSink}.Remove" />
-    public static bool RemoveSink(ILogSink sink)
+    public bool RemoveSink(ILogSink sink)
     {
         return Sinks.Remove(sink);
     }
@@ -38,11 +38,11 @@ public static class Logger
     
     #region Configure Channel Level
     
-    public static void SetChannelLevel<TChannel>(LogLevel level) where TChannel : ILogChannel
+    public void SetChannelLevel<TChannel>(LogLevel level) where TChannel : ILogChannel
     {
         ChannelLevels[typeof(TChannel)] = GetCappedLogLevel(level);
     }
-    public static void ClearChannelLevel<TChannel>() where TChannel : ILogChannel
+    public void ClearChannelLevel<TChannel>() where TChannel : ILogChannel
     {
         ChannelLevels.Remove(typeof(TChannel));
     }    
@@ -51,7 +51,7 @@ public static class Logger
 
     #region Creating Entries
 
-    private static void Write<TChannel>(LogLevel level, string message) where TChannel : ILogChannel
+    private void Write<TChannel>(LogLevel level, string message) where TChannel : ILogChannel
     {
         if (ChannelLevels.TryGetValue(typeof(TChannel), out LogLevel channelLevel))
         {
@@ -69,18 +69,18 @@ public static class Logger
         });
     }
     
-    public static void Trace<TChannel>(string message) where TChannel : ILogChannel => Write<TChannel>(LogLevel.TRACE, message);
-    public static void Debug<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.DEBUG, message);
-    public static void Info<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.INFO, message);
-    public static void Warning<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.WARNING, message);
-    public static void Error<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.ERROR, message);
-    public static void Fatal<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.FATAL, message);
+    public void Trace<TChannel>(string message) where TChannel : ILogChannel => Write<TChannel>(LogLevel.TRACE, message);
+    public void Debug<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.DEBUG, message);
+    public void Info<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.INFO, message);
+    public void Warning<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.WARNING, message);
+    public void Error<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.ERROR, message);
+    public void Fatal<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.FATAL, message);
 
     #endregion
 
     #region Utils
 
-    private static LogLevel GetCappedLogLevel(LogLevel level)
+    private LogLevel GetCappedLogLevel(LogLevel level)
     {
         LogLevel cap = LogLevel.WARNING;
         if (level <= cap) return level;
