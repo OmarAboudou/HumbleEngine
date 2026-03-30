@@ -7,17 +7,11 @@ public class Logger
     private readonly Stopwatch Stopwatch = Stopwatch.StartNew();
 
     private readonly HashSet<ILogSink> Sinks = [];
-    
-    public LogLevel DefaultLevel { get; private set; }
+
+    public LogLevel DefaultLevel { get; private set; } = LogLevel.TRACE;
     
     private readonly Dictionary<Type, LogLevel> ChannelLevels = [];
 
-    public Logger()
-    {
-        this.AddSink(new ConsoleSink());
-        this.SetDefaultLevel(LogLevel.TRACE);
-    }
-    
     #region Sink Management
 
     /// <inheritdoc cref="HashSet{ILogSink}.Add" />
