@@ -11,32 +11,32 @@ public class ConsoleSink : ILogSink
         ConsoleColor previousColor = Console.ForegroundColor;
         Console.ForegroundColor = GetColor(entry.Level);
 
-        this._stringBuilder.Clear();
-        this._stringBuilder.Append('[');
-        this._stringBuilder.Append(entry.TimeSpan.Hours.ToString("D2"));
-        this._stringBuilder.Append(':');
-        this._stringBuilder.Append(entry.TimeSpan.Minutes.ToString("D2"));
-        this._stringBuilder.Append(':');
-        this._stringBuilder.Append(entry.TimeSpan.Seconds.ToString("D2"));
-        this._stringBuilder.Append('.');
-        this._stringBuilder.Append(entry.TimeSpan.Milliseconds.ToString("D3"));
-        this._stringBuilder.Append(']');
-        this._stringBuilder.Append(' ');
-        this._stringBuilder.Append('[');
-        this._stringBuilder.Append(entry.Level);
-        this._stringBuilder.Append(']');
-        this._stringBuilder.Append(' ');
-        this._stringBuilder.Append('[');
-        this._stringBuilder.Append(TChannel.ChannelName);
-        this._stringBuilder.Append(']');
-        this._stringBuilder.Append(' ');
-        this._stringBuilder.Append(entry.Message);
-        this._stringBuilder.Append('\n');
+        _stringBuilder.Clear();
+        _stringBuilder.Append('[');
+        _stringBuilder.Append(entry.TimeSpan.Hours.ToString("D2"));
+        _stringBuilder.Append(':');
+        _stringBuilder.Append(entry.TimeSpan.Minutes.ToString("D2"));
+        _stringBuilder.Append(':');
+        _stringBuilder.Append(entry.TimeSpan.Seconds.ToString("D2"));
+        _stringBuilder.Append('.');
+        _stringBuilder.Append(entry.TimeSpan.Milliseconds.ToString("D3"));
+        _stringBuilder.Append(']');
+        _stringBuilder.Append(' ');
+        _stringBuilder.Append('[');
+        _stringBuilder.Append(entry.Level);
+        _stringBuilder.Append(']');
+        _stringBuilder.Append(' ');
+        _stringBuilder.Append('[');
+        _stringBuilder.Append(TChannel.ChannelName);
+        _stringBuilder.Append(']');
+        _stringBuilder.Append(' ');
+        _stringBuilder.Append(entry.Message);
+        _stringBuilder.Append('\n');
         if(entry.StackTrace != null)
         {
-            this._stringBuilder.Append(entry.StackTrace);
+            _stringBuilder.Append(entry.StackTrace);
         }
-        Console.Write(this._stringBuilder.ToString());
+        Console.Write(_stringBuilder.ToString());
         
         Console.ForegroundColor = previousColor;
     }
