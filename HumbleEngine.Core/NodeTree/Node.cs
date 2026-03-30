@@ -123,7 +123,7 @@ public class Node
     internal void AddChildRightAway(Node child)
     {
         child.Parent = this;
-        this._children.Add(child);
+        _children.Add(child);
     }    
 
     #endregion
@@ -207,7 +207,7 @@ public class Node
     /// <param name="child">The node to detach.</param>
     internal void RemoveChildRightAway(Node child)
     {
-        this._children.Remove(child);
+        _children.Remove(child);
         child.Parent = null;
     }    
 

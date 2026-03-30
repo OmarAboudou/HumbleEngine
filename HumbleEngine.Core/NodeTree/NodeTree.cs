@@ -69,13 +69,13 @@ public class NodeTree
     /// <param name="command">The command to enqueue.</param>
     public void QueueCommand(NodeTreeCommand command)
     {
-        if (this._commands.Contains(command))
+        if (_commands.Contains(command))
         {
             Log.Warning<NodeTreeChannel>($"The command {command} is already queued and will not be queued once again.");
             return;
         }
         Log.Trace<NodeTreeChannel>($"Queueing command {command}.");
-        this._commands.Enqueue(command);
+        _commands.Enqueue(command);
     }
 
     /// <summary>
@@ -85,10 +85,10 @@ public class NodeTree
     /// </summary>
     private void FlushCommands()
     {
-        int count = this._commands.Count;
+        int count = _commands.Count;
         for (int i = 0; i < count; i++)
         {
-            this._commands.Dequeue().Execute(this);
+            _commands.Dequeue().Execute(this);
         }
     }
 
@@ -159,8 +159,8 @@ public class NodeTree
     /// <param name="delta">The elapsed time in seconds since the previous frame.</param>
     public void Process(double delta)
     {
-        this.GetNodesInPrefixOrder().ForEach(node => node.Process(delta));
-        this.FlushCommands();
+        GetNodesInPrefixOrder().ForEach(node => node.Process(delta));
+        FlushCommands();
     }
 
     /// <summary>
@@ -170,8 +170,8 @@ public class NodeTree
     /// <param name="delta">The elapsed time in seconds since the previous physics tick.</param>
     public void PhysicsProcess(double delta)
     {
-        this.GetNodesInPrefixOrder().ForEach(node => node.PhysicsProcess(delta));
-        this.FlushCommands();
+        GetNodesInPrefixOrder().ForEach(node => node.PhysicsProcess(delta));
+        FlushCommands();
     }
 
     #endregion
