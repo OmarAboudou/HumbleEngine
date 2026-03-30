@@ -7,8 +7,9 @@ public class Logger
     private readonly Stopwatch Stopwatch = Stopwatch.StartNew();
 
     private readonly HashSet<ILogSink> Sinks = [];
-
+    
     public LogLevel DefaultLevel { get; private set; } = LogLevel.TRACE;
+    public static readonly LogLevel LevelCap = LogLevel.WARNING;
     
     private readonly Dictionary<Type, LogLevel> ChannelLevels = [];
 
@@ -75,7 +76,7 @@ public class Logger
 
     private LogLevel GetCappedLogLevel(LogLevel level)
     {
-        LogLevel cap = LogLevel.WARNING;
+        LogLevel cap = LevelCap;
         if (level <= cap) return level;
 
         string joinedSuppressedWarnings = 

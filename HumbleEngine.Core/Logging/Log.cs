@@ -3,7 +3,8 @@ namespace HumbleEngine.Core;
 public static class Log
 {
     private static Logger _instance;
-
+    public static LogLevel LevelCap => Logger.LevelCap;
+    
     static Log()
     {
         _instance = new Logger();
