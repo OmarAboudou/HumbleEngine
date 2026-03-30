@@ -2,6 +2,14 @@ using System.Text;
 
 namespace HumbleEngine.Core;
 
+/// <summary>
+/// An <see cref="ILogSink"/> that writes formatted log entries to the console,
+/// coloring each entry according to its <see cref="LogLevel"/>.
+/// </summary>
+/// <remarks>
+/// Output format: <c>[hh:mm:ss.mmm] [LEVEL] [ChannelName] message</c><br/>
+/// For entries at <see cref="LogLevel.ERROR"/> and above, the stack trace is appended on the following lines.
+/// </remarks>
 public class ConsoleSink : ILogSink
 {
     private readonly StringBuilder _stringBuilder = new();
