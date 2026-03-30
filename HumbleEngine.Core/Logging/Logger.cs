@@ -30,7 +30,7 @@ public class Logger
     #endregion
     
     #region Configure Level
-    public void SetDefaultLevel(LogLevel level) => this.DefaultLevel = GetCappedLogLevel(level);
+    public void SetDefaultLevel(LogLevel level) => DefaultLevel = GetCappedLogLevel(level);
     
     public void SetChannelLevel<TChannel>(LogLevel level) where TChannel : ILogChannel
     {
@@ -51,7 +51,7 @@ public class Logger
         {
             if(level < channelLevel) return;
         }
-        else if (level < this.DefaultLevel) return;
+        else if (level < DefaultLevel) return;
 
         LogEntry<TChannel> entry = level >= LogLevel.ERROR
             ? new LogEntry<TChannel>(Stopwatch.Elapsed, level, message, new StackTrace(skipFrames: 3, fNeedFileInfo: true))
