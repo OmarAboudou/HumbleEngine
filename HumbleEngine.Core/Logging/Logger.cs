@@ -8,17 +8,15 @@ public class Logger
 
     private readonly HashSet<ILogSink> Sinks = [];
     
-    public LogLevel MinimumLogLevel { get; private set; }
+    public LogLevel DefaultLevel { get; private set; }
     
     private readonly Dictionary<Type, LogLevel> ChannelLevels = [];
 
     public Logger()
     {
         this.AddSink(new ConsoleSink());
-        this.SetMinimumLogLevel(LogLevel.TRACE);
+        this.SetDefaultLevel(LogLevel.TRACE);
     }
-
-    public void SetMinimumLogLevel(LogLevel level) => MinimumLogLevel = GetCappedLogLevel(level);
     
     #region Sink Management
 
@@ -36,7 +34,8 @@ public class Logger
 
     #endregion
     
-    #region Configure Channel Level
+    #region Configure Level
+    public void SetDefaultLevel(LogLevel level) => this.DefaultLevel = GetCappedLogLevel(level);
     
     public void SetChannelLevel<TChannel>(LogLevel level) where TChannel : ILogChannel
     {
@@ -57,7 +56,7 @@ public class Logger
         {
             if(level < channelLevel) return;
         }
-        else if (level < MinimumLogLevel) return;
+        else if (level < this.DefaultLevel) return;
 
         LogEntry<TChannel> entry = level >= LogLevel.ERROR
             ? new LogEntry<TChannel>(Stopwatch.Elapsed, level, message, new StackTrace(skipFrames: 3, fNeedFileInfo: true))
