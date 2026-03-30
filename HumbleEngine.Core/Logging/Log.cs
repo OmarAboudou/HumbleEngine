@@ -2,7 +2,13 @@ namespace HumbleEngine.Core;
 
 public static class Log
 {
-    private static Logger _instance = new Logger();
+    private static Logger _instance;
+
+    static Log()
+    {
+        _instance = new Logger();
+        _instance.AddSink(new ConsoleSink());
+    }
 
     #region Sink Management
     
