@@ -1,6 +1,3 @@
-using System.Reflection;
-using System.Runtime.CompilerServices;
-
 namespace HumbleEngine.Core;
 
 public class Signal<TDelegate>
