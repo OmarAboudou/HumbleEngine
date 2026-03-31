@@ -1,3 +1,6 @@
+using System.Reflection;
+using System.Runtime.CompilerServices;
+
 namespace HumbleEngine.Core;
 
 public class Signal<TDelegate>
@@ -28,16 +31,11 @@ public class Signal<TDelegate>
         signal.Disconnect(@delegate);
         return signal;
     }
-    public static Signal<TDelegate> operator -(Signal<TDelegate> signal, SignalConnection<TDelegate> connection)
-    {
-        signal.Disconnect(connection);
-        return signal;
-    }
     
     public SignalConnection<TDelegate> Connect(TDelegate @delegate)
     {
         SignalConnection<TDelegate> newConnection = new(@delegate);
-        if (Connections.TryGetValue(newConnection, out SignalConnection<TDelegate>? connection))
+        if (Connections.TryGetValue(newConnection, out SignalConnection<TDelegate> connection))
         {
             Services.Logger.Warning<SignalingChannel>($"Could not connect {connection} to {this} because it is already connected.");
             return connection;
@@ -49,7 +47,7 @@ public class Signal<TDelegate>
     }
     public void Disconnect(SignalConnection<TDelegate> connection)
     {
-        if (!Connections.TryGetValue(connection, out SignalConnection<TDelegate>? conn))
+        if (!Connections.TryGetValue(connection, out SignalConnection<TDelegate> conn))
         {
             Services.Logger.Warning<SignalingChannel>($"Could not disconnect {connection} from {this} because it is not connected.");
             return;
