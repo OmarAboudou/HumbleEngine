@@ -1,7 +1,8 @@
 namespace HumbleEngine.Core;
 
-public class Signal<TDelegate>
+public class SignalBase<TDelegate, TSelf>
     where TDelegate : Delegate
+    where TSelf : SignalBase<TDelegate, TSelf> 
 {
     public readonly object Owner;
     public readonly string Name;
@@ -9,7 +10,7 @@ public class Signal<TDelegate>
     public IReadOnlyList<SignalParameterDefinition> Parameters => _parameters.AsReadOnly();
     internal readonly HashSet<SignalConnection<TDelegate>> Connections = [];
     
-    internal Signal(object owner, string name, params (Type, string?)[] parameters)
+    internal SignalBase(object owner, string name, params (Type, string?)[] parameters)
     {
         Owner = owner ?? throw new ArgumentNullException(nameof(owner));
         Name = name ?? throw new ArgumentNullException(nameof(name));
@@ -18,15 +19,15 @@ public class Signal<TDelegate>
         _parameters = parameters.Select((param, index) => (SignalParameterDefinition)(param.Item1, param.Item2 ?? $"arg{index}") ).ToArray();
     }
 
-    public static Signal<TDelegate> operator +(Signal<TDelegate> signal, TDelegate @delegate)
+    public static TSelf operator +(SignalBase<TDelegate, TSelf> signal, TDelegate @delegate)
     {
         signal.Connect(@delegate);
-        return signal;
+        return (TSelf)signal;
     }
-    public static Signal<TDelegate> operator -(Signal<TDelegate> signal, TDelegate @delegate)
+    public static TSelf operator -(SignalBase<TDelegate, TSelf> signal, TDelegate @delegate)
     {
         signal.Disconnect(@delegate);
-        return signal;
+        return (TSelf)signal;
     }
     
     public SignalConnection<TDelegate> Connect(TDelegate @delegate)
@@ -55,4 +56,29 @@ public class Signal<TDelegate>
     public void Disconnect(TDelegate @delegate) => Disconnect(new SignalConnection<TDelegate>(@delegate));
 
     public override string ToString() => $"Signal : {Owner}.{Name}({String.Join(", ",_parameters)})";
+}
+
+public class Signal : SignalBase<Action, Signal>
+{
+    internal Signal(object owner, string name, params (Type, string?)[] parameters) : base(owner, name, parameters){}
+}
+
+public class Signal<T1> : SignalBase<Action<T1>, Signal<T1>>
+{
+    internal Signal(object owner, string name, params (Type, string?)[] parameters) : base(owner, name, parameters){}
+}
+
+public class Signal<T1, T2> : SignalBase<Action<T1, T2>, Signal<T1, T2>>
+{
+    internal Signal(object owner, string name, params (Type, string?)[] parameters) : base(owner, name, parameters){}
+}
+
+public class Signal<T1, T2, T3> : SignalBase<Action<T1, T2, T3>, Signal<T1, T2, T3>>
+{
+    internal Signal(object owner, string name, params (Type, string?)[] parameters) : base(owner, name, parameters){}
+}
+
+public class Signal<T1, T2, T3, T4> : SignalBase<Action<T1, T2, T3, T4>, Signal<T1, T2, T3, T4>>
+{
+    internal Signal(object owner, string name, params (Type, string?)[] parameters) : base(owner, name, parameters){}
 }
