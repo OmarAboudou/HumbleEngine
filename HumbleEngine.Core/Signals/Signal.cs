@@ -57,5 +57,5 @@ public class Signal<TDelegate>
     }
     public void Disconnect(TDelegate @delegate) => Disconnect(new SignalConnection<TDelegate>(@delegate));
 
-    public override string ToString() => $"Signal : {Owner}:{Name}({String.Join(", ",_parameters)})";
+    public override string ToString() => $"Signal : {Owner}.{Name}({String.Join(", ",_parameters)})";
 }
