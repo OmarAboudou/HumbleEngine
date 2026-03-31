@@ -83,7 +83,8 @@ public class Logger
 
     #region Creating Entries
 
-    private void Write<TChannel>(LogLevel level, string message) where TChannel : ILogChannel
+    private void Write<TChannel>(LogLevel level, string message) 
+        where TChannel : ILogChannel
     {
         if (ChannelLevels.TryGetValue(typeof(TChannel), out LogLevel channelLevel))
         {
