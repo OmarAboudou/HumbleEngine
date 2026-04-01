@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace HumbleEngine.Core;
 
 /// <summary>
@@ -38,11 +40,21 @@ public class Node
     /// <summary>
     /// Creates a new node. <see cref="Name"/> is initialized to the node's class name.
     /// </summary>
-    public Node() => Name = GetType().Name;
+    public Node(Signal<double> processed)
+    {
+        Name = GetType().Name;
+        ChildAdded = this.CreateSignal<Node>(nameof(ChildAdded), "child");
+        ChildRemoved = this.CreateSignal<Node>(nameof(ChildRemoved), "child");
+        OnTreeEntered = this.CreateSignal(nameof(OnTreeEntered));
+        OnReady = this.CreateSignal(nameof(OnReady));
+        OnUnready = this.CreateSignal(nameof(OnUnready));
+        OnTreeExiting = this.CreateSignal(nameof(OnTreeExiting));
+    }
 
     #region Tree Structure
 
     #region Adding a child
+    public Signal<Node> ChildAdded { get; }
 
     /// <summary>
     /// Adds a node as a child of this node.
@@ -124,12 +136,14 @@ public class Node
     {
         child.Parent = this;
         _children.Add(child);
+        this.Emit(ChildAdded, child);
     }    
 
     #endregion
 
     #region Removing a child
 
+    public Signal<Node> ChildRemoved { get; }
     /// <summary>
     /// Removes a child node from this node.
     /// </summary>
@@ -209,6 +223,7 @@ public class Node
     {
         _children.Remove(child);
         child.Parent = null;
+        this.Emit(ChildRemoved, child);
     }    
 
     #endregion
@@ -216,7 +231,7 @@ public class Node
     #endregion
     
     #region Life Cycle
-
+    
     /// <summary>
     /// Called every frame during the game loop. Override to implement per-frame logic.
     /// </summary>
@@ -229,6 +244,10 @@ public class Node
     /// <param name="delta">The elapsed time in seconds since the previous physics tick.</param>
     public virtual void PhysicsProcess(double delta){}
 
+    #region Entering
+    
+    public Signal OnTreeEntered { get; }
+    
     /// <summary>
     /// Called when this node enters a <see cref="NodeTree"/>, before its children have entered.
     /// Override to run initialization logic that depends on being inside a tree but does not
@@ -236,9 +255,15 @@ public class Node
     /// </summary>
     /// <remarks>
     /// At the time this is called, children may not yet have entered the tree.
-    /// Use <see cref="Ready"/> instead if your initialization depends on children being ready.
+    /// Use <see cref="OnReady"/> instead if your initialization depends on children being ready.
     /// </remarks>
     public virtual void TreeEntered(){}
+
+    #endregion
+
+    #region Readying
+
+    public Signal OnReady { get; }
 
     /// <summary>
     /// Called after this node and all of its children have entered the tree and received
@@ -246,23 +271,36 @@ public class Node
     /// the entire subtree to be ready.
     /// </summary>
     /// <remarks>
-    /// Unlike <see cref="TreeEntered"/>, <see cref="Ready"/> is guaranteed to be called
-    /// after all children in the subtree have already received their own <see cref="Ready"/>.
+    /// Unlike <see cref="TreeEntered"/>, <see cref="OnReady"/> is guaranteed to be called
+    /// after all children in the subtree have already received their own <see cref="OnReady"/>.
     /// </remarks>
+    
     public virtual void Ready(){}
 
+    #endregion
+
+    #region Unreadying
+
+    public Signal OnUnready { get; }
+    
     /// <summary>
     /// Called when this node is about to leave its <see cref="NodeTree"/>, before its children
     /// have been unreadied. Override to run cleanup logic that must happen before children are
     /// invalidated.
     /// </summary>
     /// <remarks>
-    /// <see cref="Unready"/> is the symmetric counterpart of <see cref="Ready"/>.
+    /// <see cref="Unready"/> is the symmetric counterpart of <see cref="OnReady"/>.
     /// Unlike <see cref="TreeExiting"/>, which is called after children have exited,
     /// <see cref="Unready"/> is called before children receive their own <see cref="Unready"/>.
     /// </remarks>
     public virtual void Unready(){}
 
+    #endregion
+
+    #region Exiting
+    
+    public Signal OnTreeExiting { get; }
+    
     /// <summary>
     /// Called when this node is about to leave its <see cref="NodeTree"/>, after all of its
     /// children have already received <see cref="TreeExiting"/>. Override to run cleanup logic
@@ -274,6 +312,8 @@ public class Node
     /// Use <see cref="Unready"/> instead if your cleanup must happen before children are invalidated.
     /// </remarks>
     public virtual void TreeExiting(){}
+    
+    #endregion
     
     #endregion
 
