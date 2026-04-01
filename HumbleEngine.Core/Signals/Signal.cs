@@ -26,11 +26,10 @@ public class SignalBase<TDelegate, TSelf>
     public readonly object Owner;
     /// <summary>The name of this signal, used in logging and tooling.</summary>
     public readonly string Name;
-    private readonly Type[] _parameterTypes;
-    private readonly string[] _parameterNames;
+    private readonly (Type type, string name)[] _parameters;
 
     /// <summary>The parameter definitions describing the signal's arguments.</summary>
-    public (Type type, String name)[] Parameters => _parameterTypes.Zip(_parameterNames).ToArray();
+    public IReadOnlyList<(Type type, String name)> Parameters => _parameters.AsReadOnly();
 
     internal readonly HashSet<SignalConnection<TDelegate>> Connections = [];
 
@@ -40,8 +39,7 @@ public class SignalBase<TDelegate, TSelf>
         Name = name ?? throw new ArgumentNullException(nameof(name));
         ArgumentNullException.ThrowIfNull(parameters);
     
-        _parameterTypes = parameters.Select(x => x.Item1).ToArray();
-        _parameterNames = parameters.Select(x => x.Item2).ToArray();
+        _parameters = parameters;
     }
 
     /// <summary>Connects <paramref name="delegate"/> to this signal. Equivalent to <see cref="Connect"/>.</summary>
@@ -107,15 +105,14 @@ public class SignalBase<TDelegate, TSelf>
         sb.Append('.');
         sb.Append(Name);
         sb.Append('(');
-        var parameters = Parameters;
-        parameters.ForEach(p =>
+        _parameters.ForEach(p =>
         {
-            sb.Append(p.type);
+            sb.Append(p.type.Name);
             sb.Append(' ');
             sb.Append(p.name);
             sb.Append(',');
         });
-        if (parameters.Length > 0)
+        if (_parameters.Length > 0)
         {
             // Remove the last ','
             sb.Remove(sb.Length - 1, 1);
@@ -129,7 +126,7 @@ public class SignalBase<TDelegate, TSelf>
 /// <inheritdoc cref="SignalBase{TDelegate,TSelf}"/>
 public sealed class Signal : SignalBase<Action, Signal>
 {
-    internal Signal(object owner, string name, params (Type, string?)[] parameters) : base(owner, name, parameters){}
+    internal Signal(object owner, string name) : base(owner, name){}
 }
 
 /// <summary>A signal with one parameter.</summary>
@@ -137,7 +134,7 @@ public sealed class Signal : SignalBase<Action, Signal>
 /// <typeparam name="T1">The type of the first parameter.</typeparam>
 public sealed class Signal<T1> : SignalBase<Action<T1>, Signal<T1>>
 {
-    internal Signal(object owner, string name, params (Type, string)[] parameters) : base(owner, name, parameters){}
+    internal Signal(object owner, string name, (Type, string) firstParameter) : base(owner, name, firstParameter){}
 }
 
 /// <summary>A signal with two parameters.</summary>
@@ -146,7 +143,7 @@ public sealed class Signal<T1> : SignalBase<Action<T1>, Signal<T1>>
 /// <typeparam name="T2">The type of the second parameter.</typeparam>
 public sealed class Signal<T1, T2> : SignalBase<Action<T1, T2>, Signal<T1, T2>>
 {
-    internal Signal(object owner, string name, params (Type, string)[] parameters) : base(owner, name, parameters){}
+    internal Signal(object owner, string name, (Type, string) firstParameter, (Type, string) secondParameter) : base(owner, name, firstParameter, secondParameter){}
 }
 
 /// <summary>A signal with three parameters.</summary>
@@ -156,7 +153,7 @@ public sealed class Signal<T1, T2> : SignalBase<Action<T1, T2>, Signal<T1, T2>>
 /// <typeparam name="T3">The type of the third parameter.</typeparam>
 public sealed class Signal<T1, T2, T3> : SignalBase<Action<T1, T2, T3>, Signal<T1, T2, T3>>
 {
-    internal Signal(object owner, string name, params (Type, string)[] parameters) : base(owner, name, parameters){}
+    internal Signal(object owner, string name, (Type, string) firstParameter, (Type, string) secondParameter, (Type, string) thirdParameter) : base(owner, name, firstParameter, secondParameter, thirdParameter){}
 }
 
 /// <summary>A signal with four parameters.</summary>
@@ -167,5 +164,5 @@ public sealed class Signal<T1, T2, T3> : SignalBase<Action<T1, T2, T3>, Signal<T
 /// <typeparam name="T4">The type of the fourth parameter.</typeparam>
 public sealed class Signal<T1, T2, T3, T4> : SignalBase<Action<T1, T2, T3, T4>, Signal<T1, T2, T3, T4>>
 {
-    internal Signal(object owner, string name, params (Type, string)[] parameters) : base(owner, name, parameters){}
+    internal Signal(object owner, string name, (Type, string) firstParameter, (Type, string) secondParameter, (Type, string) thirdParameter, (Type, string) fourthParameter) : base(owner, name, firstParameter, secondParameter, thirdParameter, fourthParameter){}
 }

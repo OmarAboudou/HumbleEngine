@@ -33,7 +33,19 @@ public class Node
     /// The name of this node. Used for identification in logs and debug tools.
     /// Defaults to the class name of the node (e.g. <c>"Player"</c> for a <c>Player</c> node).
     /// </summary>
-    public string Name { get; set; }
+    private string _name;
+
+    /// <inheritdoc cref="_name"/>>
+    public string Name
+    {
+        get => _name;
+        set
+        {
+            _name = value;
+            this.Emit(OnRenamed, value);
+        }
+    }
+
     public Signal<string> OnRenamed { get; }
 
     /// <summary>
