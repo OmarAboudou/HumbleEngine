@@ -17,26 +17,9 @@ namespace HumbleEngine.Core;
 /// </remarks>
 public class Logger
 {
-    private readonly Stopwatch Stopwatch = Stopwatch.StartNew();
+    #region Sink Management
 
     private readonly HashSet<ILogSink> Sinks = [];
-
-    /// <summary>
-    /// The minimum level applied to channels that have no explicit override.
-    /// Entries below this level are discarded.
-    /// </summary>
-    public LogLevel DefaultLevel { get; private set; } = LogLevel.TRACE;
-
-    /// <summary>
-    /// The most restrictive level that can be configured.
-    /// Attempting to set a level above this cap emits a warning and uses the cap instead,
-    /// ensuring <see cref="LogLevel.WARNING"/> and above are never silenced.
-    /// </summary>
-    public static readonly LogLevel LevelCap = LogLevel.WARNING;
-
-    private readonly Dictionary<Type, LogLevel> ChannelLevels = [];
-
-    #region Sink Management
 
     /// <inheritdoc cref="HashSet{ILogSink}.Add" />
     public bool AddSink(ILogSink sink)
@@ -53,6 +36,21 @@ public class Logger
     #endregion
 
     #region Configure Level
+
+    /// <summary>
+    /// The minimum level applied to channels that have no explicit override.
+    /// Entries below this level are discarded.
+    /// </summary>
+    public LogLevel DefaultLevel { get; private set; } = LogLevel.TRACE;
+
+    /// <summary>
+    /// The most restrictive level that can be configured.
+    /// Attempting to set a level above this cap emits a warning and uses the cap instead,
+    /// ensuring <see cref="LogLevel.WARNING"/> and above are never silenced.
+    /// </summary>
+    public static readonly LogLevel LevelCap = LogLevel.WARNING;
+
+    private readonly Dictionary<Type, LogLevel> ChannelLevels = [];
 
     /// <summary>
     /// Sets the minimum log level for channels that have no explicit override.
@@ -83,7 +81,9 @@ public class Logger
 
     #region Creating Entries
 
-    private void Write<TChannel>(LogLevel level, string message) 
+    private readonly Stopwatch Stopwatch = Stopwatch.StartNew();
+
+    private void Write<TChannel>(LogLevel level, string message)
         where TChannel : ILogChannel
     {
         if (ChannelLevels.TryGetValue(typeof(TChannel), out LogLevel channelLevel))
@@ -105,15 +105,15 @@ public class Logger
     /// <summary>Logs a message at <see cref="LogLevel.TRACE"/> level on the specified channel.</summary>
     public void Trace<TChannel>(string message) where TChannel : ILogChannel => Write<TChannel>(LogLevel.TRACE, message);
     /// <summary>Logs a message at <see cref="LogLevel.DEBUG"/> level on the specified channel.</summary>
-    public void Debug<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.DEBUG, message);
+    public void Debug<TChannel>(string message) where TChannel : ILogChannel => Write<TChannel>(LogLevel.DEBUG, message);
     /// <summary>Logs a message at <see cref="LogLevel.INFO"/> level on the specified channel.</summary>
-    public void Info<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.INFO, message);
+    public void Info<TChannel>(string message) where TChannel : ILogChannel => Write<TChannel>(LogLevel.INFO, message);
     /// <summary>Logs a message at <see cref="LogLevel.WARNING"/> level on the specified channel.</summary>
-    public void Warning<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.WARNING, message);
+    public void Warning<TChannel>(string message) where TChannel : ILogChannel => Write<TChannel>(LogLevel.WARNING, message);
     /// <summary>Logs a message at <see cref="LogLevel.ERROR"/> level on the specified channel. Captures a stack trace.</summary>
-    public void Error<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.ERROR, message);
+    public void Error<TChannel>(string message) where TChannel : ILogChannel => Write<TChannel>(LogLevel.ERROR, message);
     /// <summary>Logs a message at <see cref="LogLevel.FATAL"/> level on the specified channel. Captures a stack trace.</summary>
-    public void Fatal<TChannel>(string message)  where TChannel : ILogChannel => Write<TChannel>(LogLevel.FATAL, message);
+    public void Fatal<TChannel>(string message) where TChannel : ILogChannel => Write<TChannel>(LogLevel.FATAL, message);
 
     #endregion
 

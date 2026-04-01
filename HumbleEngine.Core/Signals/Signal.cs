@@ -22,25 +22,33 @@ public abstract class SignalBase<TDelegate, TSelf> : ISignalBase<TDelegate, TSel
     where TDelegate : Delegate
     where TSelf : SignalBase<TDelegate, TSelf>
 {
-    /// <summary>The object that owns and is allowed to emit this signal.</summary>
-    public object Owner { get; }
-    /// <summary>The name of this signal, used in logging and tooling.</summary>
-    public string Name { get; }
-    private readonly (Type type, string name)[] _parameters;
-
-    /// <summary>The parameter definitions describing the signal's arguments.</summary>
-    public IReadOnlyList<(Type type, String name)> Parameters => _parameters.AsReadOnly();
-
-    internal readonly HashSet<SignalConnection<TDelegate>> Connections = [];
-
     internal SignalBase(object owner, string name, params (Type, string)[] parameters)
     {
         Owner = owner ?? throw new ArgumentNullException(nameof(owner));
         Name = name ?? throw new ArgumentNullException(nameof(name));
         ArgumentNullException.ThrowIfNull(parameters);
-    
+
         _parameters = parameters;
     }
+
+    #region Metadata
+
+    /// <summary>The object that owns and is allowed to emit this signal.</summary>
+    public object Owner { get; }
+
+    /// <summary>The name of this signal, used in logging and tooling.</summary>
+    public string Name { get; }
+
+    private readonly (Type type, string name)[] _parameters;
+
+    /// <summary>The parameter definitions describing the signal's arguments.</summary>
+    public IReadOnlyList<(Type type, String name)> Parameters => _parameters.AsReadOnly();
+
+    #endregion
+
+    #region Connection Management
+
+    internal readonly HashSet<SignalConnection<TDelegate>> Connections = [];
 
     /// <summary>
     /// Connects a delegate to this signal.
@@ -63,6 +71,7 @@ public abstract class SignalBase<TDelegate, TSelf> : ISignalBase<TDelegate, TSel
         Services.Logger.Trace<SignalingChannel>($"Connected {newConnection} from {this}.");
         return newConnection;
     }
+
     /// <summary>
     /// Disconnects a previously established connection from this signal.
     /// </summary>
@@ -77,9 +86,14 @@ public abstract class SignalBase<TDelegate, TSelf> : ISignalBase<TDelegate, TSel
         Connections.Remove(conn);
         Services.Logger.Trace<SignalingChannel>($"Disconnected {conn} from {this}.");
     }
+
     /// <summary>Disconnects the connection associated with <paramref name="delegate"/>.</summary>
     /// <param name="delegate">The delegate to disconnect.</param>
     public void Disconnect(TDelegate @delegate) => Disconnect(new SignalConnection<TDelegate>(@delegate));
+
+    #endregion
+
+    #region Utils
 
     public override string ToString()
     {
@@ -104,6 +118,8 @@ public abstract class SignalBase<TDelegate, TSelf> : ISignalBase<TDelegate, TSel
         sb.Append(')');
         return sb.ToString();
     }
+
+    #endregion
 }
 
 /// <summary>A signal with no parameters.</summary>

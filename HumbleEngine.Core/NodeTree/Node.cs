@@ -14,20 +14,21 @@ namespace HumbleEngine.Core;
 public class Node
 {
     /// <summary>
-    /// The parent of this node in the tree hierarchy, or <c>null</c> if this node is a root or detached.
+    /// Creates a new node. <see cref="Name"/> is initialized to the node's class name.
     /// </summary>
-    public Node? Parent { get; private set; }
+    public Node()
+    {
+        _name = GetType().Name;
+        _onRenamed = this.CreateSignal<string>(nameof(OnRenamed), "name");
+        _onChildAdded = this.CreateSignal<Node>(nameof(OnChildAdded), "child");
+        _onChildRemoved = this.CreateSignal<Node>(nameof(OnChildRemoved), "child");
+        _onTreeEntered = this.CreateSignal(nameof(OnTreeEntered));
+        _onReady = this.CreateSignal(nameof(OnReady));
+        _onUnready = this.CreateSignal(nameof(OnUnready));
+        _onTreeExiting = this.CreateSignal(nameof(OnTreeExiting));
+    }
 
-    /// <summary>
-    /// The <see cref="NodeTree"/> this node belongs to, or <c>null</c> if the node is not part of any tree.
-    /// </summary>
-    public NodeTree? Tree { get; internal set; }
-
-    /// <summary>
-    /// A read-only view of this node's children, in insertion order.
-    /// </summary>
-    public IReadOnlyList<Node> Children => _children;
-    private List<Node> _children = [];
+    #region Identity
 
     private string _name;
 
@@ -46,27 +47,33 @@ public class Node
     }
 
     private readonly EmittableSignal<string> _onRenamed;
+    /// <summary>Emitted when this node's <see cref="Name"/> is changed. The new name is passed as argument.</summary>
     public Signal<string> OnRenamed => _onRenamed.Signal;
 
-    /// <summary>
-    /// Creates a new node. <see cref="Name"/> is initialized to the node's class name.
-    /// </summary>
-    public Node()
-    {
-        _name = GetType().Name;
-        _onRenamed = this.CreateSignal<string>(nameof(OnRenamed), "name");
-        _onChildAdded = this.CreateSignal<Node>(nameof(OnChildAdded), "child");
-        _onChildRemoved = this.CreateSignal<Node>(nameof(OnChildRemoved), "child");
-        _onTreeEntered = this.CreateSignal(nameof(OnTreeEntered));
-        _onReady = this.CreateSignal(nameof(OnReady));
-        _onUnready = this.CreateSignal(nameof(OnUnready));
-        _onTreeExiting = this.CreateSignal(nameof(OnTreeExiting));
-    }
+    #endregion
 
     #region Tree Structure
 
+    /// <summary>
+    /// The parent of this node in the tree hierarchy, or <c>null</c> if this node is a root or detached.
+    /// </summary>
+    public Node? Parent { get; private set; }
+
+    /// <summary>
+    /// The <see cref="NodeTree"/> this node belongs to, or <c>null</c> if the node is not part of any tree.
+    /// </summary>
+    public NodeTree? Tree { get; internal set; }
+
+    /// <summary>
+    /// A read-only view of this node's children, in insertion order.
+    /// </summary>
+    public IReadOnlyList<Node> Children => _children;
+    private List<Node> _children = [];
+
     #region Adding a child
+
     private readonly EmittableSignal<Node> _onChildAdded;
+    /// <summary>Emitted when a child node is added to this node.</summary>
     public Signal<Node> OnChildAdded => _onChildAdded.Signal;
 
     /// <summary>
@@ -150,14 +157,16 @@ public class Node
         child.Parent = this;
         _children.Add(child);
         _onChildAdded.Emit(child);
-    }    
+    }
 
     #endregion
 
     #region Removing a child
 
     private readonly EmittableSignal<Node> _onChildRemoved;
+    /// <summary>Emitted when a child node is removed from this node.</summary>
     public Signal<Node> OnChildRemoved => _onChildRemoved.Signal;
+
     /// <summary>
     /// Removes a child node from this node.
     /// </summary>
@@ -238,20 +247,20 @@ public class Node
         _children.Remove(child);
         child.Parent = null;
         _onChildRemoved.Emit(child);
-    }    
+    }
 
     #endregion
 
     #endregion
-    
+
     #region Life Cycle
-    
+
     /// <summary>
     /// Called every frame during the game loop. Override to implement per-frame logic.
     /// </summary>
     /// <param name="delta">The elapsed time in seconds since the previous frame.</param>
     public virtual void Process(double delta){}
-    
+
     /// <summary>
     /// Called every physics tick. Override to implement physics-related logic.
     /// </summary>
@@ -259,10 +268,11 @@ public class Node
     public virtual void PhysicsProcess(double delta){}
 
     #region Entering
-    
+
     internal readonly EmittableSignal _onTreeEntered;
+    /// <summary>Emitted when this node enters a <see cref="NodeTree"/>.</summary>
     public Signal OnTreeEntered => _onTreeEntered.Signal;
-    
+
     /// <summary>
     /// Called when this node enters a <see cref="NodeTree"/>, before its children have entered.
     /// Override to run initialization logic that depends on being inside a tree but does not
@@ -279,6 +289,7 @@ public class Node
     #region Readying
 
     internal readonly EmittableSignal _onReady;
+    /// <summary>Emitted after this node and all its children have received <see cref="Ready"/>.</summary>
     public Signal OnReady => _onReady.Signal;
 
     /// <summary>
@@ -290,7 +301,6 @@ public class Node
     /// Unlike <see cref="TreeEntered"/>, <see cref="OnReady"/> is guaranteed to be called
     /// after all children in the subtree have already received their own <see cref="OnReady"/>.
     /// </remarks>
-    
     public virtual void Ready(){}
 
     #endregion
@@ -298,8 +308,9 @@ public class Node
     #region Unreadying
 
     internal readonly EmittableSignal _onUnready;
+    /// <summary>Emitted when this node is about to leave its <see cref="NodeTree"/>, before children are unreadied.</summary>
     public Signal OnUnready => _onUnready.Signal;
-    
+
     /// <summary>
     /// Called when this node is about to leave its <see cref="NodeTree"/>, before its children
     /// have been unreadied. Override to run cleanup logic that must happen before children are
@@ -315,10 +326,11 @@ public class Node
     #endregion
 
     #region Exiting
-    
+
     internal readonly EmittableSignal _onTreeExiting;
+    /// <summary>Emitted when this node is exiting its <see cref="NodeTree"/>, after all children have exited.</summary>
     public Signal OnTreeExiting => _onTreeExiting.Signal;
-    
+
     /// <summary>
     /// Called when this node is about to leave its <see cref="NodeTree"/>, after all of its
     /// children have already received <see cref="TreeExiting"/>. Override to run cleanup logic
@@ -330,9 +342,9 @@ public class Node
     /// Use <see cref="Unready"/> instead if your cleanup must happen before children are invalidated.
     /// </remarks>
     public virtual void TreeExiting(){}
-    
+
     #endregion
-    
+
     #endregion
 
     #region Utils
@@ -345,45 +357,45 @@ public class Node
     {
         Stack<Node> nodeStack = new();
         nodeStack.Push(this);
-        
+
         while (nodeStack.Count > 0)
         {
             Node current = nodeStack.Pop();
             yield return current;
-            
+
             for (int i = current.Children.Count - 1; i >= 0; i--)
             {
                 nodeStack.Push(current.Children[i]);
             }
         }
     }
-    
+
     /// <summary>
     /// Enumerates all nodes in this node's subtree (including itself) in the exact reverse of
     /// depth-first prefix order. This guarantees that every child is yielded before its parent.
     /// </summary>
     /// <returns>An enumerable of nodes in reverse prefix order.</returns>
-    public IEnumerable<Node> GetSubtreeInReversePrefixOrder()                                             
-    {               
+    public IEnumerable<Node> GetSubtreeInReversePrefixOrder()
+    {
         Stack<Node> nodeStack = new();
-        Stack<Node> result = new();                                                                 
+        Stack<Node> result = new();
         nodeStack.Push(this);
-                                                                                                  
+
         while (nodeStack.Count > 0)
         {
             Node current = nodeStack.Pop();
-            result.Push(current);                                                                   
-   
-            foreach (Node child in current.Children.Reverse())                                         
+            result.Push(current);
+
+            foreach (Node child in current.Children.Reverse())
                 nodeStack.Push(child);
         }
 
-        while (result.Count > 0)                                                                    
+        while (result.Count > 0)
             yield return result.Pop();
-    }  
+    }
 
     public override string ToString() => Name;
-    
+
     #endregion
 
 }

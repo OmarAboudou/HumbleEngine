@@ -5,6 +5,8 @@ namespace HumbleEngine.Core;
 /// </summary>
 public static class ExtensionMethods
 {
+    #region Collections
+
     /// <summary>
     /// Executes <paramref name="action"/> on each element of the sequence.
     /// </summary>
@@ -14,6 +16,8 @@ public static class ExtensionMethods
     public static void ForEach<T>(this IEnumerable<T> source, Action<T> action){
         foreach (T item in source) action(item);
     }
+
+    #endregion
 
     #region Signals
 
