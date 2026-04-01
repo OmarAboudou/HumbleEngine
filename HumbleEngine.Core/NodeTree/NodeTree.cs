@@ -43,6 +43,17 @@ public class NodeTree
     /// </summary>
     public Node Root { get; }
 
+    /// <summary>Emitted when a node is registered into this tree.</summary>
+    public Signal<Node> OnNodeAdded { get; }
+    /// <summary>Emitted when a node is unregistered from this tree.</summary>
+    public Signal<Node> OnNodeRemoved { get; }
+    /// <summary>Emitted when a node in this tree is renamed.</summary>
+    public Signal<Node, string> OnNodeRenamed { get; }
+    /// <summary>Emitted when any structural or naming change occurs in this tree.</summary>
+    public Signal OnTreeChanged { get; }
+
+    private readonly Dictionary<Node, SignalConnection<Action<string>>> _renameConnections = new();
+
     /// <summary>
     /// Creates a new <see cref="NodeTree"/> with the given root node.
     /// All nodes already present in the root's subtree are registered into the tree.
@@ -53,6 +64,11 @@ public class NodeTree
     {
         if (root.Parent != null)
             throw new ArgumentException($"The node {root} cannot be the root of a tree because it already has a parent.", nameof(root));
+
+        OnNodeAdded = this.CreateSignal<Node>(nameof(OnNodeAdded), "node");
+        OnNodeRemoved = this.CreateSignal<Node>(nameof(OnNodeRemoved), "node");
+        OnNodeRenamed = this.CreateSignal<Node, string>(nameof(OnNodeRenamed), "node", "name");
+        OnTreeChanged = this.CreateSignal(nameof(OnTreeChanged));
 
         Root = root;
         RegisterSubtree(Root);
@@ -111,6 +127,11 @@ public class NodeTree
         root.GetSubtreeInPrefixOrder().ForEach(node =>
         {
             node.Tree = this;
+            _renameConnections[node] = node.OnRenamed.Connect(name =>
+            {
+                this.Emit(OnNodeRenamed, node, name);
+                this.Emit(OnTreeChanged);
+            });
         });
         root.GetSubtreeInPrefixOrder().ForEach(node =>
         {
@@ -148,6 +169,8 @@ public class NodeTree
         });
         root.GetSubtreeInReversePrefixOrder().ForEach(node =>
         {
+            node.OnRenamed.Disconnect(_renameConnections[node]);
+            _renameConnections.Remove(node);
             node.Tree = null;
         });
     }

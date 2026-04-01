@@ -305,6 +305,117 @@ public class NodeTreeTests
     }
 
     [Test]
+    public void OnNodeAdded_EmittedWhenChildAdded_AfterFlush()
+    {
+        var root = new Node();
+        var tree = new NodeTree(root);
+        var child = new Node();
+        Node? received = null;
+        tree.OnNodeAdded.Connect(node => received = node);
+
+        root.AddChild(child);
+        tree.Process(0);
+
+        Assert.That(received, Is.EqualTo(child));
+    }
+
+    [Test]
+    public void OnNodeRemoved_EmittedWhenChildRemoved_AfterFlush()
+    {
+        var root = new Node();
+        var child = new Node();
+        root.AddChild(child);
+        var tree = new NodeTree(root);
+        Node? received = null;
+        tree.OnNodeRemoved.Connect(node => received = node);
+
+        root.RemoveChild(child);
+        tree.Process(0);
+
+        Assert.That(received, Is.EqualTo(child));
+    }
+
+    [Test]
+    public void OnNodeRenamed_EmittedWithNodeAndNewName_WhenNodeInTreeIsRenamed()
+    {
+        var root = new Node();
+        var tree = new NodeTree(root);
+        Node? receivedNode = null;
+        string? receivedName = null;
+        tree.OnNodeRenamed.Connect((node, name) => { receivedNode = node; receivedName = name; });
+
+        root.Name = "Player";
+
+        Assert.That(receivedNode, Is.EqualTo(root));
+        Assert.That(receivedName, Is.EqualTo("Player"));
+    }
+
+    [Test]
+    public void OnNodeRenamed_NotEmitted_AfterNodeLeavesTree()
+    {
+        var root = new Node();
+        var child = new Node();
+        root.AddChild(child);
+        var tree = new NodeTree(root);
+        bool called = false;
+        tree.OnNodeRenamed.Connect((_, _) => called = true);
+
+        root.RemoveChild(child);
+        tree.Process(0);
+        child.Name = "Orphan";
+
+        Assert.That(called, Is.False);
+    }
+
+    [Test]
+    public void OnTreeChanged_EmittedOnce_WhenSubtreeAdded()
+    {
+        var root = new Node();
+        var tree = new NodeTree(root);
+        var child = new Node();
+        var grandChild = new Node();
+        child.AddChild(grandChild);
+        int callCount = 0;
+        tree.OnTreeChanged.Connect(() => callCount++);
+
+        root.AddChild(child);
+        tree.Process(0);
+
+        Assert.That(callCount, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void OnTreeChanged_EmittedOnce_WhenSubtreeRemoved()
+    {
+        var root = new Node();
+        var child = new Node();
+        var grandChild = new Node();
+        child.AddChild(grandChild);
+        root.AddChild(child);
+        var tree = new NodeTree(root);
+        int callCount = 0;
+        tree.OnTreeChanged.Connect(() => callCount++);
+
+        root.RemoveChild(child);
+        tree.Process(0);
+
+        Assert.That(callCount, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void OnTreeChanged_EmittedWhenNodeRenamed()
+    {
+        var root = new Node();
+        var tree = new NodeTree(root);
+        bool called = false;
+        tree.OnTreeChanged.Connect(() => called = true);
+
+        root.Name = "Player";
+
+        Assert.That(called, Is.True);
+    }
+
+    [Test]
     public void Process_CommandsQueuedDuringFlush_AreNotExecutedInSameFlush()
     {
         var grandChild = new Node();
