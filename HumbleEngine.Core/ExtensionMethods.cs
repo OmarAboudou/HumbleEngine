@@ -28,25 +28,25 @@ public static class ExtensionMethods
     /// <inheritdoc cref="CreateSignal(object, string)"/>
     /// <typeparam name="T1">The type of the first parameter.</typeparam>
     /// <param name="arg1Name">The display name of the first parameter.</param>
-    public static Signal<T1> CreateSignal<T1>(this object owner, string name, string? arg1Name)
+    public static Signal<T1> CreateSignal<T1>(this object owner, string name, string arg1Name)
         => new(owner, name, (typeof(T1), arg1Name));
 
-    /// <inheritdoc cref="CreateSignal{T1}(object, string, string?)"/>
+    /// <inheritdoc cref="CreateSignal{T1}(object, string, string)"/>
     /// <typeparam name="T2">The type of the second parameter.</typeparam>
     /// <param name="arg2Name">The display name of the second parameter.</param>
-    public static Signal<T1, T2> CreateSignal<T1, T2>(this object owner, string name, string? arg1Name, string? arg2Name)
+    public static Signal<T1, T2> CreateSignal<T1, T2>(this object owner, string name, string arg1Name, string arg2Name)
         => new(owner, name, (typeof(T1), arg1Name), (typeof(T2), arg2Name));
 
-    /// <inheritdoc cref="CreateSignal{T1, T2}(object, string, string?, string?)"/>
+    /// <inheritdoc cref="CreateSignal{T1, T2}(object, string, string, string)"/>
     /// <typeparam name="T3">The type of the third parameter.</typeparam>
     /// <param name="arg3Name">The display name of the third parameter.</param>
-    public static Signal<T1, T2, T3> CreateSignal<T1, T2, T3>(this object owner, string name, string? arg1Name, string? arg2Name, string? arg3Name)
+    public static Signal<T1, T2, T3> CreateSignal<T1, T2, T3>(this object owner, string name, string arg1Name, string arg2Name, string arg3Name)
         => new(owner, name, (typeof(T1), arg1Name), (typeof(T2), arg2Name), (typeof(T3), arg3Name));
 
-    /// <inheritdoc cref="CreateSignal{T1, T2, T3}(object, string, string?, string?, string?)"/>
+    /// <inheritdoc cref="CreateSignal{T1, T2, T3}(object, string, string, string, string)"/>
     /// <typeparam name="T4">The type of the fourth parameter.</typeparam>
     /// <param name="arg4Name">The display name of the fourth parameter.</param>
-    public static Signal<T1, T2, T3, T4> CreateSignal<T1, T2, T3, T4>(this object owner, string name, string? arg1Name, string? arg2Name, string? arg3Name, string? arg4Name)
+    public static Signal<T1, T2, T3, T4> CreateSignal<T1, T2, T3, T4>(this object owner, string name, string arg1Name, string arg2Name, string arg3Name, string arg4Name)
         => new(owner, name, (typeof(T1), arg1Name), (typeof(T2), arg2Name), (typeof(T3), arg3Name), (typeof(T4), arg4Name));
 
     #endregion
@@ -60,7 +60,7 @@ public static class ExtensionMethods
     public static void Emit(this object owner, Signal signal)
     {
         ValidateEmittingPermission(owner, signal);
-        signal.Connections.ForEach(conn => conn.Delegate.Invoke());
+        signal.Connections.ToHashSet().ForEach(conn => conn.Delegate.Invoke());
     }
 
     /// <inheritdoc cref="Emit(object, Signal)"/>
@@ -69,7 +69,7 @@ public static class ExtensionMethods
     public static void Emit<T1>(this object owner, Signal<T1> signal, T1 arg1)
     {
         ValidateEmittingPermission(owner, signal);
-        signal.Connections.ForEach(conn => conn.Delegate.Invoke(arg1));
+        signal.Connections.ToHashSet().ForEach(conn => conn.Delegate.Invoke(arg1));
     }
 
     /// <inheritdoc cref="Emit{T1}(object, Signal{T1}, T1)"/>
@@ -78,7 +78,7 @@ public static class ExtensionMethods
     public static void Emit<T1, T2>(this object owner, Signal<T1, T2> signal, T1 arg1, T2 arg2)
     {
         ValidateEmittingPermission(owner, signal);
-        signal.Connections.ForEach(conn => conn.Delegate.Invoke(arg1, arg2));
+        signal.Connections.ToHashSet().ForEach(conn => conn.Delegate.Invoke(arg1, arg2));
     }
 
     /// <inheritdoc cref="Emit{T1, T2}(object, Signal{T1, T2}, T1, T2)"/>
@@ -87,7 +87,7 @@ public static class ExtensionMethods
     public static void Emit<T1, T2, T3>(this object owner, Signal<T1, T2, T3> signal, T1 arg1, T2 arg2, T3 arg3)
     {
         ValidateEmittingPermission(owner, signal);
-        signal.Connections.ForEach(conn => conn.Delegate.Invoke(arg1, arg2, arg3));
+        signal.Connections.ToHashSet().ForEach(conn => conn.Delegate.Invoke(arg1, arg2, arg3));
     }
 
     /// <inheritdoc cref="Emit{T1, T2, T3}(object, Signal{T1, T2, T3}, T1, T2, T3)"/>
@@ -96,7 +96,7 @@ public static class ExtensionMethods
     public static void Emit<T1, T2, T3, T4>(this object owner, Signal<T1, T2, T3, T4> signal, T1 arg1, T2 arg2, T3 arg3, T4 arg4)
     {
         ValidateEmittingPermission(owner, signal);
-        signal.Connections.ForEach(conn => conn.Delegate.Invoke(arg1, arg2, arg3, arg4));
+        signal.Connections.ToHashSet().ForEach(conn => conn.Delegate.Invoke(arg1, arg2, arg3, arg4));
     }
 
     #endregion

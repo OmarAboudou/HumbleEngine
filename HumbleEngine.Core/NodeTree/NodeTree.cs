@@ -23,7 +23,7 @@ namespace HumbleEngine.Core;
 ///     <description>Prefix — parent before children</description>
 ///   </item>
 ///   <item>
-///     <term><see cref="Node.OnReady"/></term>
+///     <term><see cref="Node.Ready"/></term>
 ///     <description>Reverse prefix — children before parent</description>
 ///   </item>
 ///   <item>
@@ -101,8 +101,8 @@ public class NodeTree
     /// Proceeds in three passes:
     /// <list type="number">
     ///   <item><description>Sets <see cref="Node.Tree"/> on all nodes in prefix order.</description></item>
-    ///   <item><description>Calls <see cref="Node.TreeEntered"/> on all nodes in prefix order (parent before children).</description></item>
-    ///   <item><description>Calls <see cref="Node.OnReady"/> on all nodes in reverse prefix order (children before parent).</description></item>
+    ///   <item><description>Calls <see cref="Node.TreeEntered"/> and emits <see cref="Node.OnTreeEntered"/> on all nodes in prefix order (parent before children).</description></item>
+    ///   <item><description>Calls <see cref="Node.Ready"/> and emits <see cref="Node.OnReady"/> on all nodes in reverse prefix order (children before parent).</description></item>
     /// </list>
     /// </summary>
     /// <param name="root">The root of the subtree to register.</param>
@@ -128,8 +128,8 @@ public class NodeTree
     /// Unregisters all nodes in <paramref name="root"/>'s subtree from this tree.
     /// Proceeds in three passes:
     /// <list type="number">
-    ///   <item><description>Calls <see cref="Node.Unready"/> on all nodes in prefix order (parent before children).</description></item>
-    ///   <item><description>Calls <see cref="Node.TreeExiting"/> on all nodes in reverse prefix order (children before parent).</description></item>
+    ///   <item><description>Calls <see cref="Node.Unready"/> and emits <see cref="Node.OnUnready"/> on all nodes in prefix order (parent before children).</description></item>
+    ///   <item><description>Calls <see cref="Node.TreeExiting"/> and emits <see cref="Node.OnTreeExiting"/> on all nodes in reverse prefix order (children before parent).</description></item>
     ///   <item><description>Sets <see cref="Node.Tree"/> to <c>null</c> on all nodes in reverse prefix order.</description></item>
     /// </list>
     /// </summary>

@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace HumbleEngine.Core;
 
 /// <summary>
@@ -24,18 +26,22 @@ public class SignalBase<TDelegate, TSelf>
     public readonly object Owner;
     /// <summary>The name of this signal, used in logging and tooling.</summary>
     public readonly string Name;
-    private readonly SignalParameterDefinition[] _parameters;
+    private readonly Type[] _parameterTypes;
+    private readonly string[] _parameterNames;
+
     /// <summary>The parameter definitions describing the signal's arguments.</summary>
-    public IReadOnlyList<SignalParameterDefinition> Parameters => _parameters.AsReadOnly();
+    public (Type type, String name)[] Parameters => _parameterTypes.Zip(_parameterNames).ToArray();
+
     internal readonly HashSet<SignalConnection<TDelegate>> Connections = [];
 
-    internal SignalBase(object owner, string name, params (Type, string?)[] parameters)
+    internal SignalBase(object owner, string name, params (Type, string)[] parameters)
     {
         Owner = owner ?? throw new ArgumentNullException(nameof(owner));
         Name = name ?? throw new ArgumentNullException(nameof(name));
         ArgumentNullException.ThrowIfNull(parameters);
-
-        _parameters = parameters.Select((param, index) => (SignalParameterDefinition)(param.Item1, param.Item2 ?? $"arg{index}") ).ToArray();
+    
+        _parameterTypes = parameters.Select(x => x.Item1).ToArray();
+        _parameterNames = parameters.Select(x => x.Item2).ToArray();
     }
 
     /// <summary>Connects <paramref name="delegate"/> to this signal. Equivalent to <see cref="Connect"/>.</summary>
@@ -93,7 +99,30 @@ public class SignalBase<TDelegate, TSelf>
     /// <param name="delegate">The delegate to disconnect.</param>
     public void Disconnect(TDelegate @delegate) => Disconnect(new SignalConnection<TDelegate>(@delegate));
 
-    public override string ToString() => $"Signal : {Owner}.{Name}({String.Join(", ",_parameters)})";
+    public override string ToString()
+    {
+        StringBuilder sb = new();
+        sb.Append("Signal:");
+        sb.Append(Owner);
+        sb.Append('.');
+        sb.Append(Name);
+        sb.Append('(');
+        var parameters = Parameters;
+        parameters.ForEach(p =>
+        {
+            sb.Append(p.type);
+            sb.Append(' ');
+            sb.Append(p.name);
+            sb.Append(',');
+        });
+        if (parameters.Length > 0)
+        {
+            // Remove the last ','
+            sb.Remove(sb.Length - 1, 1);
+        }
+        sb.Append(')');
+        return sb.ToString();
+    }
 }
 
 /// <summary>A signal with no parameters.</summary>
@@ -138,5 +167,5 @@ public sealed class Signal<T1, T2, T3> : SignalBase<Action<T1, T2, T3>, Signal<T
 /// <typeparam name="T4">The type of the fourth parameter.</typeparam>
 public sealed class Signal<T1, T2, T3, T4> : SignalBase<Action<T1, T2, T3, T4>, Signal<T1, T2, T3, T4>>
 {
-    internal Signal(object owner, string name, params (Type, string?)[] parameters) : base(owner, name, parameters){}
+    internal Signal(object owner, string name, params (Type, string)[] parameters) : base(owner, name, parameters){}
 }
