@@ -137,7 +137,7 @@ public sealed class Signal : SignalBase<Action, Signal>
 /// <typeparam name="T1">The type of the first parameter.</typeparam>
 public sealed class Signal<T1> : SignalBase<Action<T1>, Signal<T1>>
 {
-    internal Signal(object owner, string name, params (Type, string?)[] parameters) : base(owner, name, parameters){}
+    internal Signal(object owner, string name, params (Type, string)[] parameters) : base(owner, name, parameters){}
 }
 
 /// <summary>A signal with two parameters.</summary>
@@ -146,7 +146,7 @@ public sealed class Signal<T1> : SignalBase<Action<T1>, Signal<T1>>
 /// <typeparam name="T2">The type of the second parameter.</typeparam>
 public sealed class Signal<T1, T2> : SignalBase<Action<T1, T2>, Signal<T1, T2>>
 {
-    internal Signal(object owner, string name, params (Type, string?)[] parameters) : base(owner, name, parameters){}
+    internal Signal(object owner, string name, params (Type, string)[] parameters) : base(owner, name, parameters){}
 }
 
 /// <summary>A signal with three parameters.</summary>
@@ -156,7 +156,7 @@ public sealed class Signal<T1, T2> : SignalBase<Action<T1, T2>, Signal<T1, T2>>
 /// <typeparam name="T3">The type of the third parameter.</typeparam>
 public sealed class Signal<T1, T2, T3> : SignalBase<Action<T1, T2, T3>, Signal<T1, T2, T3>>
 {
-    internal Signal(object owner, string name, params (Type, string?)[] parameters) : base(owner, name, parameters){}
+    internal Signal(object owner, string name, params (Type, string)[] parameters) : base(owner, name, parameters){}
 }
 
 /// <summary>A signal with four parameters.</summary>
