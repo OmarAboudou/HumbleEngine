@@ -44,13 +44,17 @@ public class NodeTree
     public Node Root { get; }
 
     /// <summary>Emitted when a node is registered into this tree.</summary>
-    public Signal<Node> OnNodeAdded { get; }
+    internal readonly EmittableSignal<Node> _onNodeAdded;
+    public Signal<Node> OnNodeAdded => _onNodeAdded.Signal;
     /// <summary>Emitted when a node is unregistered from this tree.</summary>
-    public Signal<Node> OnNodeRemoved { get; }
+    internal readonly EmittableSignal<Node> _onNodeRemoved;
+    public Signal<Node> OnNodeRemoved => _onNodeRemoved.Signal;
     /// <summary>Emitted when a node in this tree is renamed.</summary>
-    public Signal<Node, string> OnNodeRenamed { get; }
+    private readonly EmittableSignal<Node, string> _onNodeRenamed;
+    public Signal<Node, string> OnNodeRenamed => _onNodeRenamed.Signal;
     /// <summary>Emitted when any structural or naming change occurs in this tree.</summary>
-    public Signal OnTreeChanged { get; }
+    internal readonly EmittableSignal _onTreeChanged;
+    public Signal OnTreeChanged => _onTreeChanged.Signal;
 
     private readonly Dictionary<Node, SignalConnection<Action<string>>> _renameConnections = new();
 
@@ -65,10 +69,10 @@ public class NodeTree
         if (root.Parent != null)
             throw new ArgumentException($"The node {root} cannot be the root of a tree because it already has a parent.", nameof(root));
 
-        OnNodeAdded = this.CreateSignal<Node>(nameof(OnNodeAdded), "node");
-        OnNodeRemoved = this.CreateSignal<Node>(nameof(OnNodeRemoved), "node");
-        OnNodeRenamed = this.CreateSignal<Node, string>(nameof(OnNodeRenamed), "node", "name");
-        OnTreeChanged = this.CreateSignal(nameof(OnTreeChanged));
+        _onNodeAdded = this.CreateSignal<Node>(nameof(OnNodeAdded), "node");
+        _onNodeRemoved = this.CreateSignal<Node>(nameof(OnNodeRemoved), "node");
+        _onNodeRenamed = this.CreateSignal<Node, string>(nameof(OnNodeRenamed), "node", "name");
+        _onTreeChanged = this.CreateSignal(nameof(OnTreeChanged));
 
         Root = root;
         RegisterSubtree(Root);
@@ -129,19 +133,19 @@ public class NodeTree
             node.Tree = this;
             _renameConnections[node] = node.OnRenamed.Connect(name =>
             {
-                this.Emit(OnNodeRenamed, node, name);
-                this.Emit(OnTreeChanged);
+                _onNodeRenamed.Emit(node, name);
+                _onTreeChanged.Emit();
             });
         });
         root.GetSubtreeInPrefixOrder().ForEach(node =>
         {
             node.TreeEntered();
-            node.Emit(node.OnTreeEntered);
+            node._onTreeEntered.Emit();
         });
         root.GetSubtreeInReversePrefixOrder().ForEach(node =>
         {
             node.Ready();
-            node.Emit(node.OnReady);
+            node._onReady.Emit();
         });
     }
 
@@ -160,12 +164,12 @@ public class NodeTree
         root.GetSubtreeInPrefixOrder().ForEach(node =>
         {
             node.Unready();
-            node.Emit(node.OnUnready);
+            node._onUnready.Emit();
         });
         root.GetSubtreeInReversePrefixOrder().ForEach(node =>
         {
             node.TreeExiting();
-            node.Emit(node.OnTreeExiting);
+            node._onTreeExiting.Emit();
         });
         root.GetSubtreeInReversePrefixOrder().ForEach(node =>
         {

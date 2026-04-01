@@ -18,14 +18,14 @@ namespace HumbleEngine.Core;
 /// </remarks>
 /// <typeparam name="TDelegate">The delegate type defining the signal's signature.</typeparam>
 /// <typeparam name="TSelf">The concrete subtype, used to preserve the return type of operators.</typeparam>
-public class SignalBase<TDelegate, TSelf>
+public abstract class SignalBase<TDelegate, TSelf> : ISignalBase<TDelegate, TSelf>
     where TDelegate : Delegate
     where TSelf : SignalBase<TDelegate, TSelf>
 {
     /// <summary>The object that owns and is allowed to emit this signal.</summary>
-    public readonly object Owner;
+    public object Owner { get; }
     /// <summary>The name of this signal, used in logging and tooling.</summary>
-    public readonly string Name;
+    public string Name { get; }
     private readonly (Type type, string name)[] _parameters;
 
     /// <summary>The parameter definitions describing the signal's arguments.</summary>
@@ -40,22 +40,6 @@ public class SignalBase<TDelegate, TSelf>
         ArgumentNullException.ThrowIfNull(parameters);
     
         _parameters = parameters;
-    }
-
-    /// <summary>Connects <paramref name="delegate"/> to this signal. Equivalent to <see cref="Connect"/>.</summary>
-    /// <remarks>Only supports named methods. For lambdas, use <see cref="Connect"/> and store the returned <see cref="SignalConnection{TDelegate}"/>.</remarks>
-    public static TSelf operator +(SignalBase<TDelegate, TSelf> signal, TDelegate @delegate)
-    {
-        signal.Connect(@delegate);
-        return (TSelf)signal;
-    }
-
-    /// <summary>Disconnects <paramref name="delegate"/> from this signal. Equivalent to <see cref="Disconnect(TDelegate)"/>.</summary>
-    /// <remarks>Only supports named methods. For lambdas, use <see cref="Disconnect(SignalConnection{TDelegate})"/> with a stored connection.</remarks>
-    public static TSelf operator -(SignalBase<TDelegate, TSelf> signal, TDelegate @delegate)
-    {
-        signal.Disconnect(@delegate);
-        return (TSelf)signal;
     }
 
     /// <summary>
