@@ -20,5 +20,7 @@ public record RemoveChildCommand(Node Parent, Node Child) : NodeTreeCommand
 
         tree.UnregisterSubtree(Child);
         Parent.RemoveChildRightAway(Child);
+        Child.GetSubtreeInPrefixOrder().ForEach(node => tree.Emit(tree.OnNodeRemoved, node));
+        tree.Emit(tree.OnTreeChanged);
     }
 }

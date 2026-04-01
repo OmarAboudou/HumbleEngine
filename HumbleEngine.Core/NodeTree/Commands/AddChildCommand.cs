@@ -18,5 +18,7 @@ public record AddChildCommand(Node Parent, Node Child) : NodeTreeCommand
 
         Parent.AddChildRightAway(Child);
         tree.RegisterSubtree(Child);
+        Child.GetSubtreeInPrefixOrder().ForEach(node => tree.Emit(tree.OnNodeAdded, node));
+        tree.Emit(tree.OnTreeChanged);
     }
 }
