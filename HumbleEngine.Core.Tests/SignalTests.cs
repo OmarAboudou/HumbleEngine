@@ -6,11 +6,11 @@ public class SignalTests
     [Test]
     public void Emit_InvokesConnectedDelegate()
     {
-        Signal signal = this.CreateSignal("OnEvent");
+        EmittableSignal signal = this.CreateSignal("OnEvent");
         bool called = false;
 
         signal.Connect(() => called = true);
-        this.Emit(signal);
+        signal.Emit();
 
         Assert.That(called, Is.True);
     }
@@ -18,12 +18,12 @@ public class SignalTests
     [Test]
     public void Emit_InvokesAllConnectedDelegates()
     {
-        Signal signal = this.CreateSignal("OnEvent");
+        EmittableSignal signal = this.CreateSignal("OnEvent");
         int callCount = 0;
 
         signal.Connect(() => callCount++);
         signal.Connect(() => callCount++);
-        this.Emit(signal);
+        signal.Emit();
 
         Assert.That(callCount, Is.EqualTo(2));
     }
@@ -31,29 +31,20 @@ public class SignalTests
     [Test]
     public void Emit_DoesNotInvokeDisconnectedDelegate()
     {
-        Signal signal = this.CreateSignal("OnEvent");
+        EmittableSignal signal = this.CreateSignal("OnEvent");
         bool called = false;
         var connection = signal.Connect(() => called = true);
 
         signal.Disconnect(connection);
-        this.Emit(signal);
+        signal.Emit();
 
         Assert.That(called, Is.False);
     }
 
     [Test]
-    public void Emit_ThrowsWhenCallerIsNotOwner()
-    {
-        Signal signal = this.CreateSignal("OnEvent");
-        object notOwner = new();
-
-        Assert.Throws<InvalidOperationException>(() => notOwner.Emit(signal));
-    }
-
-    [Test]
     public void Connect_ReturnsSameConnectionIfAlreadyConnected()
     {
-        Signal signal = this.CreateSignal("OnEvent");
+        EmittableSignal signal = this.CreateSignal("OnEvent");
         Action handler = () => { };
 
         var first = signal.Connect(handler);
@@ -65,13 +56,13 @@ public class SignalTests
     [Test]
     public void Connect_DuplicateDoesNotAddConnection()
     {
-        Signal signal = this.CreateSignal("OnEvent");
+        EmittableSignal signal = this.CreateSignal("OnEvent");
         int callCount = 0;
         Action handler = () => callCount++;
 
         signal.Connect(handler);
         signal.Connect(handler);
-        this.Emit(signal);
+        signal.Emit();
 
         Assert.That(callCount, Is.EqualTo(1));
     }
@@ -79,11 +70,11 @@ public class SignalTests
     [Test]
     public void Emit_PassesArgumentToDelegate()
     {
-        Signal<int> signal = this.CreateSignal<int>("OnHit", "damage");
+        EmittableSignal<int> signal = this.CreateSignal<int>("OnHit", "damage");
         int received = 0;
 
         signal.Connect(damage => received = damage);
-        this.Emit(signal, 42);
+        signal.Emit(42);
 
         Assert.That(received, Is.EqualTo(42));
     }
@@ -91,12 +82,12 @@ public class SignalTests
     [Test]
     public void Emit_PassesBothArgumentsToDelegates()
     {
-        Signal<int, string> signal = this.CreateSignal<int, string>("OnHit", "damage", "source");
+        EmittableSignal<int, string> signal = this.CreateSignal<int, string>("OnHit", "damage", "source");
         int receivedDamage = 0;
         string receivedSource = "";
 
         signal.Connect((damage, source) => { receivedDamage = damage; receivedSource = source; });
-        this.Emit(signal, 42, "fire");
+        signal.Emit(42, "fire");
 
         Assert.That(receivedDamage, Is.EqualTo(42));
         Assert.That(receivedSource, Is.EqualTo("fire"));
@@ -105,13 +96,13 @@ public class SignalTests
     [Test]
     public void Disconnect_ByDelegate_RemovesConnection()
     {
-        Signal signal = this.CreateSignal("OnEvent");
+        EmittableSignal signal = this.CreateSignal("OnEvent");
         bool called = false;
         Action handler = () => called = true;
 
         signal.Connect(handler);
         signal.Disconnect(handler);
-        this.Emit(signal);
+        signal.Emit();
 
         Assert.That(called, Is.False);
     }

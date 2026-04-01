@@ -41,11 +41,12 @@ public class Node
         set
         {
             _name = value;
-            this.Emit(OnRenamed, value);
+            _onRenamed.Emit(value);
         }
     }
 
-    public Signal<string> OnRenamed { get; }
+    private readonly EmittableSignal<string> _onRenamed;
+    public Signal<string> OnRenamed => _onRenamed.Signal;
 
     /// <summary>
     /// Creates a new node. <see cref="Name"/> is initialized to the node's class name.
@@ -53,19 +54,20 @@ public class Node
     public Node()
     {
         _name = GetType().Name;
-        OnRenamed = this.CreateSignal<string>(nameof(OnRenamed), "name");
-        OnChildAdded = this.CreateSignal<Node>(nameof(OnChildAdded), "child");
-        OnChildRemoved = this.CreateSignal<Node>(nameof(OnChildRemoved), "child");
-        OnTreeEntered = this.CreateSignal(nameof(OnTreeEntered));
-        OnReady = this.CreateSignal(nameof(OnReady));
-        OnUnready = this.CreateSignal(nameof(OnUnready));
-        OnTreeExiting = this.CreateSignal(nameof(OnTreeExiting));
+        _onRenamed = this.CreateSignal<string>(nameof(OnRenamed), "name");
+        _onChildAdded = this.CreateSignal<Node>(nameof(OnChildAdded), "child");
+        _onChildRemoved = this.CreateSignal<Node>(nameof(OnChildRemoved), "child");
+        _onTreeEntered = this.CreateSignal(nameof(OnTreeEntered));
+        _onReady = this.CreateSignal(nameof(OnReady));
+        _onUnready = this.CreateSignal(nameof(OnUnready));
+        _onTreeExiting = this.CreateSignal(nameof(OnTreeExiting));
     }
 
     #region Tree Structure
 
     #region Adding a child
-    public Signal<Node> OnChildAdded { get; }
+    private readonly EmittableSignal<Node> _onChildAdded;
+    public Signal<Node> OnChildAdded => _onChildAdded.Signal;
 
     /// <summary>
     /// Adds a node as a child of this node.
@@ -147,14 +149,15 @@ public class Node
     {
         child.Parent = this;
         _children.Add(child);
-        this.Emit(OnChildAdded, child);
+        _onChildAdded.Emit(child);
     }    
 
     #endregion
 
     #region Removing a child
 
-    public Signal<Node> OnChildRemoved { get; }
+    private readonly EmittableSignal<Node> _onChildRemoved;
+    public Signal<Node> OnChildRemoved => _onChildRemoved.Signal;
     /// <summary>
     /// Removes a child node from this node.
     /// </summary>
@@ -234,7 +237,7 @@ public class Node
     {
         _children.Remove(child);
         child.Parent = null;
-        this.Emit(OnChildRemoved, child);
+        _onChildRemoved.Emit(child);
     }    
 
     #endregion
@@ -257,7 +260,8 @@ public class Node
 
     #region Entering
     
-    public Signal OnTreeEntered { get; }
+    internal readonly EmittableSignal _onTreeEntered;
+    public Signal OnTreeEntered => _onTreeEntered.Signal;
     
     /// <summary>
     /// Called when this node enters a <see cref="NodeTree"/>, before its children have entered.
@@ -274,7 +278,8 @@ public class Node
 
     #region Readying
 
-    public Signal OnReady { get; }
+    internal readonly EmittableSignal _onReady;
+    public Signal OnReady => _onReady.Signal;
 
     /// <summary>
     /// Called after this node and all of its children have entered the tree and received
@@ -292,7 +297,8 @@ public class Node
 
     #region Unreadying
 
-    public Signal OnUnready { get; }
+    internal readonly EmittableSignal _onUnready;
+    public Signal OnUnready => _onUnready.Signal;
     
     /// <summary>
     /// Called when this node is about to leave its <see cref="NodeTree"/>, before its children
@@ -310,7 +316,8 @@ public class Node
 
     #region Exiting
     
-    public Signal OnTreeExiting { get; }
+    internal readonly EmittableSignal _onTreeExiting;
+    public Signal OnTreeExiting => _onTreeExiting.Signal;
     
     /// <summary>
     /// Called when this node is about to leave its <see cref="NodeTree"/>, after all of its
