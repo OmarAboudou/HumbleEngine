@@ -29,13 +29,12 @@ public class Node
     public IReadOnlyList<Node> Children => _children;
     private List<Node> _children = [];
 
+    private string _name;
+
     /// <summary>
     /// The name of this node. Used for identification in logs and debug tools.
     /// Defaults to the class name of the node (e.g. <c>"Player"</c> for a <c>Player</c> node).
     /// </summary>
-    private string _name;
-
-    /// <inheritdoc cref="_name"/>>
     public string Name
     {
         get => _name;
@@ -53,7 +52,7 @@ public class Node
     /// </summary>
     public Node()
     {
-        Name = GetType().Name;
+        _name = GetType().Name;
         OnRenamed = this.CreateSignal<string>(nameof(OnRenamed), "name");
         OnChildAdded = this.CreateSignal<Node>(nameof(OnChildAdded), "child");
         OnChildRemoved = this.CreateSignal<Node>(nameof(OnChildRemoved), "child");
