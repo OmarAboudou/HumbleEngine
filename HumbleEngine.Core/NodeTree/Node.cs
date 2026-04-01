@@ -1,5 +1,3 @@
-using System.Runtime.CompilerServices;
-
 namespace HumbleEngine.Core;
 
 /// <summary>
@@ -36,15 +34,17 @@ public class Node
     /// Defaults to the class name of the node (e.g. <c>"Player"</c> for a <c>Player</c> node).
     /// </summary>
     public string Name { get; set; }
+    public Signal<string> OnRenamed { get; }
 
     /// <summary>
     /// Creates a new node. <see cref="Name"/> is initialized to the node's class name.
     /// </summary>
-    public Node(Signal<double> processed)
+    public Node()
     {
         Name = GetType().Name;
-        ChildAdded = this.CreateSignal<Node>(nameof(ChildAdded), "child");
-        ChildRemoved = this.CreateSignal<Node>(nameof(ChildRemoved), "child");
+        OnRenamed = this.CreateSignal<string>(nameof(OnRenamed), "name");
+        OnChildAdded = this.CreateSignal<Node>(nameof(OnChildAdded), "child");
+        OnChildRemoved = this.CreateSignal<Node>(nameof(OnChildRemoved), "child");
         OnTreeEntered = this.CreateSignal(nameof(OnTreeEntered));
         OnReady = this.CreateSignal(nameof(OnReady));
         OnUnready = this.CreateSignal(nameof(OnUnready));
@@ -54,7 +54,7 @@ public class Node
     #region Tree Structure
 
     #region Adding a child
-    public Signal<Node> ChildAdded { get; }
+    public Signal<Node> OnChildAdded { get; }
 
     /// <summary>
     /// Adds a node as a child of this node.
@@ -136,14 +136,14 @@ public class Node
     {
         child.Parent = this;
         _children.Add(child);
-        this.Emit(ChildAdded, child);
+        this.Emit(OnChildAdded, child);
     }    
 
     #endregion
 
     #region Removing a child
 
-    public Signal<Node> ChildRemoved { get; }
+    public Signal<Node> OnChildRemoved { get; }
     /// <summary>
     /// Removes a child node from this node.
     /// </summary>
@@ -223,7 +223,7 @@ public class Node
     {
         _children.Remove(child);
         child.Parent = null;
-        this.Emit(ChildRemoved, child);
+        this.Emit(OnChildRemoved, child);
     }    
 
     #endregion
