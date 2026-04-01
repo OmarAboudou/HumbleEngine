@@ -301,4 +301,74 @@ public class NodeTests
 
         Assert.That(result, Is.EqualTo(new[] { root, a, c, d, b }));
     }
+
+    [Test]
+    public void OnRenamed_EmittedWithNewName_WhenNameChanges()
+    {
+        var node = new Node();
+        string? received = null;
+        node.OnRenamed.Connect(name => received = name);
+
+        node.Name = "Player";
+
+        Assert.That(received, Is.EqualTo("Player"));
+    }
+
+    [Test]
+    public void OnChildAdded_EmittedWithChild_WhenChildAdded_Detached()
+    {
+        var parent = new Node();
+        var child = new Node();
+        Node? received = null;
+        parent.OnChildAdded.Connect(c => received = c);
+
+        parent.AddChild(child);
+
+        Assert.That(received, Is.EqualTo(child));
+    }
+
+    [Test]
+    public void OnChildRemoved_EmittedWithChild_WhenChildRemoved_Detached()
+    {
+        var parent = new Node();
+        var child = new Node();
+        parent.AddChild(child);
+        Node? received = null;
+        parent.OnChildRemoved.Connect(c => received = c);
+
+        parent.RemoveChild(child);
+
+        Assert.That(received, Is.EqualTo(child));
+    }
+
+    [Test]
+    public void OnChildAdded_EmittedWithChild_WhenChildAdded_InTree()
+    {
+        var root = new Node();
+        var tree = new NodeTree(root);
+        var child = new Node();
+        Node? received = null;
+        root.OnChildAdded.Connect(c => received = c);
+
+        root.AddChild(child);
+        tree.Process(0);
+
+        Assert.That(received, Is.EqualTo(child));
+    }
+
+    [Test]
+    public void OnChildRemoved_EmittedWithChild_WhenChildRemoved_InTree()
+    {
+        var root = new Node();
+        var child = new Node();
+        root.AddChild(child);
+        var tree = new NodeTree(root);
+        Node? received = null;
+        root.OnChildRemoved.Connect(c => received = c);
+
+        root.RemoveChild(child);
+        tree.Process(0);
+
+        Assert.That(received, Is.EqualTo(child));
+    }
 }

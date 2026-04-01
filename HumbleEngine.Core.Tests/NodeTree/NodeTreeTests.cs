@@ -249,6 +249,62 @@ public class NodeTreeTests
     }
 
     [Test]
+    public void OnTreeEntered_EmittedWhenNodeEntersTree()
+    {
+        var root = new Node();
+        bool called = false;
+        root.OnTreeEntered.Connect(() => called = true);
+
+        new NodeTree(root);
+
+        Assert.That(called, Is.True);
+    }
+
+    [Test]
+    public void OnReady_EmittedWhenNodeIsReady()
+    {
+        var root = new Node();
+        bool called = false;
+        root.OnReady.Connect(() => called = true);
+
+        new NodeTree(root);
+
+        Assert.That(called, Is.True);
+    }
+
+    [Test]
+    public void OnUnready_EmittedWhenNodeIsUnreadied()
+    {
+        var root = new Node();
+        var child = new Node();
+        root.AddChild(child);
+        var tree = new NodeTree(root);
+        bool called = false;
+        child.OnUnready.Connect(() => called = true);
+
+        root.RemoveChild(child);
+        tree.Process(0);
+
+        Assert.That(called, Is.True);
+    }
+
+    [Test]
+    public void OnTreeExiting_EmittedWhenNodeExitsTree()
+    {
+        var root = new Node();
+        var child = new Node();
+        root.AddChild(child);
+        var tree = new NodeTree(root);
+        bool called = false;
+        child.OnTreeExiting.Connect(() => called = true);
+
+        root.RemoveChild(child);
+        tree.Process(0);
+
+        Assert.That(called, Is.True);
+    }
+
+    [Test]
     public void Process_CommandsQueuedDuringFlush_AreNotExecutedInSameFlush()
     {
         var grandChild = new Node();
