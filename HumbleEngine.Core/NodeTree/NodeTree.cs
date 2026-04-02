@@ -43,21 +43,6 @@ public class NodeTree
     /// </summary>
     public Node Root { get; }
 
-    /// <summary>Emitted when a node is registered into this tree.</summary>
-    internal readonly EmittableSignal<Node> _onNodeAdded;
-    public Signal<Node> OnNodeAdded => _onNodeAdded.Signal;
-    /// <summary>Emitted when a node is unregistered from this tree.</summary>
-    internal readonly EmittableSignal<Node> _onNodeRemoved;
-    public Signal<Node> OnNodeRemoved => _onNodeRemoved.Signal;
-    /// <summary>Emitted when a node in this tree is renamed.</summary>
-    private readonly EmittableSignal<Node, string> _onNodeRenamed;
-    public Signal<Node, string> OnNodeRenamed => _onNodeRenamed.Signal;
-    /// <summary>Emitted when any structural or naming change occurs in this tree.</summary>
-    internal readonly EmittableSignal _onTreeChanged;
-    public Signal OnTreeChanged => _onTreeChanged.Signal;
-
-    private readonly Dictionary<Node, SignalConnection<Action<string>>> _renameConnections = new();
-
     /// <summary>
     /// Creates a new <see cref="NodeTree"/> with the given root node.
     /// All nodes already present in the root's subtree are registered into the tree.
@@ -77,7 +62,29 @@ public class NodeTree
         Root = root;
         RegisterSubtree(Root);
     }
+
+    #region Signals
+
+    /// <summary>Emitted when a node is registered into this tree.</summary>
+    internal readonly EmittableSignal<Node> _onNodeAdded;
+    public Signal<Node> OnNodeAdded => _onNodeAdded.Signal;
     
+    /// <summary>Emitted when a node is unregistered from this tree.</summary>
+    internal readonly EmittableSignal<Node> _onNodeRemoved;
+    public Signal<Node> OnNodeRemoved => _onNodeRemoved.Signal;
+
+    /// <summary>Emitted when a node in this tree is renamed.</summary>
+    private readonly EmittableSignal<Node, string> _onNodeRenamed;
+    public Signal<Node, string> OnNodeRenamed => _onNodeRenamed.Signal;
+    
+    /// <summary>Emitted when any structural or naming change occurs in this tree.</summary>
+    internal readonly EmittableSignal _onTreeChanged;
+    public Signal OnTreeChanged => _onTreeChanged.Signal;
+
+    private readonly Dictionary<Node, SignalConnection<Action<string>>> _renameConnections = new();
+
+    #endregion
+
     #region Node Tree Commands
 
     private readonly Queue<NodeTreeCommand> _commands = new();
