@@ -31,16 +31,18 @@ public abstract class SignalBase<TDelegate, TSelf> : ISignalBase<TDelegate, TSel
     /// <summary>The parameter definitions describing the signal's arguments.</summary>
     public IReadOnlyList<(Type type, String name)> Parameters => _parameters.AsReadOnly();
 
-    internal readonly HashSet<SignalConnection<TDelegate>> Connections = [];
-
     internal SignalBase(object owner, string name, params (Type, string)[] parameters)
     {
         Owner = owner ?? throw new ArgumentNullException(nameof(owner));
         Name = name ?? throw new ArgumentNullException(nameof(name));
         ArgumentNullException.ThrowIfNull(parameters);
-    
+
         _parameters = parameters;
     }
+
+    #region Connection Management
+
+    internal readonly HashSet<SignalConnection<TDelegate>> Connections = [];
 
     /// <summary>
     /// Connects a delegate to this signal.
@@ -81,6 +83,10 @@ public abstract class SignalBase<TDelegate, TSelf> : ISignalBase<TDelegate, TSel
     /// <param name="delegate">The delegate to disconnect.</param>
     public void Disconnect(TDelegate @delegate) => Disconnect(new SignalConnection<TDelegate>(@delegate));
 
+    #endregion
+
+    #region Utils
+
     public override string ToString()
     {
         StringBuilder sb = new();
@@ -104,6 +110,9 @@ public abstract class SignalBase<TDelegate, TSelf> : ISignalBase<TDelegate, TSel
         sb.Append(')');
         return sb.ToString();
     }
+
+    #endregion
+
 }
 
 /// <summary>A signal with no parameters.</summary>

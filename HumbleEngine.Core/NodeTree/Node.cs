@@ -14,20 +14,21 @@ namespace HumbleEngine.Core;
 public class Node
 {
     /// <summary>
-    /// The parent of this node in the tree hierarchy, or <c>null</c> if this node is a root or detached.
+    /// Creates a new node. <see cref="Name"/> is initialized to the node's class name.
     /// </summary>
-    public Node? Parent { get; private set; }
+    public Node()
+    {
+        _name = GetType().Name;
+        _onRenamed = this.CreateSignal<string>(nameof(OnRenamed), "name");
+        _onChildAdded = this.CreateSignal<Node>(nameof(OnChildAdded), "child");
+        _onChildRemoved = this.CreateSignal<Node>(nameof(OnChildRemoved), "child");
+        _onTreeEntered = this.CreateSignal(nameof(OnTreeEntered));
+        _onReady = this.CreateSignal(nameof(OnReady));
+        _onUnready = this.CreateSignal(nameof(OnUnready));
+        _onTreeExiting = this.CreateSignal(nameof(OnTreeExiting));
+    }
 
-    /// <summary>
-    /// The <see cref="NodeTree"/> this node belongs to, or <c>null</c> if the node is not part of any tree.
-    /// </summary>
-    public NodeTree? Tree { get; internal set; }
-
-    /// <summary>
-    /// A read-only view of this node's children, in insertion order.
-    /// </summary>
-    public IReadOnlyList<Node> Children => _children;
-    private List<Node> _children = [];
+    #region Naming
 
     private string _name;
 
@@ -48,22 +49,25 @@ public class Node
     private readonly EmittableSignal<string> _onRenamed;
     public Signal<string> OnRenamed => _onRenamed.Signal;
 
-    /// <summary>
-    /// Creates a new node. <see cref="Name"/> is initialized to the node's class name.
-    /// </summary>
-    public Node()
-    {
-        _name = GetType().Name;
-        _onRenamed = this.CreateSignal<string>(nameof(OnRenamed), "name");
-        _onChildAdded = this.CreateSignal<Node>(nameof(OnChildAdded), "child");
-        _onChildRemoved = this.CreateSignal<Node>(nameof(OnChildRemoved), "child");
-        _onTreeEntered = this.CreateSignal(nameof(OnTreeEntered));
-        _onReady = this.CreateSignal(nameof(OnReady));
-        _onUnready = this.CreateSignal(nameof(OnUnready));
-        _onTreeExiting = this.CreateSignal(nameof(OnTreeExiting));
-    }
+    #endregion
 
     #region Tree Structure
+
+    /// <summary>
+    /// The parent of this node in the tree hierarchy, or <c>null</c> if this node is a root or detached.
+    /// </summary>
+    public Node? Parent { get; private set; }
+
+    /// <summary>
+    /// The <see cref="NodeTree"/> this node belongs to, or <c>null</c> if the node is not part of any tree.
+    /// </summary>
+    public NodeTree? Tree { get; internal set; }
+
+    /// <summary>
+    /// A read-only view of this node's children, in insertion order.
+    /// </summary>
+    public IReadOnlyList<Node> Children => _children;
+    private List<Node> _children = [];
 
     #region Adding a child
     private readonly EmittableSignal<Node> _onChildAdded;
