@@ -3,7 +3,20 @@ namespace HumbleEngine.Core;
 public record HumbleType
 {
     public Guid Id { get; }
-    public Type RuntimeType { get; private set; }
+    
+    private Type? _runtimeType;
+    public Type RuntimeType
+    {
+        get
+        {
+            _runtimeType ??= Resolve();
+            if(_runtimeType == null) 
+                throw new InvalidOperationException($"Could not resolve type for id {Id}");
+            
+            return _runtimeType;
+        }
+    }
+
     private readonly HumbleTypeRegistry _registry;
 
     public HumbleType(Guid id) : this(id, Services.HumbleTypeRegistry) { }
@@ -14,9 +27,5 @@ public record HumbleType
     }
 
     public Type Resolve() => Resolve(Services.HumbleTypeRegistry);
-    public Type Resolve(HumbleTypeRegistry registry)
-    {
-        RuntimeType = _registry.Resolve(Id);
-        return RuntimeType;
-    }
+    public Type Resolve(HumbleTypeRegistry registry) => registry.Resolve(Id);
 }
