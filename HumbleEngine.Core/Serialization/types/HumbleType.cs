@@ -1,6 +1,6 @@
 namespace HumbleEngine.Core;
 
-public record HumbleType
+public class HumbleType
 {
     public Guid Id { get; }
     
@@ -26,6 +26,6 @@ public record HumbleType
         _registry = registry;
     }
 
-    public Type Resolve() => Resolve(Services.HumbleTypeRegistry);
-    public Type Resolve(HumbleTypeRegistry registry) => registry.Resolve(Id);
+    public Type Resolve() => _registry.Resolve(Id);
+
 }

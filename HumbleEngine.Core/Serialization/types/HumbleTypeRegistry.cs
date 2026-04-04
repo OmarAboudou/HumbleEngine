@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Reflection;
 
 namespace HumbleEngine.Core;
@@ -28,16 +27,9 @@ public class HumbleTypeRegistry
 
     public void Register(Assembly assembly)
     {
-        foreach (Type type in assembly.GetTypes())
+        foreach (Type type in assembly.GetTypes().Where(t => t.GetCustomAttribute<HumbleTypeAttribute>() != null))
         {
-            try
-            {
-                Register(type);
-            }
-            catch (InvalidOperationException e)
-            {
-                Services.Logger.Error<HumbleTypeChannel>($"The type {type} from the assembly {assembly.FullName} cannot be registered.");
-            }
+            Register(type);
         }
     }
     
