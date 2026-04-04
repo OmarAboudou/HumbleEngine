@@ -11,14 +11,12 @@ public class HumbleTypeRegistry
         HumbleTypeAttribute? attribute = type.GetCustomAttribute<HumbleTypeAttribute>();
         if (attribute == null)
         {
-            Services.Logger.Error<HumbleTypeChannel>($"The type {type} has no HumbleType attribute.");
             throw new InvalidOperationException($"The type {type} has no HumbleType attribute.");
         }
         
         Guid id = Guid.Parse(attribute.Id);
         if(!_types.TryAdd(id, type))
         {
-            Services.Logger.Error<HumbleTypeChannel>($"A type with id {id} has already been registered.");
             throw new InvalidOperationException($"A type with id {id} has already been registered.");
         }
         
