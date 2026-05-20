@@ -29,26 +29,26 @@ Tour 1 (Vulgarisation) → Tour 2 (Intermédiaire) → Tour 3 (Technique) → Sy
 
 | # | Système | Philosophie | Statut |
 |---|---------|------------|--------|
-| 1 | **HTML + CSS** | Arborescence déclarative + règles de style séparées | ⬜ À faire |
-| 2 | **WPF / XAML** | Version native Microsoft de HTML+CSS, en C# | ⬜ À faire |
-| 3 | **Flutter** | Tout est Widget, rendu pixel par pixel (inspiré de React) | ⬜ À faire |
-| 4 | **Qt** | Signals & Slots, layouts cross-platform, très influent | ⬜ À faire |
+| 1 | **HTML + CSS** | Arborescence déclarative + règles de style séparées | ✅ Tour 1 terminé |
+| 2 | **WPF / XAML** | Version native Microsoft de HTML+CSS, en C# | ✅ Tour 1 terminé |
+| 3 | **Flutter** | Tout est Widget, rendu pixel par pixel (inspiré de React) | ✅ Tour 1 terminé |
+| 4 | **Qt** | Signals & Slots, layouts cross-platform, très influent | ✅ Tour 1 terminé |
 
 ---
 
 ## Progression par tours
 
-### 🔄 Tour 1 — Vulgarisation
+### ✅ Tour 1 — Vulgarisation
 *Comprendre les grandes idées de chaque système sans entrer dans les détails.*
 
 - [x] Axe 1 — Godot (vulgarisation) ✅
 - [x] Axe 1 — Unity (vulgarisation) ✅
 - [x] Axe 1 — Unreal (vulgarisation) ✅
 - [x] Axe 1 — Bevy (vulgarisation) ✅
-- [ ] Axe 2 — HTML + CSS (vulgarisation)
-- [ ] Axe 2 — WPF / XAML (vulgarisation)
-- [ ] Axe 2 — Flutter (vulgarisation)
-- [ ] Axe 2 — Qt (vulgarisation)
+- [x] Axe 2 — HTML + CSS (vulgarisation) ✅
+- [x] Axe 2 — WPF / XAML (vulgarisation) ✅
+- [x] Axe 2 — Flutter (vulgarisation) ✅
+- [x] Axe 2 — Qt (vulgarisation) ✅
 
 ### 🔄 Tour 2 — Intermédiaire
 *Approfondir les concepts clés, la terminologie exacte et les patterns.*
