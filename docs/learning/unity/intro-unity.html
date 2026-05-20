@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trace — Introduction vulgarisée au fonctionnement de Unity</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1e293b;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-2: #22c55e;
+      --border: rgba(148, 163, 184, 0.25);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: radial-gradient(circle at top, #1e293b 0, var(--bg) 45%);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    header {
+      padding: 64px 24px 40px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    header h1 {
+      margin: 0 0 16px;
+      font-size: clamp(2rem, 5vw, 4rem);
+    }
+
+    header p {
+      max-width: 900px;
+      margin: 0 auto;
+      color: var(--muted);
+      font-size: 1.1rem;
+    }
+
+    main {
+      width: min(1100px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 80px;
+    }
+
+    section {
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(8px);
+    }
+
+    h2 { color: var(--accent); margin-top: 0; }
+    h3 { color: var(--accent-2); }
+
+    pre {
+      background: #020617;
+      padding: 16px;
+      border-radius: 12px;
+      overflow-x: auto;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    code { color: #cbd5e1; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 12px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--accent);
+      background: rgba(30, 41, 59, 0.8);
+    }
+
+    td { background: rgba(15, 23, 42, 0.45); }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Trace — Introduction vulgarisée au fonctionnement de Unity</h1>
+  <p>
+    Une vision simplifiée de l’architecture de Unity afin de comprendre comment un moteur de jeu orienté composants peut être construit en C#.
+  </p>
+</header>
+
+<main>
+  <section>
+    <h2>Vision globale</h2>
+    <p>
+      Unity peut être vu comme une grande machine qui organise des objets, leur ajoute des comportements, les met à jour et les affiche à l’écran.
+    </p>
+    <p>
+      L’idée la plus importante est simple : dans Unity, presque tout est un <strong>GameObject</strong> auquel on ajoute des <strong>Components</strong>.
+    </p>
+<pre><code>Unity
+├── Éditeur
+│   ├── Placer des objets
+│   ├── Régler des propriétés
+│   ├── Importer des ressources
+│   └── Lancer/tester le jeu
+└── Runtime
+    ├── Game loop
+    ├── Scripts C#
+    ├── Rendu
+    ├── Physique
+    ├── Audio
+    ├── UI
+    └── Animation</code></pre>
+  </section>
+
+  <section>
+    <h2>GameObject</h2>
+    <p>
+      Un <strong>GameObject</strong> est une chose présente dans une scène : joueur, caméra, lumière, ennemi, décor, bouton d’interface, projectile, etc.
+    </p>
+    <p>
+      Seul, un GameObject est presque vide. Il sert surtout de support auquel on accroche des composants.
+    </p>
+<pre><code>Player</code></pre>
+    <p>
+      À ce stade, <code>Player</code> existe, mais il ne sait pas encore s’afficher, bouger, tomber ou détecter des collisions.
+    </p>
+  </section>
+
+  <section>
+    <h2>Components</h2>
+    <p>
+      Les <strong>Components</strong> donnent des capacités au GameObject. Unity utilise donc surtout la composition : on construit un objet en assemblant des briques.
+    </p>
+
+    <table>
+      <thead><tr><th>Component</th><th>Rôle simplifié</th></tr></thead>
+      <tbody>
+        <tr><td><code>Transform</code></td><td>Position, rotation et taille de l’objet.</td></tr>
+        <tr><td><code>SpriteRenderer</code></td><td>Affiche une image 2D.</td></tr>
+        <tr><td><code>Rigidbody2D</code></td><td>Permet à la physique de déplacer l’objet.</td></tr>
+        <tr><td><code>Collider2D</code></td><td>Définit la zone de collision.</td></tr>
+        <tr><td><code>AudioSource</code></td><td>Joue un son.</td></tr>
+        <tr><td><code>Script C#</code></td><td>Ajoute une logique personnalisée.</td></tr>
+      </tbody>
+    </table>
+
+<pre><code>Player
+├── Transform
+├── SpriteRenderer
+├── Rigidbody2D
+├── BoxCollider2D
+└── PlayerController.cs</code></pre>
+    <p>
+      Ce modèle est important pour HumbleEngine : au lieu de créer une énorme hiérarchie d’héritage, on peut créer un objet simple puis lui ajouter des composants spécialisés.
+    </p>
+  </section>
+
+  <section>
+    <h2>Scene</h2>
+    <p>
+      Une <strong>Scene</strong> est une boîte qui contient les GameObjects d’un niveau, d’un menu ou d’un écran de jeu.
+    </p>
+<pre><code>Scene
+├── Main Camera
+├── Player
+├── Enemy
+├── Ground
+├── Light
+└── Canvas</code></pre>
+    <p>
+      La scène sauvegarde aussi les composants, les propriétés, la hiérarchie et les références entre objets.
+    </p>
+  </section>
+
+  <section>
+    <h2>Transform et hiérarchie</h2>
+    <p>
+      Chaque GameObject possède un <code>Transform</code>. Il indique où est l’objet, comment il est tourné et quelle est sa taille.
+    </p>
+<pre><code>Player
+└── Sword
+    └── Hitbox</code></pre>
+    <p>
+      Si le joueur bouge, l’épée suit. Cela vient du système de transformations parent/enfant : l’enfant possède une position locale relative au parent.
+    </p>
+  </section>
+
+  <section>
+    <h2>La boucle de jeu</h2>
+    <p>
+      Unity tourne en boucle tant que le jeu est lancé. À chaque frame, il lit les entrées, met à jour les scripts, simule la physique puis dessine l’image.
+    </p>
+<pre><code>while (running)
+{
+    Input();
+    UpdateScripts();
+    Physics();
+    Animation();
+    Render();
+    Present();
+}</code></pre>
+    <p>
+      Les scripts C# héritent souvent de <code>MonoBehaviour</code> et Unity appelle automatiquement certaines méthodes.
+    </p>
+<pre><code>public class PlayerController : MonoBehaviour
+{
+    void Start()
+    {
+        // Appelé au début
+    }
+
+    void Update()
+    {
+        // Appelé chaque frame
+    }
+}</code></pre>
+  </section>
+
+  <section>
+    <h2>Renderer</h2>
+    <p>
+      Le renderer transforme les objets du monde en pixels visibles à l’écran.
+    </p>
+<pre><code>GameObjects
+    ↓
+Components de rendu
+    ↓
+Caméra
+    ↓
+GPU
+    ↓
+Image affichée</code></pre>
+    <p>
+      Dans un moteur 2D simple en C#, cela correspondra d’abord à récupérer les sprites visibles, calculer leur position à l’écran, envoyer les données au GPU et afficher l’image finale.
+    </p>
+  </section>
+
+  <section>
+    <h2>Physique</h2>
+    <p>
+      Le système physique calcule les vitesses, la gravité, les collisions, les forces et les rebonds.
+    </p>
+<pre><code>Rigidbody2D + Collider2D
+        ↓
+Simulation physique
+        ↓
+Nouvelle position</code></pre>
+    <p>
+      La physique est un système séparé du rendu : un objet peut être simulé physiquement avant même d’être dessiné.
+    </p>
+  </section>
+
+  <section>
+    <h2>Assets et Prefabs</h2>
+    <p>
+      Les assets sont les ressources du jeu : images, sons, modèles, shaders, scènes, scripts, etc.
+    </p>
+    <p>
+      Un <strong>Prefab</strong> est un modèle réutilisable de GameObject. Par exemple, un ennemi complet peut être sauvegardé une fois puis instancié plusieurs fois.
+    </p>
+<pre><code>Enemy.prefab
+├── Transform
+├── SpriteRenderer
+├── Rigidbody2D
+├── Collider2D
+└── EnemyAI.cs</code></pre>
+    <p>
+      Pour HumbleEngine, cette idée mène directement à un système de ressources et de sérialisation.
+    </p>
+  </section>
+
+  <section>
+    <h2>Éditeur et runtime</h2>
+    <p>
+      Unity est à la fois un éditeur et un runtime. L’éditeur sert à fabriquer les données du jeu, le runtime sert à exécuter ces données.
+    </p>
+<pre><code>Editor
+  crée/modifie les scènes
+        ↓
+Fichiers de scène / prefabs / assets
+        ↓
+Runtime
+  exécute le jeu</code></pre>
+    <p>
+      Cette séparation sera importante pour ton moteur : il faudra d’abord un cœur exécutable, puis progressivement des outils d’édition.
+    </p>
+  </section>
+
+  <section>
+    <h2>Comparaison simplifiée avec Godot</h2>
+    <table>
+      <thead><tr><th>Godot</th><th>Unity</th></tr></thead>
+      <tbody>
+        <tr><td>Architecture centrée sur les Nodes.</td><td>Architecture centrée sur GameObject + Components.</td></tr>
+        <tr><td>Un Node a souvent un rôle spécialisé.</td><td>Un GameObject reçoit ses rôles via ses Components.</td></tr>
+        <tr><td>La scène est un arbre de Nodes.</td><td>La scène est une hiérarchie de GameObjects.</td></tr>
+        <tr><td>GDScript est très intégré, même si C# existe.</td><td>C# est central pour les scripts utilisateur.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Vers ton moteur C#</h2>
+    <p>
+      Les briques principales à reproduire, dans une version très simple, seront :
+    </p>
+    <ul>
+      <li><code>GameLoop</code> : boucle principale du moteur ;</li>
+      <li><code>Scene</code> : conteneur d’objets ;</li>
+      <li><code>GameObject</code> : entité vide ;</li>
+      <li><code>Component</code> : brique de comportement ;</li>
+      <li><code>Transform</code> : position, rotation, taille ;</li>
+      <li><code>Renderer2D</code> : affichage de sprites ;</li>
+      <li><code>Camera2D</code> : point de vue sur le monde ;</li>
+      <li><code>ResourceLoader</code> : chargement des ressources ;</li>
+      <li><code>Prefab</code> : sauvegarde et réutilisation d’objets ;</li>
+      <li><code>Editor</code> : interface pour inspecter et modifier la scène.</li>
+    </ul>
+<pre><code>HumbleEngine
+├── Runtime
+│   ├── GameLoop
+│   ├── Scene
+│   ├── GameObject
+│   ├── Component
+│   ├── Transform
+│   ├── Renderer2D
+│   └── ResourceLoader
+└── Editor
+    ├── Hierarchy
+    ├── Inspector
+    ├── SceneView
+    └── AssetBrowser</code></pre>
+  </section>
+</main>
+</body>
+</html>
