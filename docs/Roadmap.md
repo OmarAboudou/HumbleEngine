@@ -19,7 +19,7 @@ Tour 1 (Vulgarisation) → Tour 2 (Intermédiaire) → Tour 3 (Technique) → Sy
 | 1 | **Godot** | Node Tree | ✅ Tour 1 terminé |
 | 2 | **Unity** | GameObject + Components | ✅ Tour 1 terminé |
 | 3 | **Unreal** | Actor / Component hybride | ✅ Tour 1 terminé |
-| 4 | **Bevy** | ECS pur | ⬜ À faire |
+| 4 | **Bevy** | ECS pur | ✅ Tour 1 terminé |
 
 ---
 
@@ -44,7 +44,7 @@ Tour 1 (Vulgarisation) → Tour 2 (Intermédiaire) → Tour 3 (Technique) → Sy
 - [x] Axe 1 — Godot (vulgarisation) ✅
 - [x] Axe 1 — Unity (vulgarisation) ✅
 - [x] Axe 1 — Unreal (vulgarisation) ✅
-- [ ] Axe 1 — Bevy (vulgarisation)
+- [x] Axe 1 — Bevy (vulgarisation) ✅
 - [ ] Axe 2 — HTML + CSS (vulgarisation)
 - [ ] Axe 2 — WPF / XAML (vulgarisation)
 - [ ] Axe 2 — Flutter (vulgarisation)
