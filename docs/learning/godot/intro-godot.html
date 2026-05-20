@@ -1,1 +1,172 @@
-<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0; url=../../godot/intro-godot.html"></head><body></body></html>
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trace — Introduction vulgarisée au fonctionnement de Godot</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1e293b;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-2: #22c55e;
+      --border: rgba(148, 163, 184, 0.25);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: radial-gradient(circle at top, #1e293b 0, var(--bg) 45%);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    header {
+      padding: 64px 24px 40px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    header h1 {
+      margin: 0 0 16px;
+      font-size: clamp(2rem, 5vw, 4rem);
+    }
+
+    header p {
+      max-width: 900px;
+      margin: 0 auto;
+      color: var(--muted);
+      font-size: 1.1rem;
+    }
+
+    main {
+      width: min(1100px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 80px;
+    }
+
+    section {
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(8px);
+    }
+
+    h2 {
+      color: var(--accent);
+      margin-top: 0;
+    }
+
+    pre {
+      background: #020617;
+      padding: 16px;
+      border-radius: 12px;
+      overflow-x: auto;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    code {
+      color: #cbd5e1;
+    }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Trace — Introduction vulgarisée au fonctionnement de Godot</h1>
+  <p>
+    Une vision simplifiée de l’architecture de Godot afin de comprendre comment un moteur de jeu peut être construit.
+  </p>
+</header>
+
+<main>
+  <section>
+    <h2>Vision globale</h2>
+    <p>
+      Godot peut être vu comme une immense machine qui organise des objets, met à jour leur logique et les affiche à l’écran.
+    </p>
+  </section>
+
+  <section>
+    <h2>Le SceneTree</h2>
+<pre><code>MainScene
+├── Player
+│   ├── Sprite
+│   └── Collision
+├── Enemy
+├── Camera
+└── UI</code></pre>
+    <p>
+      Toute la scène est un arbre. Chaque élément du jeu est un nœud relié à un parent.
+    </p>
+  </section>
+
+  <section>
+    <h2>Le système de Node</h2>
+<pre><code>class Node
+{
+    List&lt;Node&gt; Children;
+    Node Parent;
+
+    virtual void Process(float delta)
+    {
+    }
+}</code></pre>
+    <p>
+      Tous les objets du moteur héritent plus ou moins de cette idée.
+    </p>
+  </section>
+
+  <section>
+    <h2>La boucle de jeu</h2>
+<pre><code>while (running)
+{
+    Input();
+    Update();
+    Physics();
+    Render();
+}</code></pre>
+    <p>
+      Le moteur répète cette boucle des dizaines de fois par seconde.
+    </p>
+  </section>
+
+  <section>
+    <h2>Le Renderer</h2>
+    <p>
+      Le renderer transforme les données du jeu en pixels visibles.
+    </p>
+  </section>
+
+  <section>
+    <h2>Les ressources</h2>
+    <p>
+      Les textures, shaders, scènes et sons sont chargés et partagés via un système de ressources.
+    </p>
+  </section>
+
+  <section>
+    <h2>Vers ton moteur C#</h2>
+    <p>
+      Les briques principales à reproduire seront :
+    </p>
+    <ul>
+      <li>Node</li>
+      <li>SceneTree</li>
+      <li>Viewport</li>
+      <li>Renderer2D</li>
+      <li>ResourceLoader</li>
+      <li>Editor</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>
