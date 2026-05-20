@@ -17,7 +17,7 @@ Tour 1 (Vulgarisation) → Tour 2 (Intermédiaire) → Tour 3 (Technique) → Sy
 | # | Moteur | Architecture | Statut |
 |---|--------|-------------|--------|
 | 1 | **Godot** | Node Tree | ✅ Tour 1 terminé |
-| 2 | **Unity** | GameObject + Components | ⬜ À faire |
+| 2 | **Unity** | GameObject + Components | ✅ Tour 1 terminé |
 | 3 | **Unreal** | Actor / Component hybride | ⬜ À faire |
 | 4 | **Bevy** | ECS pur | ⬜ À faire |
 
@@ -42,7 +42,7 @@ Tour 1 (Vulgarisation) → Tour 2 (Intermédiaire) → Tour 3 (Technique) → Sy
 *Comprendre les grandes idées de chaque système sans entrer dans les détails.*
 
 - [x] Axe 1 — Godot (vulgarisation) ✅
-- [ ] Axe 1 — Unity (vulgarisation)
+- [x] Axe 1 — Unity (vulgarisation) ✅
 - [ ] Axe 1 — Unreal (vulgarisation)
 - [ ] Axe 1 — Bevy (vulgarisation)
 - [ ] Axe 2 — HTML + CSS (vulgarisation)
