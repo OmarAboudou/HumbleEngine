@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HumbleEngine — Documentation</title>
+  <style>
+    :root { --bg:#0f172a; --panel:#111827; --text:#e5e7eb; --muted:#94a3b8; --accent:#38bdf8; --border:rgba(148,163,184,.25); }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:system-ui,sans-serif; background:radial-gradient(circle at top,#1e293b 0,var(--bg) 45%); color:var(--text); line-height:1.6; }
+    header { padding:72px 24px 40px; text-align:center; border-bottom:1px solid var(--border); }
+    header h1 { margin:0 0 16px; font-size:clamp(2.2rem,5vw,4rem); }
+    header p { max-width:850px; margin:0 auto; color:var(--muted); font-size:1.15rem; }
+    main { width:min(1050px,calc(100% - 32px)); margin:0 auto; padding:40px 0 80px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px; }
+    a.card { display:block; padding:28px; border:1px solid var(--border); border-radius:22px; background:rgba(17,24,39,.82); color:var(--text); text-decoration:none; box-shadow:0 20px 60px rgba(0,0,0,.22); }
+    a.card:hover { border-color:var(--accent); transform:translateY(-2px); }
+    .card h2 { margin-top:0; color:#f8fafc; }
+    .card p { color:var(--muted); }
+    .tag { display:inline-block; margin-bottom:10px; padding:4px 10px; border-radius:999px; background:var(--accent); color:#082f49; font-weight:700; font-size:.8rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>HumbleEngine</h1>
+    <p>Documentation du projet : traces d’apprentissage et documentation future du moteur de jeu C#.</p>
+  </header>
+  <main>
+    <div class="grid">
+      <a class="card" href="learning/">
+        <span class="tag">Apprentissage</span>
+        <h2>Traces pédagogiques</h2>
+        <p>Notes, explications vulgarisées, analogies et progression personnelle sur le fonctionnement des moteurs de jeu.</p>
+      </a>
+      <a class="card" href="engine/">
+        <span class="tag">Documentation moteur</span>
+        <h2>HumbleEngine</h2>
+        <p>Documentation officielle et stable du moteur : architecture, rendu, ressources, scènes, éditeur et exemples.</p>
+      </a>
+    </div>
+  </main>
+</body>
+</html>
