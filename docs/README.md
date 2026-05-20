@@ -1,12 +1,14 @@
-# HumbeEngine — Documentation d'apprentissage
+# HumbleEngine — Documentation d'apprentissage
 
-Cette branche `docs` contient les traces de mon apprentissage dans le cadre du projet **HumbeEngine**.
+Cette documentation contient les traces de mon apprentissage dans le cadre du projet **HumbleEngine**.
 
 ## Objectif du projet
 
 Acquérir suffisamment de connaissances sur les moteurs de jeu et les moteurs d'application pour concevoir et implémenter mon propre moteur en C#.
 
-**Scope initial visé** : un moteur centré sur un système de Control Nodes (similaire à Godot), extensible vers un moteur de jeu complet.
+**Scope initial visé** : un moteur capable de faire tourner des applications de type UI interactif (logiciels, interfaces graphiques). L'architecture exacte sera choisie après étude comparative des systèmes existants.
+
+**Ambition long terme** : extensible vers un moteur de jeu complet.
 
 ## Structure de la documentation
 
