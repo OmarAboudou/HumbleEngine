@@ -5,7 +5,7 @@
 L'apprentissage est structuré en **deux axes** étudiés en parallèle, selon une **approche en spirale** : chaque axe est d'abord couvert en vulgarisation, puis revisité avec une précision croissante.
 
 ```
-Tour 1 (Vulgarisation) → Tour 2 (Intermédiaire) → Tour 3 (Technique) → Synthèse
+Tour 1 (Vulgarisation) → Tour 2 (Intermédiaire) → Tour 3 (Technique) → Synthèse ✅
 ```
 
 ---
@@ -39,48 +39,54 @@ Tour 1 (Vulgarisation) → Tour 2 (Intermédiaire) → Tour 3 (Technique) → Sy
 ## Progression par tours
 
 ### ✅ Tour 1 — Vulgarisation
-*Comprendre les grandes idées de chaque système sans entrer dans les détails.*
+- [x] Axe 1 — Godot ✅
+- [x] Axe 1 — Unity ✅
+- [x] Axe 1 — Unreal ✅
+- [x] Axe 1 — Bevy ✅
+- [x] Axe 2 — HTML + CSS ✅
+- [x] Axe 2 — WPF / XAML ✅
+- [x] Axe 2 — Flutter ✅
+- [x] Axe 2 — Qt ✅
 
-- [x] Axe 1 — Godot (vulgarisation) ✅
-- [x] Axe 1 — Unity (vulgarisation) ✅
-- [x] Axe 1 — Unreal (vulgarisation) ✅
-- [x] Axe 1 — Bevy (vulgarisation) ✅
-- [x] Axe 2 — HTML + CSS (vulgarisation) ✅
-- [x] Axe 2 — WPF / XAML (vulgarisation) ✅
-- [x] Axe 2 — Flutter (vulgarisation) ✅
-- [x] Axe 2 — Qt (vulgarisation) ✅
+### ✅ Tour 2 — Intermédiaire
+- [x] Axe 1 — Godot ✅
+- [x] Axe 1 — Unity ✅
+- [x] Axe 1 — Unreal ✅
+- [x] Axe 1 — Bevy ✅
+- [x] Axe 2 — HTML + CSS ✅
+- [x] Axe 2 — WPF / XAML ✅
+- [x] Axe 2 — Flutter ✅
+- [x] Axe 2 — Qt ✅
 
-### 🔄 Tour 2 — Intermédiaire
-*Approfondir les concepts clés, la terminologie exacte et les patterns.*
+### ✅ Tour 3 — Technique
+- [x] Axe 1 — Godot ✅
+- [x] Axe 1 — Unity ✅
+- [x] Axe 1 — Unreal ✅
+- [x] Axe 1 — Bevy ✅
+- [x] Axe 2 — HTML + CSS ✅
+- [x] Axe 2 — WPF / XAML ✅
+- [x] Axe 2 — Flutter ✅
+- [x] Axe 2 — Qt ✅
 
-- [X] Axe 1 — Godot (intermédiaire) ✅
-- [X] Axe 1 — Unity (intermédiaire) ✅
-- [X] Axe 1 — Unreal (intermédiaire) ✅
-- [X] Axe 1 — Bevy (intermédiaire) ✅
-- [X] Axe 2 — HTML + CSS (intermédiaire) ✅
-- [X] Axe 2 — WPF / XAML (intermédiaire) ✅
-- [X] Axe 2 — Flutter (intermédiaire) ✅
-- [X] Axe 2 — Qt (intermédiaire) ✅
+### ✅ Synthèse finale
+- [x] Tableau comparatif des architectures moteur ✅
+- [x] Tableau comparatif des systèmes UI ✅
+- [x] Choix d'architecture pour HumbleEngine (argumenté) ✅ → Node Tree (Godot) + Signals (Qt/Godot)
+- [x] Choix du système UI pour HumbleEngine (argumenté) ✅ → MVVM + Data Binding (WPF) + Signals (Qt/Godot)
 
-### 🔄 Tour 3 — Technique
-*Détails d'implémentation, choix d'architecture, comparaisons précises.*
+---
 
-- [X] Axe 1 — Godot (technique) ✅
-- [X] Axe 1 — Unity (technique) ✅
-- [X] Axe 1 — Unreal (technique) ✅
-- [X] Axe 1 — Bevy (technique) ✅
-- [X] Axe 2 — HTML + CSS (technique) ✅
-- [X] Axe 2 — WPF / XAML (technique) ✅
-- [X] Axe 2 — Flutter (technique) ✅
-- [X] Axe 2 — Qt (technique) ✅
+## Décisions d'architecture retenues
 
-### 🏁 Synthèse finale
-*Comparer toutes les architectures et faire des choix argumentés pour HumbleEngine.*
-
-- [ ] Tableau comparatif des architectures moteur
-- [ ] Tableau comparatif des systèmes UI
-- [ ] Choix d'architecture pour HumbleEngine (argumenté)
-- [ ] Choix du système UI pour HumbleEngine (argumenté)
+| Composant | Choix | Inspiré de |
+|-----------|-------|-----------|
+| Graphe de scène | Node Tree | Godot |
+| Communication | Signals & Slots | Qt / Godot |
+| Pattern UI | MVVM | WPF |
+| Réactivité | Data Binding (INotifyPropertyChanged) | WPF |
+| Réutilisabilité | Nodes composites instanciables | Godot / Unity (Prefabs) |
+| Ressources / Thèmes | ResourceDictionary | WPF |
+| Conteneur global | World | Bevy |
 
 ---
 
