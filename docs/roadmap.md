@@ -29,8 +29,8 @@ Tour 1 (Vulgarisation) → Tour 2 (Intermédiaire) → Tour 3 (Technique) → Sy
 
 | # | Système | Philosophie | Statut |
 |---|---------|------------|--------|
-| 1 | **HTML + CSS** | Arborescence déclarative + règles de style séparées | ✅ Tour 2 terminé |
-| 2 | **WPF / XAML** | Version native Microsoft de HTML+CSS, en C# | ✅ Tour 2 terminé |
+| 1 | **HTML + CSS** | Arborescence déclarative + règles de style séparées | ✅ Tour 3 terminé |
+| 2 | **WPF / XAML** | Version native Microsoft de HTML+CSS, en C# | ✅ Tour 3 terminé |
 | 3 | **Flutter** | Tout est Widget, rendu pixel par pixel (inspiré de React) | ✅ Tour 2 terminé |
 | 4 | **Qt** | Signals & Slots, layouts cross-platform, très influent | ✅ Tour 2 terminé |
 
@@ -69,8 +69,8 @@ Tour 1 (Vulgarisation) → Tour 2 (Intermédiaire) → Tour 3 (Technique) → Sy
 - [X] Axe 1 — Unity (technique) ✅
 - [X] Axe 1 — Unreal (technique) ✅
 - [X] Axe 1 — Bevy (technique) ✅
-- [ ] Axe 2 — HTML + CSS (technique)
-- [ ] Axe 2 — WPF / XAML (technique)
+- [X] Axe 2 — HTML + CSS (technique) ✅
+- [X] Axe 2 — WPF / XAML (technique) ✅
 - [ ] Axe 2 — Flutter (technique)
 - [ ] Axe 2 — Qt (technique)
 
