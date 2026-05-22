@@ -7,8 +7,9 @@ namespace HumbleEngine;
 public sealed class Application : IDisposable
 {
     private readonly IWindow _window;
-    private GRContext?  _grContext;  // contexte GPU SkiaSharp — wraps le contexte OpenGL
-    private SKSurface?  _surface;   // surface de rendu liée au framebuffer de la fenêtre
+    private GRContext?  _grContext;   // contexte GPU SkiaSharp — wraps le contexte OpenGL
+    private SKSurface?  _surface;    // surface de rendu liée au framebuffer de la fenêtre
+    private readonly RenderNodeTree _renderTree = new();
 
     public Node? Root { get; set; }
 
@@ -95,9 +96,12 @@ public sealed class Application : IDisposable
         // Layout : calcule les positions et tailles de tous les Nodes
         Root.Layout(new Size(_window.Size.X, _window.Size.Y));
 
-        // Efface le framebuffer puis demande à chaque Node de se dessiner
+        // Construit le Render Tree plat depuis le Node Tree
+        _renderTree.Rebuild(Root);
+
+        // Efface le framebuffer puis peint via le Render Tree
         canvas.Clear(SKColors.White);
-        Root.Paint(canvas);
+        _renderTree.Paint(canvas);
 
         // Flush soumet les commandes SkiaSharp au driver OpenGL
         canvas.Flush();
