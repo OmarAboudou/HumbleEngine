@@ -2,15 +2,15 @@ using System.Collections;
 
 namespace HumbleEngine;
 
-public struct Column : ICompositeRenderNode
+public struct HStack : ICompositeRenderNode
 {
-    private ColumnData _columnData;
+    private RowData    _rowData;
     private LayoutData _layout;
     private List<RenderDescription>? _children;
 
     public LayoutData Layout { get => _layout; set => _layout = value; }
 
-    public Column Spacing(float spacing) { _columnData = _columnData with { Spacing = spacing }; return this; }
+    public HStack Spacing(float spacing) { _rowData = _rowData with { Spacing = spacing }; return this; }
 
     public void Add(RenderDescription child)
     {
@@ -18,12 +18,12 @@ public struct Column : ICompositeRenderNode
         _children.Add(child);
     }
 
-    public static implicit operator RenderDescription(Column col) => new()
+    public static implicit operator RenderDescription(HStack h) => new()
     {
-        Kind     = RenderNodeKind.Column,
-        Layout   = col._layout,
-        Column   = col._columnData,
-        Children = col._children?.ToArray() ?? Array.Empty<RenderDescription>()
+        Kind     = RenderNodeKind.Row,
+        Layout   = h._layout,
+        Row      = h._rowData,
+        Children = h._children?.ToArray() ?? Array.Empty<RenderDescription>()
     };
 
     public IEnumerator<RenderDescription> GetEnumerator() =>

@@ -17,5 +17,6 @@ public readonly struct RenderDescription
     public BoxData              Box      { get; internal init; }
     public LayoutData           Layout   { get; internal init; }
     public ColumnData           Column   { get; internal init; }
+    public RowData              Row      { get; internal init; }
     public Node?                Owner    { get; internal init; }  // Node propriétaire de cette description racine
 }

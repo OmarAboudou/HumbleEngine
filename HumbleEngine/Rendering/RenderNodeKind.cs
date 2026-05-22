@@ -6,4 +6,5 @@ public enum RenderNodeKind
     Span,
     Box,
     Column,
+    Row,
 }
