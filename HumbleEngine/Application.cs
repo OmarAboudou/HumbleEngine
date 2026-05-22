@@ -15,6 +15,15 @@ public sealed class Application : IDisposable
 
     private List<Node> _hoveredPath = new();
     private Node?      _pressedNode;
+    private Node?      _focusedNode;
+
+    public void SetFocus(Node? node)
+    {
+        if (_focusedNode == node) return;
+        _focusedNode?.OnFocusLost();
+        _focusedNode = node;
+        _focusedNode?.OnFocusGained();
+    }
 
     public Node? Root { get; set; }
 
@@ -68,6 +77,12 @@ public sealed class Application : IDisposable
             mouse.MouseMove += OnMouseMoved;
             mouse.MouseDown += OnMousePressed;
             mouse.MouseUp   += OnMouseReleased;
+        }
+        if (_inputContext.Keyboards.Count > 0)
+        {
+            var keyboard = _inputContext.Keyboards[0];
+            keyboard.KeyChar += OnKeyChar;
+            keyboard.KeyDown += OnKeyDown;
         }
 
         Root?.Init();
@@ -134,6 +149,12 @@ public sealed class Application : IDisposable
 
         _pressedNode = null;
     }
+
+    private void OnKeyChar(IKeyboard keyboard, char character)
+        => _focusedNode?.OnKeyChar(character);
+
+    private void OnKeyDown(IKeyboard keyboard, Key key, int scancode)
+        => _focusedNode?.OnKeyDown(key);
 
     private void OnUpdate(double delta) => Root?.Update((float)delta);
 
