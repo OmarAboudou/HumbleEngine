@@ -25,14 +25,14 @@ public class Label : Node
         ComputedBounds = new Rect(ComputedBounds.X, ComputedBounds.Y, width, height);
     }
 
-    public override void Paint(SKCanvas canvas)
+    public override RenderNodeData CreateRenderNode() => new()
     {
-        if (string.IsNullOrEmpty(Text.Value)) return;
-
-        using var font  = new SKFont(SKTypeface.Default, FontSize.Value);
-        using var paint = new SKPaint { Color = Color.Value, IsAntialias = true };
-
-        // y = -Ascent place le haut du texte à y=0 (origine du ComputedBounds)
-        canvas.DrawText(Text.Value, 0, -font.Metrics.Ascent, font, paint);
-    }
+        Kind = RenderNodeKind.Text,
+        Text = new TextData
+        {
+            Content  = Text.Value,
+            Color    = Color.Value,
+            FontSize = FontSize.Value
+        }
+    };
 }

@@ -72,4 +72,8 @@ public abstract class Node
     }
 
     public Rect ComputedBounds { get; protected set; }
+
+    // Retourne la description visuelle de ce nœud pour le RenderNodeTree.
+    // Les nœuds purement logiques (conteneurs sans visuel propre) retournent None.
+    public virtual RenderNodeData CreateRenderNode() => RenderNodeData.None;
 }
