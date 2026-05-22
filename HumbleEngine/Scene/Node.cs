@@ -48,12 +48,6 @@ public abstract class Node
             child.Update(delta);
     }
 
-    public virtual void Layout(Size available)
-    {
-        foreach (var child in _children)
-            child.Layout(available);
-    }
-
     public virtual void Paint(SKCanvas canvas)
     {
         foreach (var child in _children)
