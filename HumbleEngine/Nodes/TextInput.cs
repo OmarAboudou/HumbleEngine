@@ -11,6 +11,7 @@ public class TextInput : Node
     public ReactiveProperty<string> Text        = new("");
     public ReactiveProperty<string> Placeholder = new("...");
     public ReactiveProperty<float>  FontSize    = new(16f);
+    public ReactiveProperty<float>  Width       = new(200f);
 
     private bool _isFocused;
 
@@ -23,6 +24,7 @@ public class TextInput : Node
         Text.Connect(_        => MarkLayoutDirty());
         Placeholder.Connect(_ => MarkLayoutDirty());
         FontSize.Connect(_    => MarkLayoutDirty());
+        Width.Connect(_       => MarkLayoutDirty());
     }
 
     public override void OnFocusGained() { _isFocused = true;  MarkPaintDirty(); }
@@ -48,6 +50,6 @@ public class TextInput : Node
         return new Box
         {
             new Span(displayed).Color(textColor).FontSize(FontSize.Value)
-        }.Color(SKColors.White).Border(borderColor, 1.5f).Padding(PaddingX, PaddingY);
+        }.Color(SKColors.White).Border(borderColor, 1.5f).Padding(PaddingX, PaddingY).Width(Width.Value);
     }
 }
