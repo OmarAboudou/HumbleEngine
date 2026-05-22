@@ -6,6 +6,8 @@ public class ReactiveProperty<T> : ISignal<T>
     private readonly MutableSignal<T> _signal = new();
 
     public ReactiveProperty(T initial) => _value = initial;
+    
+    public static implicit operator T(ReactiveProperty<T> value) => value.Value;
 
     public T Value
     {
