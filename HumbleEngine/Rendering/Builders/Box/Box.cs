@@ -3,18 +3,17 @@ using SkiaSharp;
 
 namespace HumbleEngine;
 
-public struct Box : IEnumerable<RenderDescription>
+public struct Box : ICompositeRenderNode
 {
-    private readonly BoxData    _boxData;
-    private readonly LayoutData _layout;
+    private readonly BoxData _boxData;
+    private LayoutData       _layout;
     private List<RenderDescription>? _children;
 
-    public Box(SKColor color, float cornerRadius = 0f,
-               float? width = null, float? height = null,
-               float paddingX = 0f, float paddingY = 0f)
+    public LayoutData Layout { get => _layout; set => _layout = value; }
+
+    public Box(SKColor color, float cornerRadius = 0f)
     {
         _boxData = new BoxData { BackgroundColor = color, CornerRadius = cornerRadius };
-        _layout  = new LayoutData { Width = width, Height = height, PaddingX = paddingX, PaddingY = paddingY };
     }
 
     public void Add(RenderDescription child)
