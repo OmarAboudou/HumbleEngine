@@ -6,13 +6,13 @@ namespace HumbleEngine.Tests;
 public class SignalTests
 {
     [Test]
-    public void Emit_NotifiesConnectedListeners()
+    public void Emit_NotifiesConnectedListener()
     {
-        var (signal, emit) = Signal.Create();
+        var emitter = new SignalEmitter();
         int callCount = 0;
-        signal.Connect(() => callCount++);
+        emitter.Signal.Connect(() => callCount++);
 
-        emit();
+        emitter.Emit();
 
         Assert.That(callCount, Is.EqualTo(1));
     }
@@ -20,13 +20,13 @@ public class SignalTests
     [Test]
     public void Disconnect_StopsNotifications()
     {
-        var (signal, emit) = Signal.Create();
+        var emitter = new SignalEmitter();
         int callCount = 0;
         Action listener = () => callCount++;
-        signal.Connect(listener);
-        signal.Disconnect(listener);
+        emitter.Signal.Connect(listener);
+        emitter.Signal.Disconnect(listener);
 
-        emit();
+        emitter.Emit();
 
         Assert.That(callCount, Is.EqualTo(0));
     }
@@ -34,25 +34,25 @@ public class SignalTests
     [Test]
     public void Emit_NotifiesMultipleListeners()
     {
-        var (signal, emit) = Signal.Create();
+        var emitter = new SignalEmitter();
         int a = 0, b = 0;
-        signal.Connect(() => a++);
-        signal.Connect(() => b++);
+        emitter.Signal.Connect(() => a++);
+        emitter.Signal.Connect(() => b++);
 
-        emit();
+        emitter.Emit();
 
         Assert.That(a, Is.EqualTo(1));
         Assert.That(b, Is.EqualTo(1));
     }
 
     [Test]
-    public void Generic_Emit_PassesValueToListeners()
+    public void Generic_Emit_PassesValueToListener()
     {
-        var (signal, emit) = Signal<string>.Create();
+        var emitter = new SignalEmitter<string>();
         string? received = null;
-        signal.Connect(v => received = v);
+        emitter.Signal.Connect(v => received = v);
 
-        emit("hello");
+        emitter.Emit("hello");
 
         Assert.That(received, Is.EqualTo("hello"));
     }
@@ -60,23 +60,36 @@ public class SignalTests
     [Test]
     public void Generic_Disconnect_StopsNotifications()
     {
-        var (signal, emit) = Signal<int>.Create();
+        var emitter = new SignalEmitter<int>();
         int callCount = 0;
         Action<int> listener = _ => callCount++;
-        signal.Connect(listener);
-        signal.Disconnect(listener);
+        emitter.Signal.Connect(listener);
+        emitter.Signal.Disconnect(listener);
 
-        emit(1);
+        emitter.Emit(1);
 
         Assert.That(callCount, Is.EqualTo(0));
     }
 
     [Test]
-    public void Emit_IsNotAccessibleOnSignalType()
+    public void Signal_DoesNotExposeEmit()
     {
-        var (signal, _) = Signal.Create();
-        Assert.That(signal.GetType().GetMethod("EmitCore",
-            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance),
-            Is.Null);
+        var emitter = new SignalEmitter();
+        var signal  = emitter.Signal;
+
+        var emitMethod = signal.GetType().GetMethod("Emit",
+            System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+
+        Assert.That(emitMethod, Is.Null);
+    }
+
+    [Test]
+    public void SignalProperty_ReturnsSameInstance()
+    {
+        var emitter = new SignalEmitter();
+        var first   = emitter.Signal;
+        var second  = emitter.Signal;
+
+        Assert.That(first, Is.SameAs(second));
     }
 }
