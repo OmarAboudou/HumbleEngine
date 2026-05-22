@@ -173,11 +173,77 @@ public readonly record struct Rect(float X, float Y, float Width, float Height)
 
 ---
 
+---
+
+## Phase 2 — Premier rendu ✅
+
+Branche : `feature/phase-2-rendering`  
+Tests : 46/46 ✅ (Phase 1 inchangés — Phase 2 nécessite GPU)
+
+---
+
+### `Node` — ajout Phase 2
+
+```csharp
+// Nouveau dans Phase 2
+public virtual void Paint(SKCanvas canvas)
+// Propage aux enfants avec Save/Translate/Restore par enfant
+```
+
+---
+
+### `Application` — `HumbleEngine/Application.cs`
+
+```csharp
+public sealed class Application : IDisposable
+{
+    public Node? Root { get; set; }
+    public Application(string title = "HumbleEngine", int width = 800, int height = 600)
+    public void Run()
+    public void Dispose()
+}
+```
+
+**Boucle interne (par frame) :**
+1. `Root.Layout(windowSize)` — recalcule le layout
+2. `canvas.Clear(White)` + `Root.Paint(canvas)` — redessine
+3. `canvas.Flush()` + `Root.ClearDirty()`
+
+**Stack technique :** Silk.NET (fenêtre + contexte OpenGL) + SkiaSharp (rendu GPU via GRContext).
+
+---
+
+### `Label` — `HumbleEngine/Nodes/Label.cs`
+
+```csharp
+public class Label : Node
+{
+    public ReactiveProperty<string>  Text     = new("");
+    public ReactiveProperty<SKColor> Color    = new(SKColors.Black);
+    public ReactiveProperty<float>   FontSize = new(16f);
+
+    // Layout : mesure le texte → ComputedBounds.Width/Height
+    // Paint  : DrawText à l'origine (parent gère la translation)
+}
+```
+
+**Règles :**
+- `Text` / `Color` → `MarkPaintDirty()`
+- `FontSize` → `MarkLayoutDirty()`
+- Le parent est responsable de placer `ComputedBounds.X/Y`
+
+---
+
+### `HumbleEngine.Sample`
+
+Projet console de démonstration. Lance une fenêtre 800×600 avec un `Label`.
+
+---
+
 ## Phases suivantes
 
 | Phase | Contenu | Statut |
 |-------|---------|--------|
-| 2 | `Application`, boucle principale, SkiaSharp, `Label` | ⬜ |
 | 3 | Input system, hit testing, `Button` | ⬜ |
 | 4 | `Constraints`, `Column`, `Row`, `Stack` | ⬜ |
 | 5 | `TextInput`, premier écran MVVM complet | ⬜ |
