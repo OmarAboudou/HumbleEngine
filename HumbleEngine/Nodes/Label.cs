@@ -11,18 +11,9 @@ public class Label : Node
     public override void Init()
     {
         base.Init();
-        Text.Connect(_ => MarkPaintDirty());
-        Color.Connect(_ => MarkPaintDirty());
+        Text.Connect(_     => MarkLayoutDirty());
+        Color.Connect(_    => MarkPaintDirty());
         FontSize.Connect(_ => MarkLayoutDirty());
-    }
-
-    public override void Layout(Size available)
-    {
-        using var font = new SKFont(SKTypeface.Default, FontSize.Value);
-        var width  = font.MeasureText(Text.Value);
-        var height = font.Metrics.Descent - font.Metrics.Ascent;
-
-        ComputedBounds = ComputedBounds with { Width = width, Height = height };
     }
 
     protected override RenderDescription RenderContent()

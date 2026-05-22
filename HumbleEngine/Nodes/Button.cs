@@ -32,25 +32,12 @@ public class Button : Node
     public override void OnMouseLeave() { _isHovered = false; MarkPaintDirty(); }
     public override void OnClick()      { _pressed.Emit(); }
 
-    public override void Layout(Size available)
-    {
-        using var font  = new SKFont(SKTypeface.Default, FontSize.Value);
-        var textWidth   = font.MeasureText(Text.Value);
-        var textHeight  = font.Metrics.Descent - font.Metrics.Ascent;
-
-        ComputedBounds = ComputedBounds with
-        {
-            Width  = textWidth  + PaddingX * 2,
-            Height = textHeight + PaddingY * 2,
-        };
-    }
-
     protected override RenderDescription RenderContent()
     {
         var bg = _isHovered ? HoverColor.Value : BackgroundColor.Value;
         return new Box
         {
-            new Span(Text.Value).Color(SKColors.Black).FontSize(FontSize.Value).At(PaddingX, PaddingY)
-        }.Color(bg);
+            new Span(Text.Value).Color(SKColors.Black).FontSize(FontSize.Value)
+        }.Color(bg).Padding(PaddingX, PaddingY);
     }
 }
