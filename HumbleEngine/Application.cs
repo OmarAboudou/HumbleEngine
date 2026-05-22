@@ -136,6 +136,9 @@ public sealed class Application : IDisposable
 
         _pressedNode = HitTest.FirstInteractive(_hoveredPath);
         _pressedNode?.OnMouseDown();
+
+        if (_pressedNode is { IsFocusable: true })
+            SetFocus(_pressedNode);
     }
 
     private void OnMouseReleased(IMouse mouse, MouseButton button)
