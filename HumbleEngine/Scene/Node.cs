@@ -71,6 +71,14 @@ public abstract class Node
             child.Dispose();
     }
 
+    public virtual HitTestFilter MouseFilter => HitTestFilter.Ignore;
+
+    public virtual void OnMouseEnter() { }
+    public virtual void OnMouseLeave() { }
+    public virtual void OnMouseDown()  { }
+    public virtual void OnMouseUp()    { }
+    public virtual void OnClick()      { }
+
     public Rect ComputedBounds { get; protected set; }
 
     // Retourne la description visuelle de ce nœud pour le RenderNodeTree.

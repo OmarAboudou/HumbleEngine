@@ -12,4 +12,5 @@ public readonly struct RenderDescription
     public Rect                 Bounds   { get; internal init; }  // injecté par Node.Render()
     public RenderDescription[]? Children { get; internal init; }  // pour les conteneurs
     public TextData             Text     { get; internal init; }
+    public BoxData              Box      { get; internal init; }
 }
