@@ -6,7 +6,7 @@ public interface ISignal
     void Disconnect(Action listener);
 }
 
-public interface ISignal<T>
+public interface ISignal<out T>
 {
     void Connect(Action<T> listener);
     void Disconnect(Action<T> listener);
