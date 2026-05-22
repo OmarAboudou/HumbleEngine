@@ -25,14 +25,9 @@ public class Label : Node
         ComputedBounds = new Rect(ComputedBounds.X, ComputedBounds.Y, width, height);
     }
 
-    public override RenderNodeData CreateRenderNode() => new()
+    public override RenderDescription Render()
     {
-        Kind = RenderNodeKind.Text,
-        Text = new TextData
-        {
-            Content  = Text.Value,
-            Color    = Color.Value,
-            FontSize = FontSize.Value
-        }
-    };
+        RenderDescription desc = new Text(Text.Value, Color.Value, FontSize.Value);
+        return desc with { Bounds = ComputedBounds };
+    }
 }

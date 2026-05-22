@@ -7,54 +7,54 @@ public sealed class RenderNodeTree
     private readonly List<RenderNode> _nodes        = new();
     private readonly List<int>        _subtreeSizes = new();
 
-    // Tableaux typés — un par RenderNodeKind
+    // Tableaux typés — un par RenderNodeKind avec données
     private readonly List<TextData> _textData = new();
 
     // --- Construction ---
 
+    // Appelle root.Render() pour obtenir la description complète,
+    // puis aplatit récursivement l'arbre de descriptions.
     public void Rebuild(Node root)
     {
         _nodes.Clear();
         _subtreeSizes.Clear();
         _textData.Clear();
 
-        Build(root, offsetX: 0, offsetY: 0);
+        var desc = root.Render();
+        if (desc.Kind != RenderNodeKind.None)
+            Flatten(desc, parentX: 0, parentY: 0);
     }
 
-    private int Build(Node node, float offsetX, float offsetY)
+    private int Flatten(RenderDescription desc, float parentX, float parentY)
     {
-        // Réserve une place pour ce nœud
         int myIndex = _nodes.Count;
         _nodes.Add(default);
         _subtreeSizes.Add(0);
 
-        // Bounds absolues = position relative au parent + offset accumulé
-        float absX = offsetX + node.ComputedBounds.X;
-        float absY = offsetY + node.ComputedBounds.Y;
-        var   abs  = new Rect(absX, absY, node.ComputedBounds.Width, node.ComputedBounds.Height);
+        // Convertit les bounds relatives (parent-relative) en absolues
+        float absX = parentX + desc.Bounds.X;
+        float absY = parentY + desc.Bounds.Y;
+        var   abs  = new Rect(absX, absY, desc.Bounds.Width, desc.Bounds.Height);
 
-        // Récupère la description visuelle du nœud et stocke la donnée typée
-        var data       = node.CreateRenderNode();
-        int dataIndex  = StoreData(data);
+        int dataIndex = StoreData(desc);
 
-        // Construit récursivement les enfants (ils s'ajoutent après ce nœud)
         int subtreeSize = 1;
-        foreach (var child in node.Children)
-            subtreeSize += Build(child, absX, absY);
+        if (desc.Children is not null)
+            foreach (var child in desc.Children)
+                subtreeSize += Flatten(child, absX, absY);
 
-        // Remplit la place réservée
-        _nodes[myIndex]        = new RenderNode { Kind = data.Kind, Index = dataIndex, Bounds = abs };
+        _nodes[myIndex]        = new RenderNode { Kind = desc.Kind, Index = dataIndex, Bounds = abs };
         _subtreeSizes[myIndex] = subtreeSize;
 
         return subtreeSize;
     }
 
-    private int StoreData(RenderNodeData data)
+    private int StoreData(RenderDescription desc)
     {
-        switch (data.Kind)
+        switch (desc.Kind)
         {
             case RenderNodeKind.Text:
-                _textData.Add(data.Text);
+                _textData.Add(desc.Text);
                 return _textData.Count - 1;
             default:
                 return -1;
@@ -73,6 +73,7 @@ public sealed class RenderNodeTree
                 case RenderNodeKind.Text:
                     PaintText(canvas, node.Bounds, _textData[node.Index]);
                     break;
+                // Column et autres conteneurs n'ont pas de visuel propre
             }
         }
     }
@@ -87,9 +88,8 @@ public sealed class RenderNodeTree
         canvas.DrawText(data.Content, bounds.X, bounds.Y - font.Metrics.Ascent, font, paint);
     }
 
-    // --- Navigation (utilitaire) ---
+    // --- Navigation ---
 
-    // Itère les indices directs des enfants d'un nœud.
     public IEnumerable<int> ChildIndices(int parentIndex)
     {
         int end        = parentIndex + _subtreeSizes[parentIndex];
