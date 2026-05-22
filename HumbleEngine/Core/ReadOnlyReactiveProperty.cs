@@ -7,6 +7,8 @@ public class ReadOnlyReactiveProperty<T> : IReadOnlyReactiveProperty<T>
     public ReadOnlyReactiveProperty(ReactiveProperty<T> reactiveProperty)
         => _reactiveProperty = reactiveProperty;
 
+    public ISignal<T, T> Reaffected => _reactiveProperty.Reaffected;
+
     public T Value => _reactiveProperty.Value;
 
     public void Connect(Action<T> listener)
