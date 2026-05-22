@@ -8,11 +8,11 @@ public class SignalTests
     [Test]
     public void Emit_NotifiesConnectedListener()
     {
-        var emitter = new SignalEmitter();
+        var mutable = new MutableSignal();
         int callCount = 0;
-        emitter.Signal.Connect(() => callCount++);
+        mutable.Signal.Connect(() => callCount++);
 
-        emitter.Emit();
+        mutable.Emit();
 
         Assert.That(callCount, Is.EqualTo(1));
     }
@@ -20,13 +20,13 @@ public class SignalTests
     [Test]
     public void Disconnect_StopsNotifications()
     {
-        var emitter = new SignalEmitter();
+        var mutable = new MutableSignal();
         int callCount = 0;
         Action listener = () => callCount++;
-        emitter.Signal.Connect(listener);
-        emitter.Signal.Disconnect(listener);
+        mutable.Signal.Connect(listener);
+        mutable.Signal.Disconnect(listener);
 
-        emitter.Emit();
+        mutable.Emit();
 
         Assert.That(callCount, Is.EqualTo(0));
     }
@@ -34,12 +34,12 @@ public class SignalTests
     [Test]
     public void Emit_NotifiesMultipleListeners()
     {
-        var emitter = new SignalEmitter();
+        var mutable = new MutableSignal();
         int a = 0, b = 0;
-        emitter.Signal.Connect(() => a++);
-        emitter.Signal.Connect(() => b++);
+        mutable.Signal.Connect(() => a++);
+        mutable.Signal.Connect(() => b++);
 
-        emitter.Emit();
+        mutable.Emit();
 
         Assert.That(a, Is.EqualTo(1));
         Assert.That(b, Is.EqualTo(1));
@@ -48,11 +48,11 @@ public class SignalTests
     [Test]
     public void Generic_Emit_PassesValueToListener()
     {
-        var emitter = new SignalEmitter<string>();
+        var mutable = new MutableSignal<string>();
         string? received = null;
-        emitter.Signal.Connect(v => received = v);
+        mutable.Signal.Connect(v => received = v);
 
-        emitter.Emit("hello");
+        mutable.Emit("hello");
 
         Assert.That(received, Is.EqualTo("hello"));
     }
@@ -60,13 +60,13 @@ public class SignalTests
     [Test]
     public void Generic_Disconnect_StopsNotifications()
     {
-        var emitter = new SignalEmitter<int>();
+        var mutable = new MutableSignal<int>();
         int callCount = 0;
         Action<int> listener = _ => callCount++;
-        emitter.Signal.Connect(listener);
-        emitter.Signal.Disconnect(listener);
+        mutable.Signal.Connect(listener);
+        mutable.Signal.Disconnect(listener);
 
-        emitter.Emit(1);
+        mutable.Emit(1);
 
         Assert.That(callCount, Is.EqualTo(0));
     }
@@ -74,8 +74,8 @@ public class SignalTests
     [Test]
     public void Signal_DoesNotExposeEmit()
     {
-        var emitter = new SignalEmitter();
-        var signal  = emitter.Signal;
+        var mutable = new MutableSignal();
+        var signal  = mutable.Signal;
 
         var emitMethod = signal.GetType().GetMethod("Emit",
             System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
@@ -86,10 +86,45 @@ public class SignalTests
     [Test]
     public void SignalProperty_ReturnsSameInstance()
     {
-        var emitter = new SignalEmitter();
-        var first   = emitter.Signal;
-        var second  = emitter.Signal;
+        var mutable = new MutableSignal();
+        var first  = mutable.Signal;
+        var second = mutable.Signal;
 
         Assert.That(first, Is.SameAs(second));
+    }
+
+    [Test]
+    public void Signal_CannotBeCastToMutableSignal()
+    {
+        var mutable = new MutableSignal();
+        ISignal signal = mutable.Signal;
+
+        Assert.Throws<InvalidCastException>(() => _ = (MutableSignal)signal);
+    }
+
+    [Test]
+    public void Signal_IsUsableAsISignal()
+    {
+        var mutable = new MutableSignal();
+        ISignal signal = mutable.Signal;
+        int callCount = 0;
+        signal.Connect(() => callCount++);
+
+        mutable.Emit();
+
+        Assert.That(callCount, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void MutableSignal_IsUsableAsISignal()
+    {
+        var mutable = new MutableSignal();
+        ISignal asInterface = mutable;
+        int callCount = 0;
+        asInterface.Connect(() => callCount++);
+
+        mutable.Emit();
+
+        Assert.That(callCount, Is.EqualTo(1));
     }
 }
