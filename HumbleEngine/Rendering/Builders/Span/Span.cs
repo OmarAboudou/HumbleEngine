@@ -2,7 +2,7 @@ using SkiaSharp;
 
 namespace HumbleEngine;
 
-public struct Text : IRenderNode
+public struct Span : IRenderNode
 {
     private readonly string  _content;
     private readonly SKColor _color;
@@ -11,18 +11,18 @@ public struct Text : IRenderNode
 
     public LayoutData Layout { get => _layout; set => _layout = value; }
 
-    public Text(string content, SKColor color = default, float fontSize = 16f)
+    public Span(string content, SKColor color = default, float fontSize = 16f)
     {
         _content  = content;
         _color    = color == default ? SKColors.Black : color;
         _fontSize = fontSize;
     }
 
-    public static implicit operator RenderDescription(Text t) => new()
+    public static implicit operator RenderDescription(Span s) => new()
     {
-        Kind   = RenderNodeKind.Text,
-        Text   = new TextData { Content = t._content, Color = t._color, FontSize = t._fontSize },
-        Layout = t._layout
+        Kind   = RenderNodeKind.Span,
+        Span   = new SpanData { Content = s._content, Color = s._color, FontSize = s._fontSize },
+        Layout = s._layout
     };
 
     public RenderDescription At(Rect bounds) => ((RenderDescription)this) with { Bounds = bounds };
