@@ -2,6 +2,15 @@ namespace HumbleEngine;
 
 public static class LayoutExtensions
 {
+    public static T AddRange<T>(this T builder, IEnumerable<RenderDescription> items)
+        where T : struct, ICompositeRenderNode
+    {
+        foreach (var item in items)
+            builder.Add(item);
+        return builder;
+    }
+
+
     public static T Width<T>(this T renderNode, float? width) where T : struct, IRenderNode
     {
         renderNode.Layout = renderNode.Layout with { Width = width };

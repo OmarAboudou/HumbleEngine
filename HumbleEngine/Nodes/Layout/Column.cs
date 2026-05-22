@@ -12,9 +12,7 @@ public class Column : Node
 
     protected override RenderDescription RenderContent()
     {
-        var layout = new VLayout().Spacing(Spacing.Value);
-        foreach (var child in Children)
-            layout.Add(child.Render());
-        return layout;
+        VLayout layout = [..Children.Select(c => c.Render())];
+        return layout.Spacing(Spacing.Value);
     }
 }

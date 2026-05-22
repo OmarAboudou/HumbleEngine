@@ -1,11 +1,13 @@
 using System.Collections;
+using System.Runtime.CompilerServices;
 
 namespace HumbleEngine;
 
+[CollectionBuilder(typeof(HLayout), nameof(Create))]
 public struct HLayout : ICompositeRenderNode
 {
     private LinearLayoutData _data;
-    private LayoutData  _layout;
+    private LayoutData       _layout;
     private List<RenderDescription>? _children;
 
     public LayoutData Layout { get => _layout; set => _layout = value; }
@@ -18,12 +20,20 @@ public struct HLayout : ICompositeRenderNode
         _children.Add(child);
     }
 
+    public static HLayout Create(ReadOnlySpan<RenderDescription> items)
+    {
+        var layout = new HLayout();
+        foreach (var item in items)
+            layout.Add(item);
+        return layout;
+    }
+
     public static implicit operator RenderDescription(HLayout h) => new()
     {
         Kind         = RenderNodeKind.HLayout,
         LinearLayout = h._data,
-        Layout  = h._layout,
-        Children = h._children?.ToArray() ?? Array.Empty<RenderDescription>()
+        Layout       = h._layout,
+        Children     = h._children?.ToArray() ?? Array.Empty<RenderDescription>()
     };
 
     public IEnumerator<RenderDescription> GetEnumerator() =>
