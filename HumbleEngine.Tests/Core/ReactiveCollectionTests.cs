@@ -9,13 +9,14 @@ public class ReactiveCollectionTests
     public void Add_EmitsItemAdded()
     {
         var col = new ReactiveCollection<string>();
-        (int index, string item) received = (-1, "");
-        col.ItemAdded.Connect(e => received = e);
+        int receivedIndex = -1;
+        string receivedItem = "";
+        col.ItemAdded.Connect((index, item) => { receivedIndex = index; receivedItem = item; });
 
         col.Add("hello");
 
-        Assert.That(received.index, Is.EqualTo(0));
-        Assert.That(received.item, Is.EqualTo("hello"));
+        Assert.That(receivedIndex, Is.EqualTo(0));
+        Assert.That(receivedItem, Is.EqualTo("hello"));
     }
 
     [Test]
@@ -34,13 +35,14 @@ public class ReactiveCollectionTests
         var col = new ReactiveCollection<string>();
         col.Add("a");
         col.Add("b");
-        (int index, string item) received = (-1, "");
-        col.ItemRemoved.Connect(e => received = e);
+        int receivedIndex = -1;
+        string receivedItem = "";
+        col.ItemRemoved.Connect((index, item) => { receivedIndex = index; receivedItem = item; });
 
         col.RemoveAt(0);
 
-        Assert.That(received.index, Is.EqualTo(0));
-        Assert.That(received.item, Is.EqualTo("a"));
+        Assert.That(receivedIndex, Is.EqualTo(0));
+        Assert.That(receivedItem, Is.EqualTo("a"));
     }
 
     [Test]
@@ -55,17 +57,17 @@ public class ReactiveCollectionTests
     }
 
     [Test]
-    public void Clear_EmitsReset()
+    public void Clear_EmitsClearedSignal()
     {
         var col = new ReactiveCollection<int>();
         col.Add(1);
         col.Add(2);
-        bool resetFired = false;
-        col.Cleared.Connect(() => resetFired = true);
+        bool clearedFired = false;
+        col.Cleared.Connect(() => clearedFired = true);
 
         col.Clear();
 
-        Assert.That(resetFired, Is.True);
+        Assert.That(clearedFired, Is.True);
         Assert.That(col.Count, Is.EqualTo(0));
     }
 
@@ -85,13 +87,14 @@ public class ReactiveCollectionTests
         var col = new ReactiveCollection<string>();
         col.Add("a");
         col.Add("c");
-        (int index, string item) received = (-1, "");
-        col.ItemAdded.Connect(e => received = e);
+        int receivedIndex = -1;
+        string receivedItem = "";
+        col.ItemAdded.Connect((index, item) => { receivedIndex = index; receivedItem = item; });
 
         col.Insert(1, "b");
 
-        Assert.That(received.index, Is.EqualTo(1));
-        Assert.That(received.item, Is.EqualTo("b"));
+        Assert.That(receivedIndex, Is.EqualTo(1));
+        Assert.That(receivedItem, Is.EqualTo("b"));
         Assert.That(col[1], Is.EqualTo("b"));
     }
 
