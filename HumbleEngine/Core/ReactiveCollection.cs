@@ -9,21 +9,25 @@ public class ReactiveCollection<T> : IReadOnlyList<T>
     private readonly MutableSignal<(int Index, T Item)> _itemAdded   = new();
     private readonly MutableSignal<(int Index, T Item)> _itemRemoved = new();
     private readonly MutableSignal                      _reset        = new();
+    private readonly MutableSignal                      _changed      = new();
 
     public Signal<(int Index, T Item)> ItemAdded   => _itemAdded.Signal;
     public Signal<(int Index, T Item)> ItemRemoved => _itemRemoved.Signal;
     public Signal                      Reset        => _reset.Signal;
+    public Signal                      Changed      => _changed.Signal;
 
     public void Add(T item)
     {
         _list.Add(item);
         _itemAdded.Emit((_list.Count - 1, item));
+        _changed.Emit();
     }
 
     public void Insert(int index, T item)
     {
         _list.Insert(index, item);
         _itemAdded.Emit((index, item));
+        _changed.Emit();
     }
 
     public bool Remove(T item)
@@ -39,12 +43,14 @@ public class ReactiveCollection<T> : IReadOnlyList<T>
         var item = _list[index];
         _list.RemoveAt(index);
         _itemRemoved.Emit((index, item));
+        _changed.Emit();
     }
 
     public void Clear()
     {
         _list.Clear();
         _reset.Emit();
+        _changed.Emit();
     }
 
     public T this[int index] => _list[index];
