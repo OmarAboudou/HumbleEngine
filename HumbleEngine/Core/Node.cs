@@ -75,5 +75,5 @@ public abstract class Node
 
     // Retourne la description visuelle de ce nœud pour le RenderNodeTree.
     // Les nœuds purement logiques (conteneurs sans visuel propre) retournent None.
-    public virtual RenderNodeData CreateRenderNode() => RenderNodeData.None;
+    public virtual RenderDescription Render() => RenderDescription.None;
 }
