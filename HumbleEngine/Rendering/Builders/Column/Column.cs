@@ -1,9 +1,8 @@
+using System.Collections;
+
 namespace HumbleEngine;
 
-// Builder pour un conteneur vertical.
-// Supporte la syntaxe collection initializer : new Column { child1, child2 }
-// Les éléments sont automatiquement convertis en RenderDescription via implicit operators.
-public struct Column
+public struct Column : IEnumerable<RenderDescription>
 {
     private List<RenderDescription>? _children;
 
@@ -18,4 +17,9 @@ public struct Column
         Kind     = RenderNodeKind.Column,
         Children = col._children?.ToArray() ?? Array.Empty<RenderDescription>()
     };
+
+    public IEnumerator<RenderDescription> GetEnumerator() =>
+        (_children ?? Enumerable.Empty<RenderDescription>()).GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
