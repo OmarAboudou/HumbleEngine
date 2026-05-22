@@ -16,11 +16,12 @@ public class LoginScreen : Node
         var titleLabel = new Label();
         titleLabel.Text.Value = "Votre nom :";
 
-        var col = new Column();
-        AddChild(col);
-        col.AddChild(titleLabel);
-        col.AddChild(_input);
-        col.AddChild(_greetingLabel);
+        AddChild(new Column
+        {
+            titleLabel,
+            _input,
+            _greetingLabel
+        });
 
         // Two-way : _input.Text ↔ Vm.Username
         _input.Text.BindFrom(Vm.Username);
