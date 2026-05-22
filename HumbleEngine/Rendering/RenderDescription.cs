@@ -11,8 +11,7 @@ public readonly struct RenderDescription
     public RenderDescription[]? Children { get; internal init; }
     public SpanData             Span     { get; internal init; }
     public BoxData              Box      { get; internal init; }
-    public VLayoutData          VLayout  { get; internal init; }
-    public HLayoutData          HLayout  { get; internal init; }
+    public LinearLayoutData     LinearLayout { get; internal init; }
     public LayoutData           Layout   { get; internal init; }
     public Node?                Owner    { get; internal init; }
 }
