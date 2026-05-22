@@ -55,6 +55,7 @@ public abstract class Node
     }
 
     public virtual HitTestFilter MouseFilter => HitTestFilter.Ignore;
+    public virtual bool IsFocusable => false;
 
     public virtual void OnMouseEnter() { }
     public virtual void OnMouseLeave() { }
