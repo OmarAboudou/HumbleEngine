@@ -4,8 +4,9 @@ public class ReactiveProperty<T> : IReactiveProperty<T>
 {
     private T _value;
     private readonly MutableSignal<T> _signal = new();
-    private readonly MutableSignal<(T oldValue, T newValue)> _reaffected = new();
-    public Signal<(T oldValue, T newValue)> Reaffected => _reaffected.Signal;
+    private readonly MutableSignal<T, T> _reaffected = new();
+    // TODO : Add doc to explain that first param is oldValue and second is newValue...
+    public ISignal<T, T> Reaffected => _reaffected.Signal;
 
     public ReactiveProperty(T initial) => _value = initial;
     
@@ -22,7 +23,7 @@ public class ReactiveProperty<T> : IReactiveProperty<T>
             T oldValue = _value;
             _value = value;
             _signal.Emit(value);
-            _reaffected.Emit((oldValue, value));
+            _reaffected.Emit(oldValue, value);
         }
     }
 
