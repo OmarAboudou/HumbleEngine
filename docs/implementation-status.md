@@ -6,8 +6,8 @@
 
 ## Phase 1 — Primitives ✅
 
-Branche : `feature/phase-1-core-primitives`  
-Tests : 46/46 ✅  
+Branche : `feature/phase-1-core-primitives` → mergée dans `develop`
+Tests : 46/46 ✅
 Dépendances externes : aucune
 
 ---
@@ -33,20 +33,20 @@ public abstract class Node
 
     // Cycle de vie
     public virtual void Init() { }
-    public virtual void Update(float delta) { }  // propagé aux enfants
+    public virtual void Update(float delta) { }    // propagé aux enfants
     public virtual void Layout(Size available) { } // propagé aux enfants
-    public virtual void Dispose() { }             // propagé aux enfants
+    public virtual void Paint(SKCanvas canvas) { } // propagé aux enfants avec Save/Translate/Restore
+    public virtual void Dispose() { }              // propagé aux enfants
 
     // Dirty flag
     public DirtyLevel Dirty { get; }
-    public bool IsDirty { get; }  // Dirty != None
-    public void MarkDirty(DirtyLevel level)   // escalade uniquement
-    public void MarkPaintDirty()              // → MarkDirty(Paint)
-    public void MarkLayoutDirty()             // → MarkDirty(Layout)
-    public void MarkLogicDirty()              // → MarkDirty(Logic)
-    internal void ClearDirty()               // → Dirty = None
+    public bool IsDirty { get; }         // Dirty != None
+    public void MarkDirty(DirtyLevel level)
+    public void MarkPaintDirty()         // → MarkDirty(Paint)
+    public void MarkLayoutDirty()        // → MarkDirty(Layout)
+    public void MarkLogicDirty()         // → MarkDirty(Logic)
+    internal void ClearDirty()          // → Dirty = None
 
-    // Rendu (Phase 2)
     public Rect ComputedBounds { get; protected set; }
 }
 ```
@@ -55,72 +55,82 @@ public abstract class Node
 - `AddChild` lance une exception si le Node a déjà un parent
 - `MarkDirty` n'escalade jamais vers le bas
 - Câbler `MarkXxxDirty()` sur les `ReactiveProperty<T>` dans `Init()`
+- Le parent gère la translation canvas avant d'appeler `Paint` sur les enfants
 
 ---
 
-### `ReactiveProperty<T>` — `HumbleEngine/Core/ReactiveProperty.cs`
+### Hiérarchie `ReactiveProperty<T>` — `HumbleEngine/Core/`
 
 ```csharp
-public class ReactiveProperty<T> : ISignal<T>
+// Interfaces
+public interface IReadOnlyReactiveProperty<out T> : ISignal<T>
+{
+    T Value { get; }
+    ISignal<T, T> Reaffected { get; }  // (oldValue, newValue) à chaque changement
+}
+
+public interface IReactiveProperty<T> : IReadOnlyReactiveProperty<T>
+{
+    new T Value { get; set; }
+}
+
+// Implémentations
+public class ReactiveProperty<T> : IReactiveProperty<T>
 {
     public ReactiveProperty(T initial)
-    public T Value { get; set; }         // notifie si valeur change
+    public T Value { get; set; }
+    public ISignal<T, T> Reaffected { get; }       // signal (oldValue, newValue)
     public void Connect(Action<T> listener)
     public void Disconnect(Action<T> listener)
-    public void BindFrom(ReactiveProperty<T> source)  // binding sens unique
+    public void BindFrom(ReactiveProperty<T> source) // binding sens unique
+    public static implicit operator T(ReactiveProperty<T> p) // lecture implicite
+}
+
+public class ReadOnlyReactiveProperty<T> : IReadOnlyReactiveProperty<T>
+{
+    public ReadOnlyReactiveProperty(ReactiveProperty<T> source)
+    public T Value { get; }
+    public ISignal<T, T> Reaffected { get; }
+    public void Connect(Action<T> listener)
+    public void Disconnect(Action<T> listener)
 }
 ```
 
 **Règles :**
-- Implémente `ISignal<T>` — utilisable partout où `ISignal<T>` est attendu
-- Égalité vérifiée avant notification — pas de boucle sur `BindFrom`
+- `IReadOnlyReactiveProperty<out T>` est covariant — `IReadOnlyReactiveProperty<Dog>` utilisable comme `IReadOnlyReactiveProperty<Animal>`
+- `Reaffected` fournit les deux valeurs : utile pour transitions, undo/redo
 - Délègue la notification à un `MutableSignal<T>` interne
 
 ---
 
-### `ISignal` / `ISignal<T>` — `HumbleEngine/Core/Signal.cs`
+### Hiérarchie `Signal` — `HumbleEngine/Core/Signal.cs`
 
 ```csharp
+// Interfaces (covariantes)
 public interface ISignal
-{
-    void Connect(Action listener);
-    void Disconnect(Action listener);
-}
+public interface ISignal<out T>
+public interface ISignal<out T1, out T2>
 
-public interface ISignal<T>
-{
-    void Connect(Action<T> listener);
-    void Disconnect(Action<T> listener);
-}
-```
-
----
-
-### `MutableSignal` / `Signal` — `HumbleEngine/Core/Signal.cs`
-
-```csharp
-// Côté émission — gardé privé dans le Node propriétaire
+// MutableSignal — côté émission, gardé privé
 public sealed class MutableSignal : ISignal
 {
-    public Signal Signal { get; }     // vue publique, créée dans le constructeur
+    public Signal Signal { get; }  // vue publique créée dans le constructeur
     public void Emit()
-    public void Connect(Action listener)
-    public void Disconnect(Action listener)
+    public void Connect(Action) / Disconnect(Action)
 }
+public sealed class MutableSignal<T> : ISignal<T>   { public void Emit(T value) ... }
+public sealed class MutableSignal<T1,T2> : ISignal<T1,T2> { public void Emit(T1, T2) ... }
 
-// Côté abonnement — exposé publiquement
-public sealed class Signal : ISignal
-{
-    internal Signal(MutableSignal owner)
-    public void Connect(Action listener)
-    public void Disconnect(Action listener)
-    // Emit() absent — cast Signal → MutableSignal impossible (types sans lien)
-}
-
-// Versions génériques identiques
-public sealed class MutableSignal<T> : ISignal<T> { ... }
-public sealed class Signal<T> : ISignal<T> { ... }
+// Signal — côté abonnement, exposé publiquement
+public sealed class Signal : ISignal           { internal Signal(MutableSignal) }
+public sealed class Signal<T> : ISignal<T>     { internal Signal(MutableSignal<T>) }
+public sealed class Signal<T1,T2> : ISignal<T1,T2> { internal Signal(MutableSignal<T1,T2>) }
 ```
+
+**Règles :**
+- `Signal` et `MutableSignal` sont sans lien d'héritage — cast impossible, encapsulation structurelle
+- `ISignal<out T>` est covariant grâce à la double contravariance de `Action<T>` en paramètre
+- Constructeurs `internal Signal(...)` — seul le moteur peut créer des `Signal`
 
 **Usage dans un Node :**
 ```csharp
@@ -131,33 +141,46 @@ public Signal Pressed => _pressed.Signal;
 
 ---
 
-### `ReactiveCollection<T>` — `HumbleEngine/Core/ReactiveCollection.cs`
+### Hiérarchie `ReactiveCollection<T>` — `HumbleEngine/Core/`
 
 ```csharp
-public class ReactiveCollection<T> : IReadOnlyList<T>
+// Interfaces
+public interface IReadOnlyReactiveCollection<out T> : IReadOnlyReactiveProperty<IReadOnlyList<T>>
 {
-    // Signaux (exposés en lecture seule via Signal)
-    public Signal<(int Index, T Item)> ItemAdded   { get; }
-    public Signal<(int Index, T Item)> ItemRemoved { get; }
-    public Signal                      Reset        { get; }
-    public Signal                      Changed      { get; }  // agrégat
+    ISignal<int, T> ItemAdded   { get; }
+    ISignal<int, T> ItemRemoved { get; }
+    ISignal          Cleared     { get; }
+    ISignal          Changed     { get; }
+}
 
-    // Mutation
-    public void Add(T item)
-    public void Insert(int index, T item)
-    public bool Remove(T item)
-    public void RemoveAt(int index)
-    public void Clear()
+public interface IReactiveCollection<T>
+    : IReadOnlyReactiveCollection<T>, IReactiveProperty<IReadOnlyList<T>>, IList<T>
 
-    // IReadOnlyList<T>
-    public T this[int index] { get; }
-    public int Count { get; }
+// Implémentations
+public class ReactiveCollection<T> : IReactiveCollection<T>
+{
+    // Signaux
+    ISignal<int, T> ItemAdded   // index + item ajouté
+    ISignal<int, T> ItemRemoved // index + item supprimé
+    ISignal          Cleared     // liste vidée
+    ISignal          Changed     // agrégat : fire après toute mutation
+
+    // IList<T> — toutes les méthodes émettent les signaux appropriés
+    // Indexeur setter : RemoveAt + Insert (émet ItemRemoved + ItemAdded)
+    // Value : réaffectation émet ItemRemoved pour chaque ancien item, ItemAdded pour chaque nouveau
+}
+
+public class ReadOnlyReactiveCollection<T> : IReadOnlyReactiveCollection<T>
+{
+    public ReadOnlyReactiveCollection(IReactiveCollection<T> source)
+    // Expose Value, Reaffected, ItemAdded, ItemRemoved, Cleared, Changed en lecture seule
 }
 ```
 
 **Règles :**
-- `Changed` est levé après chaque mutation (Add, Insert, RemoveAt, Clear)
-- Les `MutableSignal` sont privés — les consommateurs reçoivent des `Signal`
+- `Changed` est dérivé — câblé sur `ItemAdded`/`ItemRemoved`/`Cleared` dans le constructeur, jamais émis manuellement
+- `IReadOnlyReactiveCollection<out T>` est covariant
+- Lors d'une réaffectation (`Value = newList`), `Reaffected` fire les items individuels de l'ancien et du nouveau
 
 ---
 
@@ -173,22 +196,10 @@ public readonly record struct Rect(float X, float Y, float Width, float Height)
 
 ---
 
----
-
 ## Phase 2 — Premier rendu ✅
 
-Branche : `feature/phase-2-rendering`  
-Tests : 46/46 ✅ (Phase 1 inchangés — Phase 2 nécessite GPU)
-
----
-
-### `Node` — ajout Phase 2
-
-```csharp
-// Nouveau dans Phase 2
-public virtual void Paint(SKCanvas canvas)
-// Propage aux enfants avec Save/Translate/Restore par enfant
-```
+Branche : `feature/phase-2-rendering`
+Tests : 46/46 ✅ (Phase 2 nécessite GPU — pas de tests unitaires)
 
 ---
 
@@ -199,17 +210,18 @@ public sealed class Application : IDisposable
 {
     public Node? Root { get; set; }
     public Application(string title = "HumbleEngine", int width = 800, int height = 600)
-    public void Run()
+    public void Run()    // bloque jusqu'à fermeture
     public void Dispose()
 }
 ```
 
 **Boucle interne (par frame) :**
-1. `Root.Layout(windowSize)` — recalcule le layout
-2. `canvas.Clear(White)` + `Root.Paint(canvas)` — redessine
+1. `Root.Layout(windowSize)`
+2. `canvas.Clear(White)` + `Root.Paint(canvas)`
 3. `canvas.Flush()` + `Root.ClearDirty()`
 
-**Stack technique :** Silk.NET (fenêtre + contexte OpenGL) + SkiaSharp (rendu GPU via GRContext).
+**Stack :** Silk.NET GLFW (fenêtre + contexte OpenGL) + SkiaSharp GRContext (rendu GPU).
+`GRGlInterface.Create()` détecte le contexte GL courant. `FramebufferSize` (pixels physiques) pour HiDPI.
 
 ---
 
@@ -221,16 +233,13 @@ public class Label : Node
     public ReactiveProperty<string>  Text     = new("");
     public ReactiveProperty<SKColor> Color    = new(SKColors.Black);
     public ReactiveProperty<float>   FontSize = new(16f);
-
-    // Layout : mesure le texte → ComputedBounds.Width/Height
-    // Paint  : DrawText à l'origine (parent gère la translation)
 }
 ```
 
-**Règles :**
 - `Text` / `Color` → `MarkPaintDirty()`
 - `FontSize` → `MarkLayoutDirty()`
-- Le parent est responsable de placer `ComputedBounds.X/Y`
+- `Layout` : `SKFont.MeasureText` → `ComputedBounds.Width/Height`
+- `Paint` : `canvas.DrawText` à l'origine, y = `-font.Metrics.Ascent`
 
 ---
 
