@@ -4,16 +4,13 @@ namespace HumbleEngine;
 
 public struct Column : ICompositeRenderNode
 {
-    private readonly ColumnData _columnData;
-    private LayoutData          _layout;
+    private ColumnData _columnData;
+    private LayoutData _layout;
     private List<RenderDescription>? _children;
 
     public LayoutData Layout { get => _layout; set => _layout = value; }
 
-    public Column(float spacing = 0f)
-    {
-        _columnData = new ColumnData { Spacing = spacing };
-    }
+    public Column Spacing(float spacing) { _columnData = _columnData with { Spacing = spacing }; return this; }
 
     public void Add(RenderDescription child)
     {
