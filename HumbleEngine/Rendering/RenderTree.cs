@@ -200,13 +200,25 @@ public sealed class RenderTree
 
     private static void PaintBox(SKCanvas canvas, Rect bounds, BoxData data)
     {
-        using var paint = new SKPaint { Color = data.BackgroundColor, IsAntialias = true };
+        using var paint = new SKPaint { IsAntialias = true };
         var rect = new SKRect(bounds.X, bounds.Y, bounds.X + bounds.Width, bounds.Y + bounds.Height);
 
+        paint.Color = data.BackgroundColor;
         if (data.CornerRadius > 0)
             canvas.DrawRoundRect(rect, data.CornerRadius, data.CornerRadius, paint);
         else
             canvas.DrawRect(rect, paint);
+
+        if (data.BorderWidth > 0)
+        {
+            paint.Color       = data.BorderColor;
+            paint.Style       = SKPaintStyle.Stroke;
+            paint.StrokeWidth = data.BorderWidth;
+            if (data.CornerRadius > 0)
+                canvas.DrawRoundRect(rect, data.CornerRadius, data.CornerRadius, paint);
+            else
+                canvas.DrawRect(rect, paint);
+        }
     }
 
     private static void PaintSpan(SKCanvas canvas, Rect bounds, SpanData data)
