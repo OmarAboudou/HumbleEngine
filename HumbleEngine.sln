@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine", "HumbleEngin
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.Tests", "HumbleEngine.Tests\HumbleEngine.Tests.csproj", "{216E48AB-E1D8-45B3-A32A-97C1A1260771}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.Sample", "HumbleEngine.Sample\HumbleEngine.Sample.csproj", "{6356BE6B-B945-4C64-BC29-ED22F4FC65E9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -38,6 +40,18 @@ Global
 		{216E48AB-E1D8-45B3-A32A-97C1A1260771}.Release|x64.Build.0 = Release|Any CPU
 		{216E48AB-E1D8-45B3-A32A-97C1A1260771}.Release|x86.ActiveCfg = Release|Any CPU
 		{216E48AB-E1D8-45B3-A32A-97C1A1260771}.Release|x86.Build.0 = Release|Any CPU
+		{6356BE6B-B945-4C64-BC29-ED22F4FC65E9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6356BE6B-B945-4C64-BC29-ED22F4FC65E9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6356BE6B-B945-4C64-BC29-ED22F4FC65E9}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{6356BE6B-B945-4C64-BC29-ED22F4FC65E9}.Debug|x64.Build.0 = Debug|Any CPU
+		{6356BE6B-B945-4C64-BC29-ED22F4FC65E9}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{6356BE6B-B945-4C64-BC29-ED22F4FC65E9}.Debug|x86.Build.0 = Debug|Any CPU
+		{6356BE6B-B945-4C64-BC29-ED22F4FC65E9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6356BE6B-B945-4C64-BC29-ED22F4FC65E9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6356BE6B-B945-4C64-BC29-ED22F4FC65E9}.Release|x64.ActiveCfg = Release|Any CPU
+		{6356BE6B-B945-4C64-BC29-ED22F4FC65E9}.Release|x64.Build.0 = Release|Any CPU
+		{6356BE6B-B945-4C64-BC29-ED22F4FC65E9}.Release|x86.ActiveCfg = Release|Any CPU
+		{6356BE6B-B945-4C64-BC29-ED22F4FC65E9}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

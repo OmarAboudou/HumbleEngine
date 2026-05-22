@@ -1,3 +1,5 @@
+using SkiaSharp;
+
 namespace HumbleEngine;
 
 public abstract class Node
@@ -50,6 +52,17 @@ public abstract class Node
     {
         foreach (var child in _children)
             child.Layout(available);
+    }
+
+    public virtual void Paint(SKCanvas canvas)
+    {
+        foreach (var child in _children)
+        {
+            canvas.Save();
+            canvas.Translate(child.ComputedBounds.X, child.ComputedBounds.Y);
+            child.Paint(canvas);
+            canvas.Restore();
+        }
     }
 
     public virtual void Dispose()
