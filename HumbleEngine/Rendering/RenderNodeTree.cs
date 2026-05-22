@@ -7,20 +7,26 @@ public sealed class RenderNodeTree
     private readonly List<RenderNode> _nodes        = new();
     private readonly List<int>        _subtreeSizes = new();
 
-    // Tableaux typés — un par RenderNodeKind avec données
-    private readonly List<SpanData> _spanData = new();
-    private readonly List<BoxData>  _boxData  = new();
+    // Tableaux typés — indexés par RenderNode.Index
+    private readonly List<SpanData>   _spanData   = new();
+    private readonly List<BoxData>    _boxData    = new();
+    private readonly List<ColumnData> _columnData = new();
+
+    // Tableaux parallèles — même index que _nodes
+    private readonly List<LayoutData> _layoutData = new();
+    private readonly List<Node?>      _owners     = new();
 
     // --- Construction ---
 
-    // Appelle root.Render() pour obtenir la description complète,
-    // puis aplatit récursivement l'arbre de descriptions.
     public void Rebuild(Node root)
     {
         _nodes.Clear();
         _subtreeSizes.Clear();
         _spanData.Clear();
         _boxData.Clear();
+        _columnData.Clear();
+        _layoutData.Clear();
+        _owners.Clear();
 
         var desc = root.Render();
         if (desc.Kind != RenderNodeKind.None)
@@ -32,8 +38,9 @@ public sealed class RenderNodeTree
         int myIndex = _nodes.Count;
         _nodes.Add(default);
         _subtreeSizes.Add(0);
+        _layoutData.Add(desc.Layout);
+        _owners.Add(desc.Owner);
 
-        // Convertit les bounds relatives (parent-relative) en absolues
         float absX = parentX + desc.Bounds.X;
         float absY = parentY + desc.Bounds.Y;
         var   abs  = new Rect(absX, absY, desc.Bounds.Width, desc.Bounds.Height);
@@ -61,9 +68,89 @@ public sealed class RenderNodeTree
             case RenderNodeKind.Box:
                 _boxData.Add(desc.Box);
                 return _boxData.Count - 1;
+            case RenderNodeKind.Column:
+                _columnData.Add(desc.Column);
+                return _columnData.Count - 1;
             default:
                 return -1;
         }
+    }
+
+    // --- Layout ---
+
+    // Calcule les bounds de chaque nœud et les écrit sur les Nodes propriétaires (pour HitTest).
+    public void Layout(BoxConstraints constraints)
+    {
+        if (_nodes.Count == 0) return;
+        LayoutNode(0, constraints, 0f, 0f);
+        for (int i = 0; i < _nodes.Count; i++)
+            if (_owners[i] is { } owner)
+                owner.ComputedBounds = _nodes[i].Bounds;
+    }
+
+    private Size LayoutNode(int index, BoxConstraints constraints, float x, float y)
+    {
+        var node   = _nodes[index];
+        var layout = _layoutData[index];
+        Size size;
+
+        switch (node.Kind)
+        {
+            case RenderNodeKind.Span:
+            {
+                var span = _spanData[node.Index];
+                using var font = new SKFont(SKTypeface.Default, span.FontSize);
+                float intrinsicW = font.MeasureText(span.Content ?? "");
+                float intrinsicH = font.Metrics.Descent - font.Metrics.Ascent;
+                size = constraints.Constrain(layout.Width ?? intrinsicW, layout.Height ?? intrinsicH);
+                break;
+            }
+            case RenderNodeKind.Box:
+                size = LayoutChildren(index, constraints, x, y, layout, isColumn: false);
+                break;
+
+            case RenderNodeKind.Column:
+                size = LayoutChildren(index, constraints, x, y, layout, isColumn: true);
+                break;
+
+            default:
+                size = constraints.Constrain(layout.Width ?? 0, layout.Height ?? 0);
+                break;
+        }
+
+        _nodes[index] = node with { Bounds = new Rect(x, y, size.Width, size.Height) };
+        return size;
+    }
+
+    private Size LayoutChildren(int index, BoxConstraints constraints, float x, float y, LayoutData layout, bool isColumn)
+    {
+        float contentMaxW = Math.Max(0, (layout.Width  ?? constraints.MaxWidth)  - layout.PaddingX * 2);
+        float contentMaxH = Math.Max(0, (layout.Height ?? constraints.MaxHeight) - layout.PaddingY * 2);
+        var childConstraints = BoxConstraints.Loose(new Size(contentMaxW, contentMaxH));
+
+        float childX  = x + layout.PaddingX;
+        float childY  = y + layout.PaddingY;
+        float maxW    = 0;
+        float accH    = 0;
+        bool  first   = true;
+
+        foreach (int childIdx in ChildIndices(index))
+        {
+            if (isColumn && !first)
+                accH += _columnData[_nodes[index].Index].Spacing;
+
+            float cy       = childY + (isColumn ? accH : 0);
+            var childSize  = LayoutNode(childIdx, childConstraints, childX, cy);
+
+            maxW = Math.Max(maxW, childSize.Width);
+            if (isColumn) accH += childSize.Height;
+            else          accH  = Math.Max(accH, childSize.Height);
+            first = false;
+        }
+
+        float ownW = layout.Width  ?? (maxW + layout.PaddingX * 2);
+        float ownH = layout.Height ?? (accH + layout.PaddingY * 2);
+        return constraints.Constrain(ownW, ownH);
     }
 
     // --- Rendu ---
@@ -81,7 +168,6 @@ public sealed class RenderNodeTree
                 case RenderNodeKind.Box:
                     PaintBox(canvas, node.Bounds, _boxData[node.Index]);
                     break;
-                // Column n'a pas de visuel propre
             }
         }
     }
