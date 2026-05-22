@@ -94,4 +94,56 @@ public class ReactiveCollectionTests
         Assert.That(received.item, Is.EqualTo("b"));
         Assert.That(col[1], Is.EqualTo("b"));
     }
+
+    [Test]
+    public void Changed_FiredOnAdd()
+    {
+        var col = new ReactiveCollection<int>();
+        int callCount = 0;
+        col.Changed.Connect(() => callCount++);
+
+        col.Add(1);
+
+        Assert.That(callCount, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Changed_FiredOnRemove()
+    {
+        var col = new ReactiveCollection<int>();
+        col.Add(1);
+        int callCount = 0;
+        col.Changed.Connect(() => callCount++);
+
+        col.RemoveAt(0);
+
+        Assert.That(callCount, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Changed_FiredOnClear()
+    {
+        var col = new ReactiveCollection<int>();
+        col.Add(1);
+        int callCount = 0;
+        col.Changed.Connect(() => callCount++);
+
+        col.Clear();
+
+        Assert.That(callCount, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Changed_FiredOncePerOperation()
+    {
+        var col = new ReactiveCollection<int>();
+        int callCount = 0;
+        col.Changed.Connect(() => callCount++);
+
+        col.Add(1);
+        col.Add(2);
+        col.RemoveAt(0);
+
+        Assert.That(callCount, Is.EqualTo(3));
+    }
 }
