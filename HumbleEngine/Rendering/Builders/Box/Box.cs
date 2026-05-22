@@ -1,8 +1,10 @@
 using System.Collections;
+using System.Runtime.CompilerServices;
 using SkiaSharp;
 
 namespace HumbleEngine;
 
+[CollectionBuilder(typeof(Box), nameof(Create))]
 public struct Box : ICompositeRenderNode
 {
     private BoxData   _boxData;
@@ -18,6 +20,14 @@ public struct Box : ICompositeRenderNode
     {
         _children ??= new List<RenderDescription>();
         _children.Add(child);
+    }
+
+    public static Box Create(ReadOnlySpan<RenderDescription> items)
+    {
+        var box = new Box();
+        foreach (var item in items)
+            box.Add(item);
+        return box;
     }
 
     public static implicit operator RenderDescription(Box b) => new()
