@@ -8,6 +8,8 @@ public readonly struct RenderDescription
 {
     public static readonly RenderDescription None = default;
 
+    public static implicit operator RenderDescription(string content) => new Text(content);
+
     public RenderNodeKind       Kind     { get; internal init; }
     public Rect                 Bounds   { get; internal init; }
     public RenderDescription[]? Children { get; internal init; }
