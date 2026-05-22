@@ -11,10 +11,15 @@
 HumbleEngine/
 ├── Application.cs
 ├── Reactivity/          Signal, ReactiveProperty, ReactiveCollection + interfaces
-├── Scene/               Node, DirtyLevel, Geometry
-├── Rendering/           RenderNode, RenderNodeTree, RenderDescription, TextData
-│   └── Builders/        Text, Column (briques déclaratives)
-└── Nodes/               Label (et futurs Nodes built-in)
+├── Scene/               Node, DirtyLevel, Geometry, HitTestFilter, HitTest
+├── Rendering/           RenderNode, RenderNodeTree, RenderDescription
+│   │                    BoxConstraints, LayoutData, IRenderNode, ICompositeRenderNode
+│   │                    LayoutExtensions
+│   └── Builders/
+│       ├── Span/        Span, SpanData
+│       ├── Box/         Box, BoxData
+│       └── Column/      Column, ColumnData
+└── Nodes/               Label, Button
 ```
 
 Tous les types sont dans `namespace HumbleEngine;`.
@@ -46,9 +51,7 @@ public abstract class Node
     public void RemoveChild(Node child)  // appelle child.Dispose()
 
     public virtual void Init() { }
-    public virtual void Update(float delta) { }    // propagé aux enfants
-    public virtual void Layout(Size available) { } // propagé aux enfants
-    public virtual void Paint(SKCanvas canvas) { } // propagé avec Save/Translate/Restore
+    public virtual void Update(float delta) { }  // propagé aux enfants
     public virtual void Dispose() { }
 
     public DirtyLevel Dirty { get; }
@@ -59,8 +62,18 @@ public abstract class Node
     public void MarkLogicDirty()
     internal void ClearDirty()
 
-    public Rect ComputedBounds { get; protected set; }
-    public virtual RenderDescription Render() => RenderDescription.None;
+    // Input
+    public virtual HitTestFilter MouseFilter => HitTestFilter.Ignore;
+    public virtual void OnMouseEnter() { }
+    public virtual void OnMouseLeave() { }
+    public virtual void OnMouseDown()  { }
+    public virtual void OnMouseUp()    { }
+    public virtual void OnClick()      { }
+
+    // Rendu — Template Method : Render() injecte Owner, RenderContent() est surchargé
+    public Rect ComputedBounds { get; internal set; }  // écrit par RenderNodeTree après layout
+    public RenderDescription Render() => RenderContent() with { Owner = this };
+    protected virtual RenderDescription RenderContent() => RenderDescription.None;
 }
 ```
 
@@ -68,7 +81,8 @@ public abstract class Node
 - `AddChild` lance une exception si le Node a déjà un parent
 - `MarkDirty` n'escalade jamais vers le bas
 - Câbler `MarkXxxDirty()` sur les `ReactiveProperty<T>` dans `Init()`
-- `Render()` retourne la description visuelle — injecter `ComputedBounds` dans la description
+- Layout et Paint sont délégués au `RenderNodeTree` — ne pas les implémenter sur Node
+- `ComputedBounds` est écrit par le RenderTree après la layout pass — utilisé par HitTest
 
 ---
 
@@ -103,40 +117,26 @@ public class ReadOnlyReactiveProperty<T> : IReadOnlyReactiveProperty<T>
 }
 ```
 
-**Règles :**
-- `IReadOnlyReactiveProperty<out T>` est covariant
-- `Reaffected` fournit oldValue + newValue — utile pour transitions, undo/redo
-- Délègue la notification à un `MutableSignal<T>` interne
-
 ---
 
 ### Hiérarchie `Signal` — `Reactivity/Signal.cs`
 
 ```csharp
 public interface ISignal
-public interface ISignal<out T>           // covariant
-public interface ISignal<out T1, out T2>  // covariant
+public interface ISignal<out T>
+public interface ISignal<out T1, out T2>
 
 public sealed class MutableSignal : ISignal        { public void Emit(); }
 public sealed class MutableSignal<T> : ISignal<T>  { public void Emit(T value); }
-public sealed class MutableSignal<T1,T2> : ISignal<T1,T2> { public void Emit(T1, T2); }
 
 public sealed class Signal : ISignal          { internal Signal(MutableSignal owner); }
 public sealed class Signal<T> : ISignal<T>    { internal Signal(MutableSignal<T> owner); }
-public sealed class Signal<T1,T2> : ISignal<T1,T2> { internal Signal(MutableSignal<T1,T2> owner); }
 ```
-
-**Règles :**
-- `Signal` et `MutableSignal` sont sans lien d'héritage — cast impossible, encapsulation structurelle
-- Constructeurs `internal Signal(...)` — seul le moteur crée des `Signal`
-- `ISignal<out T>` covariant grâce à la double contravariance de `Action<T>` en paramètre
 
 **Usage :**
 ```csharp
 private readonly MutableSignal _pressed = new();
 public Signal Pressed => _pressed.Signal;
-// émettre : _pressed.Emit()
-// s'abonner : node.Pressed.Connect(() => ...)
 ```
 
 ---
@@ -149,20 +149,12 @@ public interface IReadOnlyReactiveCollection<out T> : IReadOnlyReactiveProperty<
     ISignal<int, T> ItemAdded   { get; }
     ISignal<int, T> ItemRemoved { get; }
     ISignal          Cleared     { get; }
-    ISignal          Changed     { get; }  // agrégat
+    ISignal          Changed     { get; }
 }
-
-public interface IReactiveCollection<T>
-    : IReadOnlyReactiveCollection<T>, IReactiveProperty<IReadOnlyList<T>>, IList<T>
 
 public class ReactiveCollection<T> : IReactiveCollection<T>
 public class ReadOnlyReactiveCollection<T> : IReadOnlyReactiveCollection<T>
 ```
-
-**Règles :**
-- `Changed` est dérivé — câblé sur les trois autres signaux dans le constructeur
-- Réaffectation via `Value = newList` : émet `ItemRemoved` pour chaque ancien item, `ItemAdded` pour chaque nouveau
-- `IReadOnlyReactiveCollection<out T>` est covariant
 
 ---
 
@@ -180,8 +172,6 @@ public readonly record struct Rect(float X, float Y, float Width, float Height)
 
 ## Phase 2 — Premier rendu ✅
 
-Tests Phase 1 : 46/46 ✅ — Phase 2 requiert GPU, pas de tests unitaires
-
 ---
 
 ### `Application` — `Application.cs`
@@ -197,12 +187,12 @@ public sealed class Application : IDisposable
 ```
 
 **Boucle par frame :**
-1. `Root.Layout(windowSize)`
-2. `_renderTree.Rebuild(Root)` — construit le Render Tree depuis `Node.Render()`
+1. `_renderTree.Rebuild(Root)` — Node.Render() → Flatten → tableaux plats
+2. `_renderTree.Layout(BoxConstraints.Loose(windowSize))` — calcule les bounds
 3. `canvas.Clear(White)` + `_renderTree.Paint(canvas)`
 4. `canvas.Flush()` + `Root.ClearDirty()`
 
-**Stack :** Silk.NET GLFW + SkiaSharp GRContext. `GRGlInterface.Create()` sans lambda. `FramebufferSize` pour HiDPI.
+**Stack :** Silk.NET GLFW + SkiaSharp GRContext. `FramebufferSize` pour HiDPI.
 
 ---
 
@@ -210,47 +200,50 @@ public sealed class Application : IDisposable
 
 **Architecture :**
 ```
-Node.Render()  →  RenderDescription (arbre transitoire)
-                        ↓ RenderNodeTree.Rebuild()
-               RenderNode[] plat + int[] subtreeSizes + TextData[] + ...
-                        ↓ RenderNodeTree.Paint()
-                      SKCanvas
+Node.RenderContent()  →  RenderDescription (arbre transitoire, Owner injecté par Render())
+                               ↓ RenderNodeTree.Rebuild()
+                    _nodes[] + _subtreeSizes[] + _layoutData[] + _owners[]
+                    _spanData[] + _boxData[] + _columnData[]
+                               ↓ RenderNodeTree.Layout(BoxConstraints)
+                    bounds calculées → _nodes[i].Bounds + owner.ComputedBounds
+                               ↓ RenderNodeTree.Paint()
+                             SKCanvas
 ```
 
 ```csharp
-// RenderNode — struct fixe 24 bytes dans le tableau plat
+// RenderNode — struct fixe dans le tableau plat
 public readonly struct RenderNode
 {
-    public RenderNodeKind Kind   { get; init; }  // quel type
-    public int            Index  { get; init; }  // index dans _textData[], _boxData[], etc.
-    public Rect           Bounds { get; init; }  // bounds absolues
+    public RenderNodeKind Kind   { get; init; }
+    public int            Index  { get; init; }  // index dans _spanData[], _boxData[], etc.
+    public Rect           Bounds { get; init; }  // bounds absolues, calculées par Layout()
 }
 
-public enum RenderNodeKind { None, Text, Box, Column }
+public enum RenderNodeKind { None, Span, Box, Column }
 
 // RenderDescription — valeur transitoire retournée par Node.Render()
 public readonly struct RenderDescription
 {
+    public static readonly RenderDescription None = default;
+    public static implicit operator RenderDescription(string content) => new Span(content);
+
     public RenderNodeKind       Kind     { get; internal init; }
     public Rect                 Bounds   { get; internal init; }
     public RenderDescription[]? Children { get; internal init; }
-    public TextData             Text     { get; internal init; }
-}
-
-// TextData — données typées stockées dans _textData[]
-public readonly struct TextData
-{
-    public string  Content  { get; init; }
-    public SKColor Color    { get; init; }
-    public float   FontSize { get; init; }
+    public SpanData             Span     { get; internal init; }
+    public BoxData              Box      { get; internal init; }
+    public LayoutData           Layout   { get; internal init; }
+    public ColumnData           Column   { get; internal init; }
+    public Node?                Owner    { get; internal init; }
 }
 
 // RenderNodeTree
 public sealed class RenderNodeTree
 {
-    public void Rebuild(Node root)    // root.Render() → Flatten()
+    public void Rebuild(Node root)
+    public void Layout(BoxConstraints constraints)  // deux passes : descend contraintes, remonte tailles
     public void Paint(SKCanvas canvas)
-    public IEnumerable<int> ChildIndices(int parentIndex)  // navigation par subtreeSize
+    public IEnumerable<int> ChildIndices(int parentIndex)
 }
 ```
 
@@ -260,41 +253,177 @@ public sealed class RenderNodeTree
 
 ---
 
-### Builders déclaratifs — `Rendering/Builders/`
-
-Briques de rendu built-in. Utilisateurs du moteur ne peuvent pas en créer de nouvelles.
+### Layout — `Rendering/`
 
 ```csharp
-// Leaf
-public readonly struct Text
+// Contraintes descendantes (parent → enfant)
+public readonly struct BoxConstraints
 {
-    public Text(string content, SKColor color = default, float fontSize = 16f)
-    public static implicit operator RenderDescription(Text t)
+    public float MinWidth, MaxWidth, MinHeight, MaxHeight;
+    public static BoxConstraints Loose(Size available)      // min=0, max=available
+    public static BoxConstraints Tight(Size size)           // min=max=size
+    public static BoxConstraints Unconstrained              // max=∞
+    public Size Constrain(float width, float height)        // clamp dans les contraintes
 }
 
-// Conteneur — collection initializer
-public struct Column
+// Hints de sizing universels sur chaque RenderDescription
+public readonly struct LayoutData
 {
-    public void Add(RenderDescription child)
+    public float? Width    { get; init; }  // null = hug content
+    public float? Height   { get; init; }  // null = hug content
+    public float  PaddingX { get; init; }
+    public float  PaddingY { get; init; }
+}
+
+// Données spécifiques à Column
+public readonly struct ColumnData
+{
+    public float Spacing { get; init; }
+}
+```
+
+**Algorithme de layout par Kind :**
+- `Span` → taille intrinsèque via `SKFont.MeasureText`, clampée dans les contraintes
+- `Box` → layout des enfants superposés, taille = max enfant + padding
+- `Column` → enfants empilés verticalement avec spacing, taille = somme + padding
+
+---
+
+### Builders déclaratifs — `Rendering/Builders/`
+
+**Hiérarchie d'interfaces :**
+```csharp
+public interface IRenderNode                                    // tout builder
+{
+    LayoutData Layout { get; set; }
+}
+
+public interface ICompositeRenderNode                          // builders avec enfants
+    : IRenderNode, IEnumerable<RenderDescription>
+{
+    void Add(RenderDescription child);
+}
+```
+
+**Extension methods génériques — `LayoutExtensions.cs` :**
+```csharp
+// Disponibles sur tout T : struct, IRenderNode
+T Width<T>(this T b, float? width)
+T Height<T>(this T b, float? height)
+T Padding<T>(this T b, float x, float y)
+T Padding<T>(this T b, float uniform)
+```
+
+**Builders :**
+```csharp
+// Span — texte stylé (IRenderNode, feuille)
+public struct Span : IRenderNode
+{
+    public Span(string content)                // contenu obligatoire
+    public Span Color(SKColor color)
+    public Span FontSize(float size)
+    public RenderDescription At(Rect bounds)   // positionnement explicite
+    public RenderDescription At(float x, float y)
+    public static implicit operator RenderDescription(Span s)
+}
+
+// Box — conteneur avec fond (ICompositeRenderNode)
+public struct Box : ICompositeRenderNode
+{
+    public Box Color(SKColor color)
+    public Box CornerRadius(float radius)
+    // + Width(), Height(), Padding() via LayoutExtensions
+    public static implicit operator RenderDescription(Box b)
+}
+
+// Column — conteneur vertical (ICompositeRenderNode)
+public struct Column : ICompositeRenderNode
+{
+    public Column Spacing(float spacing)
+    // + Width(), Height(), Padding() via LayoutExtensions
     public static implicit operator RenderDescription(Column col)
 }
 ```
 
-**Usage dans Node.Render() :**
+**Usage dans RenderContent() :**
 ```csharp
-public override RenderDescription Render()
-{
-    RenderDescription desc = new Text(Text.Value, Color.Value, FontSize.Value);
-    return desc with { Bounds = ComputedBounds };
-}
+// Label
+protected override RenderDescription RenderContent()
+    => new Span(Text.Value).Color(Color.Value).FontSize(FontSize.Value);
 
-// Ou avec conteneur :
-public override RenderDescription Render() =>
-    (RenderDescription) new Column
+// Conteneur avec padding et enfants
+protected override RenderDescription RenderContent() =>
+    new Column
     {
-        new Text("TITRE"),
-        _children[0].Render()
-    } with { Bounds = ComputedBounds };
+        new Span("Titre").FontSize(24f),
+        "Sous-titre",                       // string → RenderDescription
+        new Box { child.Render() }.Color(SKColors.LightGray)
+    }.Spacing(8).Padding(16f);
+```
+
+---
+
+## Phase 3 — Input system ✅
+
+---
+
+### `HitTestFilter` — `Scene/HitTestFilter.cs`
+
+```csharp
+public enum HitTestFilter
+{
+    Ignore,   // hover uniquement, pas de click (défaut)
+    Pass,     // hover + click, propagé vers les ancêtres
+    Stop,     // hover + click, stoppé
+    Disabled, // aucun événement
+}
+```
+
+---
+
+### `HitTest` — `Scene/HitTest.cs`
+
+```csharp
+public static class HitTest
+{
+    // Phase 1 — trouve le Node le plus profond au point (x,y), filtre ignoré
+    public static Node? Find(Node root, float x, float y)
+
+    // Phase 2 — dispatche un clic en remontant (Stop/Pass/Ignore)
+    public static void DispatchClick(Node? node)
+
+    // Chaîne d'ancêtres pour MouseEnter/Leave (exclut Disabled)
+    public static List<Node> GetHoveredPath(Node? node)
+
+    // Premier ancêtre interactif (Pass ou Stop) — cible du MouseDown
+    public static Node? FirstInteractive(List<Node> path)
+}
+```
+
+**Règles :**
+- `Find` descend sans filtre — candidat le plus profond géographiquement
+- `DispatchClick` remonte depuis la cible — filtre appliqué à la remontée
+- `MouseEnter`/`Leave` : diff entre ancien et nouveau `GetHoveredPath`
+- Clic confirmé : `_pressedNode` (FirstInteractive au MouseDown) encore dans le chemin au MouseUp
+
+---
+
+### `Button` — `Nodes/Button.cs`
+
+```csharp
+public class Button : Node
+{
+    public ReactiveProperty<string>  Text            = new("");
+    public ReactiveProperty<SKColor> BackgroundColor = new(SKColor(220,220,220));
+    public ReactiveProperty<SKColor> HoverColor      = new(SKColor(190,210,240));
+    public ReactiveProperty<float>   FontSize        = new(16f);
+
+    public Signal Pressed { get; }  // émis par OnClick()
+
+    public override HitTestFilter MouseFilter => HitTestFilter.Stop;
+    // OnMouseEnter/Leave → _isHovered + MarkPaintDirty
+    // RenderContent : new Box { new Span(...) }.Color(bg).Padding(16f, 8f)
+}
 ```
 
 ---
@@ -307,9 +436,8 @@ public class Label : Node
     public ReactiveProperty<string>  Text     = new("");
     public ReactiveProperty<SKColor> Color    = new(SKColors.Black);
     public ReactiveProperty<float>   FontSize = new(16f);
-    // Text/Color → MarkPaintDirty(), FontSize → MarkLayoutDirty()
-    // Layout : SKFont.MeasureText → ComputedBounds.Width/Height
-    // Render : new Text(...) with { Bounds = ComputedBounds }
+    // Text/FontSize → MarkLayoutDirty(), Color → MarkPaintDirty()
+    // RenderContent : new Span(Text.Value).Color(Color.Value).FontSize(FontSize.Value)
 }
 ```
 
@@ -319,6 +447,5 @@ public class Label : Node
 
 | Phase | Contenu | Statut |
 |-------|---------|--------|
-| 3 | Input system, hit testing, `Button` | ⬜ |
-| 4 | `Constraints`, `Column` Node, `Row`, `Stack` | ⬜ |
+| 4 | `Column` Node, `Row` Node, tests layout | ⬜ |
 | 5 | `TextInput`, premier écran MVVM complet | ⬜ |
