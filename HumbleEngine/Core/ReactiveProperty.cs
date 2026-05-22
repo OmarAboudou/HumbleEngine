@@ -1,6 +1,6 @@
 namespace HumbleEngine;
 
-public class ReactiveProperty<T> : ISignal<T>
+public class ReactiveProperty<T> : IReactiveProperty<T>
 {
     private T _value;
     private readonly MutableSignal<T> _signal = new();
