@@ -143,13 +143,9 @@ public sealed class Application : IDisposable
 
         var canvas = _surface.Canvas;
 
-        // Layout : calcule les positions et tailles de tous les Nodes
-        Root.Layout(new Size(_window.Size.X, _window.Size.Y));
-
-        // Construit le Render Tree plat depuis le Node Tree
         _renderTree.Rebuild(Root);
+        _renderTree.Layout(BoxConstraints.Loose(new Size(_window.Size.X, _window.Size.Y)));
 
-        // Efface le framebuffer puis peint via le Render Tree
         canvas.Clear(SKColors.White);
         _renderTree.Paint(canvas);
 
