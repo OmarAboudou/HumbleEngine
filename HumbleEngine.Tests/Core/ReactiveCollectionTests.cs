@@ -61,7 +61,7 @@ public class ReactiveCollectionTests
         col.Add(1);
         col.Add(2);
         bool resetFired = false;
-        col.Reset.Connect(() => resetFired = true);
+        col.Cleared.Connect(() => resetFired = true);
 
         col.Clear();
 
