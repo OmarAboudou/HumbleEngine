@@ -7,11 +7,19 @@ public abstract class Node
     public IReadOnlyList<Node> Children => _children;
     public Node? Parent { get; private set; }
 
-    public bool IsDirty { get; private set; }
+    public DirtyLevel Dirty { get; private set; }
+    public bool IsDirty => Dirty != DirtyLevel.None;
 
-    public void MarkDirty() => IsDirty = true;
+    public void MarkDirty(DirtyLevel level)
+    {
+        if (level > Dirty) Dirty = level;
+    }
 
-    internal void ClearDirty() => IsDirty = false;
+    public void MarkPaintDirty()  => MarkDirty(DirtyLevel.Paint);
+    public void MarkLayoutDirty() => MarkDirty(DirtyLevel.Layout);
+    public void MarkLogicDirty()  => MarkDirty(DirtyLevel.Logic);
+
+    internal void ClearDirty() => Dirty = DirtyLevel.None;
 
     public void AddChild(Node child)
     {
