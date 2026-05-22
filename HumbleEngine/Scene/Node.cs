@@ -1,3 +1,5 @@
+using Silk.NET.Input;
+
 namespace HumbleEngine;
 
 public abstract class Node
@@ -59,6 +61,11 @@ public abstract class Node
     public virtual void OnMouseDown()  { }
     public virtual void OnMouseUp()    { }
     public virtual void OnClick()      { }
+
+    public virtual void OnFocusGained()         { }
+    public virtual void OnFocusLost()           { }
+    public virtual void OnKeyChar(char c)       { }
+    public virtual void OnKeyDown(Key key)      { }
 
     public Rect ComputedBounds { get; internal set; }
 
