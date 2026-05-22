@@ -2,17 +2,16 @@ using System.Collections;
 
 namespace HumbleEngine;
 
-public struct Column : IEnumerable<RenderDescription>
+public struct Column : ICompositeRenderNode
 {
-    private readonly LayoutData  _layout;
-    private readonly ColumnData  _columnData;
+    private readonly ColumnData _columnData;
+    private LayoutData          _layout;
     private List<RenderDescription>? _children;
 
-    public Column(float spacing = 0f,
-                  float? width = null, float? height = null,
-                  float paddingX = 0f, float paddingY = 0f)
+    public LayoutData Layout { get => _layout; set => _layout = value; }
+
+    public Column(float spacing = 0f)
     {
-        _layout     = new LayoutData { Width = width, Height = height, PaddingX = paddingX, PaddingY = paddingY };
         _columnData = new ColumnData { Spacing = spacing };
     }
 
