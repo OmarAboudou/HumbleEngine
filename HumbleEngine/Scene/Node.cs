@@ -79,7 +79,7 @@ public abstract class Node
     public virtual void OnMouseUp()    { }
     public virtual void OnClick()      { }
 
-    public Rect ComputedBounds { get; protected set; }
+    public Rect ComputedBounds { get; internal set; }
 
     // Retourne la description visuelle de ce nœud pour le RenderNodeTree.
     // Les nœuds purement logiques (conteneurs sans visuel propre) retournent None.
