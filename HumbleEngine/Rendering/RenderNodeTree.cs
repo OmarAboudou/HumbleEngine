@@ -10,8 +10,7 @@ public sealed class RenderNodeTree
     // Tableaux typés — indexés par RenderNode.Index
     private readonly List<SpanData>    _spanData    = new();
     private readonly List<BoxData>     _boxData     = new();
-    private readonly List<VLayoutData> _vLayoutData = new();
-    private readonly List<HLayoutData> _hLayoutData = new();
+    private readonly List<LinearLayoutData> _linearLayoutData = new();
 
     // Tableaux parallèles — même index que _nodes
     private readonly List<LayoutData> _layoutData = new();
@@ -25,8 +24,7 @@ public sealed class RenderNodeTree
         _subtreeSizes.Clear();
         _spanData.Clear();
         _boxData.Clear();
-        _vLayoutData.Clear();
-        _hLayoutData.Clear();
+        _linearLayoutData.Clear();
         _layoutData.Clear();
         _owners.Clear();
 
@@ -71,11 +69,10 @@ public sealed class RenderNodeTree
                 _boxData.Add(desc.Box);
                 return _boxData.Count - 1;
             case RenderNodeKind.VLayout:
-                _vLayoutData.Add(desc.VLayout);
-                return _vLayoutData.Count - 1;
             case RenderNodeKind.HLayout:
-                _hLayoutData.Add(desc.HLayout);
-                return _hLayoutData.Count - 1;
+                _linearLayoutData.Add(desc.LinearLayout);
+
+                return _linearLayoutData.Count - 1;
             default:
                 return -1;
         }
@@ -148,9 +145,9 @@ public sealed class RenderNodeTree
         {
             float spacing = arrangement switch
             {
-                ChildArrangement.Vertical   => first ? 0 : _vLayoutData[_nodes[index].Index].Spacing,
-                ChildArrangement.Horizontal => first ? 0 : _hLayoutData[_nodes[index].Index].Spacing,
-                _                           => 0
+                ChildArrangement.Vertical or ChildArrangement.Horizontal
+                    => first ? 0 : _linearLayoutData[_nodes[index].Index].Spacing,
+                _ => 0
             };
 
             float cx = childX + (arrangement == ChildArrangement.Horizontal ? accW + spacing : 0);
@@ -161,11 +158,11 @@ public sealed class RenderNodeTree
             switch (arrangement)
             {
                 case ChildArrangement.Vertical:
-                    accH += childSize.Height + (first ? 0 : _vLayoutData[_nodes[index].Index].Spacing);
+                    accH += childSize.Height + (first ? 0 : _linearLayoutData[_nodes[index].Index].Spacing);
                     accW  = Math.Max(accW, childSize.Width);
                     break;
                 case ChildArrangement.Horizontal:
-                    accW += childSize.Width + (first ? 0 : _hLayoutData[_nodes[index].Index].Spacing);
+                    accW += childSize.Width + (first ? 0 : _linearLayoutData[_nodes[index].Index].Spacing);
                     accH  = Math.Max(accH, childSize.Height);
                     break;
                 case ChildArrangement.Layer:

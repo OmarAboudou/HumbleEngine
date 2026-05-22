@@ -4,7 +4,7 @@ namespace HumbleEngine;
 
 public struct VLayout : ICompositeRenderNode
 {
-    private VLayoutData _data;
+    private LinearLayoutData _data;
     private LayoutData  _layout;
     private List<RenderDescription>? _children;
 
@@ -20,8 +20,8 @@ public struct VLayout : ICompositeRenderNode
 
     public static implicit operator RenderDescription(VLayout v) => new()
     {
-        Kind     = RenderNodeKind.VLayout,
-        VLayout  = v._data,
+        Kind          = RenderNodeKind.VLayout,
+        LinearLayout  = v._data,
         Layout   = v._layout,
         Children = v._children?.ToArray() ?? Array.Empty<RenderDescription>()
     };
