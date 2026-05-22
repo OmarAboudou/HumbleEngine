@@ -13,8 +13,9 @@ public struct Box : ICompositeRenderElement
 
     public LayoutData Layout { get => _layout; set => _layout = value; }
 
-    public Box Color(SKColor color)       { _boxData = _boxData with { BackgroundColor = color }; return this; }
-    public Box CornerRadius(float radius) { _boxData = _boxData with { CornerRadius    = radius }; return this; }
+    public Box Color(SKColor color)                      { _boxData = _boxData with { BackgroundColor = color };                              return this; }
+    public Box CornerRadius(float radius)                { _boxData = _boxData with { CornerRadius    = radius };                             return this; }
+    public Box Border(SKColor color, float width = 1f)   { _boxData = _boxData with { BorderColor = color, BorderWidth = width };             return this; }
 
     public void Add(RenderDescription child)
     {
