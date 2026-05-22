@@ -146,7 +146,7 @@ public class NodeTests
     {
         var node = new TestNode();
         var prop = new ReactiveProperty<string>("initial");
-        prop.Subscribe(_ => node.MarkDirty());
+        prop.Connect(_ => node.MarkDirty());
 
         prop.Value = "changed";
 

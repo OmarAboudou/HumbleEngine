@@ -6,11 +6,11 @@ namespace HumbleEngine.Tests;
 public class ReactivePropertyTests
 {
     [Test]
-    public void Subscribe_NotifiesOnValueChange()
+    public void Connect_NotifiesOnValueChange()
     {
         var prop = new ReactiveProperty<int>(0);
         int received = -1;
-        prop.Subscribe(v => received = v);
+        prop.Connect(v => received = v);
 
         prop.Value = 42;
 
@@ -18,11 +18,11 @@ public class ReactivePropertyTests
     }
 
     [Test]
-    public void Subscribe_DoesNotNotifyIfValueUnchanged()
+    public void Connect_DoesNotNotifyIfValueUnchanged()
     {
         var prop = new ReactiveProperty<int>(5);
         int callCount = 0;
-        prop.Subscribe(_ => callCount++);
+        prop.Connect(_ => callCount++);
 
         prop.Value = 5;
 
@@ -30,13 +30,13 @@ public class ReactivePropertyTests
     }
 
     [Test]
-    public void Unsubscribe_StopsNotifications()
+    public void Disconnect_StopsNotifications()
     {
         var prop = new ReactiveProperty<string>("a");
         int callCount = 0;
         Action<string> listener = _ => callCount++;
-        prop.Subscribe(listener);
-        prop.Unsubscribe(listener);
+        prop.Connect(listener);
+        prop.Disconnect(listener);
 
         prop.Value = "b";
 
@@ -48,8 +48,8 @@ public class ReactivePropertyTests
     {
         var prop = new ReactiveProperty<int>(0);
         int a = 0, b = 0;
-        prop.Subscribe(v => a = v);
-        prop.Subscribe(v => b = v);
+        prop.Connect(v => a = v);
+        prop.Connect(v => b = v);
 
         prop.Value = 7;
 
@@ -90,5 +90,18 @@ public class ReactivePropertyTests
         target.Value = 55;
 
         Assert.That(source.Value, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void ReactiveProperty_IsUsableAsISignal()
+    {
+        var prop = new ReactiveProperty<string>("a");
+        ISignal<string> signal = prop;
+        string? received = null;
+        signal.Connect(v => received = v);
+
+        prop.Value = "b";
+
+        Assert.That(received, Is.EqualTo("b"));
     }
 }
