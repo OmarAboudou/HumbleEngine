@@ -12,14 +12,18 @@ HumbleEngine/
 ├── Application.cs
 ├── Reactivity/          Signal, ReactiveProperty, ReactiveCollection + interfaces
 ├── Scene/               Node, DirtyLevel, Geometry, HitTestFilter, HitTest
-├── Rendering/           RenderNode, RenderNodeTree, RenderDescription
-│   │                    BoxConstraints, LayoutData, IRenderNode, ICompositeRenderNode
-│   │                    LayoutExtensions
-│   └── Builders/
+├── Rendering/           RenderEntry, RenderTree, RenderDescription, RenderEntryKind
+│   │                    BoxConstraints, LayoutData, LinearLayoutData
+│   │                    IRenderElement, ICompositeRenderElement, RenderElementExtensions
+│   └── RenderElements/
 │       ├── Span/        Span, SpanData
 │       ├── Box/         Box, BoxData
-│       └── Column/      Column, ColumnData
-└── Nodes/               Label, Button
+│       ├── VLayout/     VLayout (vertical)
+│       └── HLayout/     HLayout (horizontal)
+└── Nodes/
+    ├── Label.cs
+    ├── Button.cs
+    └── Layout/          Column, Row
 ```
 
 Tous les types sont dans `namespace HumbleEngine;`.
@@ -211,15 +215,15 @@ Node.RenderContent()  →  RenderDescription (arbre transitoire, Owner injecté 
 ```
 
 ```csharp
-// RenderNode — struct fixe dans le tableau plat
-public readonly struct RenderNode
+// RenderEntry — struct fixe dans le tableau plat (interne au RenderTree)
+public readonly struct RenderEntry
 {
-    public RenderNodeKind Kind   { get; init; }
-    public int            Index  { get; init; }  // index dans _spanData[], _boxData[], etc.
-    public Rect           Bounds { get; init; }  // bounds absolues, calculées par Layout()
+    public RenderEntryKind Kind   { get; init; }
+    public int             Index  { get; init; }  // index dans _spanData[], _boxData[], etc.
+    public Rect            Bounds { get; init; }  // bounds absolues, calculées par Layout()
 }
 
-public enum RenderNodeKind { None, Span, Box, Column }
+public enum RenderEntryKind { None, Span, Box, VLayout, HLayout }
 
 // RenderDescription — valeur transitoire retournée par Node.Render()
 public readonly struct RenderDescription
@@ -237,11 +241,11 @@ public readonly struct RenderDescription
     public Node?                Owner    { get; internal init; }
 }
 
-// RenderNodeTree
-public sealed class RenderNodeTree
+// RenderTree
+public sealed class RenderTree
 {
     public void Rebuild(Node root)
-    public void Layout(BoxConstraints constraints)  // deux passes : descend contraintes, remonte tailles
+    public void Layout(BoxConstraints constraints)  // descend contraintes, remonte tailles
     public void Paint(SKCanvas canvas)
     public IEnumerable<int> ChildIndices(int parentIndex)
 }
@@ -293,31 +297,38 @@ public readonly struct ColumnData
 
 **Hiérarchie d'interfaces :**
 ```csharp
-public interface IRenderNode                                    // tout builder
+public interface IRenderElement                                    // tout render element
 {
     LayoutData Layout { get; set; }
 }
 
-public interface ICompositeRenderNode                          // builders avec enfants
-    : IRenderNode, IEnumerable<RenderDescription>
+public interface ICompositeRenderElement                          // elements avec enfants
+    : IRenderElement, IEnumerable<RenderDescription>
 {
     void Add(RenderDescription child);
 }
 ```
 
-**Extension methods génériques — `LayoutExtensions.cs` :**
+**Convention de nommage :**
+- `XXXLayout` (VLayout, HLayout) = pas de visuel propre, uniquement mise en page
+- `Box`, `Span` = ont un visuel propre (fond, texte)
+
+**Extension methods génériques — `RenderElementExtensions.cs` :**
 ```csharp
-// Disponibles sur tout T : struct, IRenderNode
+// Sur tout T : struct, IRenderElement
 T Width<T>(this T b, float? width)
 T Height<T>(this T b, float? height)
 T Padding<T>(this T b, float x, float y)
 T Padding<T>(this T b, float uniform)
+
+// Sur tout T : struct, ICompositeRenderElement
+static T Create<T>(ReadOnlySpan<RenderDescription> items)  // pour [CollectionBuilder]
 ```
 
-**Builders :**
+**Render elements :**
 ```csharp
-// Span — texte stylé (IRenderNode, feuille)
-public struct Span : IRenderNode
+// Span — texte stylé (IRenderElement, feuille)
+public struct Span : IRenderElement
 {
     public Span(string content)                // contenu obligatoire
     public Span Color(SKColor color)
@@ -327,21 +338,30 @@ public struct Span : IRenderNode
     public static implicit operator RenderDescription(Span s)
 }
 
-// Box — conteneur avec fond (ICompositeRenderNode)
-public struct Box : ICompositeRenderNode
+// Box — conteneur avec fond (ICompositeRenderElement)
+public struct Box : ICompositeRenderElement
 {
     public Box Color(SKColor color)
     public Box CornerRadius(float radius)
-    // + Width(), Height(), Padding() via LayoutExtensions
+    // + Width(), Height(), Padding() via RenderElementExtensions
+    // [CollectionBuilder] supporté
     public static implicit operator RenderDescription(Box b)
 }
 
-// Column — conteneur vertical (ICompositeRenderNode)
-public struct Column : ICompositeRenderNode
+// VLayout — conteneur vertical (ICompositeRenderElement)
+public struct VLayout : ICompositeRenderElement
 {
-    public Column Spacing(float spacing)
-    // + Width(), Height(), Padding() via LayoutExtensions
-    public static implicit operator RenderDescription(Column col)
+    public VLayout Spacing(float spacing)
+    public static VLayout Create(ReadOnlySpan<RenderDescription> items)
+    public static implicit operator RenderDescription(VLayout v)
+}
+
+// HLayout — conteneur horizontal (ICompositeRenderElement)
+public struct HLayout : ICompositeRenderElement
+{
+    public HLayout Spacing(float spacing)
+    public static HLayout Create(ReadOnlySpan<RenderDescription> items)
+    public static implicit operator RenderDescription(HLayout h)
 }
 ```
 
@@ -351,9 +371,16 @@ public struct Column : ICompositeRenderNode
 protected override RenderDescription RenderContent()
     => new Span(Text.Value).Color(Color.Value).FontSize(FontSize.Value);
 
-// Conteneur avec padding et enfants
+// Conteneur avec collection expression (spread)
+protected override RenderDescription RenderContent()
+{
+    VLayout layout = [..Children.Select(c => c.Render())];
+    return layout.Spacing(Spacing.Value);
+}
+
+// Conteneur avec padding et enfants mixtes
 protected override RenderDescription RenderContent() =>
-    new Column
+    new VLayout
     {
         new Span("Titre").FontSize(24f),
         "Sous-titre",                       // string → RenderDescription
@@ -443,9 +470,52 @@ public class Label : Node
 
 ---
 
+## Phase 4 — Layout Nodes ✅
+
+Tests : 72/72 ✅
+
+---
+
+### `Column` / `Row` — `Nodes/Layout/`
+
+```csharp
+public class Column : Node
+{
+    public ReactiveProperty<float> Spacing = new(0f);
+    // RenderContent : VLayout layout = [..Children.Select(c => c.Render())];
+    //                 return layout.Spacing(Spacing.Value);
+}
+
+public class Row : Node
+{
+    public ReactiveProperty<float> Spacing = new(0f);
+    // RenderContent : HLayout layout = [..Children.Select(c => c.Render())];
+    //                 return layout.Spacing(Spacing.Value);
+}
+```
+
+**Règles :**
+- `Spacing` change → `MarkLayoutDirty()`
+- `[CollectionBuilder]` sur `VLayout`/`HLayout`/`Box` — syntaxe `[..spread]` dans `RenderContent()`
+- Convention : `XXXLayout` = pas de visuel propre (VLayout, HLayout) ; sans suffix = visuel (Box, Span)
+- `LinearLayoutData` — struct partagée entre VLayout et HLayout (juste `Spacing`)
+
+### Nomenclature Rendering
+
+| Ancien | Actuel |
+|--------|--------|
+| `RenderNodeTree` | `RenderTree` |
+| `RenderNode` (struct interne) | `RenderEntry` |
+| `RenderNodeKind` | `RenderEntryKind` |
+| `IRenderNode` | `IRenderElement` |
+| `ICompositeRenderNode` | `ICompositeRenderElement` |
+| `RenderNodeExtensions` | `RenderElementExtensions` |
+| `Builders/` | `RenderElements/` |
+
+---
+
 ## Phases suivantes
 
 | Phase | Contenu | Statut |
 |-------|---------|--------|
-| 4 | `Column` Node, `Row` Node, tests layout | ⬜ |
 | 5 | `TextInput`, premier écran MVVM complet | ⬜ |
