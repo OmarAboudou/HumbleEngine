@@ -5,14 +5,18 @@ namespace HumbleEngine;
 
 public struct Box : IEnumerable<RenderDescription>
 {
-    private readonly SKColor _color;
-    private readonly float   _cornerRadius;
+    private readonly SKColor    _color;
+    private readonly float      _cornerRadius;
+    private readonly LayoutData _layout;
     private List<RenderDescription>? _children;
 
-    public Box(SKColor color, float cornerRadius = 0f)
+    public Box(SKColor color, float cornerRadius = 0f,
+               float? width = null, float? height = null,
+               float paddingX = 0f, float paddingY = 0f)
     {
         _color        = color;
         _cornerRadius = cornerRadius;
+        _layout       = new LayoutData { Width = width, Height = height, PaddingX = paddingX, PaddingY = paddingY };
     }
 
     public void Add(RenderDescription child)
@@ -25,6 +29,7 @@ public struct Box : IEnumerable<RenderDescription>
     {
         Kind     = RenderNodeKind.Box,
         Box      = new BoxData { BackgroundColor = b._color, CornerRadius = b._cornerRadius },
+        Layout   = b._layout,
         Children = b._children?.ToArray() ?? Array.Empty<RenderDescription>()
     };
 
