@@ -1,6 +1,6 @@
 namespace HumbleEngine;
 
-public enum RenderNodeKind
+public enum RenderEntryKind
 {
     None,
     Span,

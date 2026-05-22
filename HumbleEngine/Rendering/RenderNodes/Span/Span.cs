@@ -2,7 +2,7 @@ using SkiaSharp;
 
 namespace HumbleEngine;
 
-public struct Span : IRenderNode
+public struct Span : IRenderElement
 {
     private readonly string _content;
     private SKColor         _color;
@@ -23,7 +23,7 @@ public struct Span : IRenderNode
 
     public static implicit operator RenderDescription(Span s) => new()
     {
-        Kind   = RenderNodeKind.Span,
+        Kind   = RenderEntryKind.Span,
         Span   = new SpanData { Content = s._content, Color = s._color, FontSize = s._fontSize },
         Layout = s._layout
     };

@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 namespace HumbleEngine;
 
 [CollectionBuilder(typeof(VLayout), nameof(Create))]
-public struct VLayout : ICompositeRenderNode
+public struct VLayout : ICompositeRenderElement
 {
     private LinearLayoutData _data;
     private LayoutData       _layout;
@@ -21,11 +21,11 @@ public struct VLayout : ICompositeRenderNode
     }
 
     public static VLayout Create(ReadOnlySpan<RenderDescription> items)
-        => RenderNodeExtensions.Create<VLayout>(items);
+        => RenderElementExtensions.Create<VLayout>(items);
 
     public static implicit operator RenderDescription(VLayout v) => new()
     {
-        Kind         = RenderNodeKind.VLayout,
+        Kind         = RenderEntryKind.VLayout,
         LinearLayout = v._data,
         Layout       = v._layout,
         Children     = v._children?.ToArray() ?? Array.Empty<RenderDescription>()

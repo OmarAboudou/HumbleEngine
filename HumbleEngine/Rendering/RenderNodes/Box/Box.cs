@@ -5,7 +5,7 @@ using SkiaSharp;
 namespace HumbleEngine;
 
 [CollectionBuilder(typeof(Box), nameof(Create))]
-public struct Box : ICompositeRenderNode
+public struct Box : ICompositeRenderElement
 {
     private BoxData   _boxData;
     private LayoutData _layout;
@@ -23,11 +23,11 @@ public struct Box : ICompositeRenderNode
     }
 
     public static Box Create(ReadOnlySpan<RenderDescription> items)
-        => RenderNodeExtensions.Create<Box>(items);
+        => RenderElementExtensions.Create<Box>(items);
 
     public static implicit operator RenderDescription(Box b) => new()
     {
-        Kind     = RenderNodeKind.Box,
+        Kind     = RenderEntryKind.Box,
         Box      = b._boxData,
         Layout   = b._layout,
         Children = b._children?.ToArray() ?? Array.Empty<RenderDescription>()
