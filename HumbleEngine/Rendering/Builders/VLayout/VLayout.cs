@@ -21,12 +21,7 @@ public struct VLayout : ICompositeRenderNode
     }
 
     public static VLayout Create(ReadOnlySpan<RenderDescription> items)
-    {
-        var layout = new VLayout();
-        foreach (var item in items)
-            layout.Add(item);
-        return layout;
-    }
+        => LayoutExtensions.Create<VLayout>(items);
 
     public static implicit operator RenderDescription(VLayout v) => new()
     {

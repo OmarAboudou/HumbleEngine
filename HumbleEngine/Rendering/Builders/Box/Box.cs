@@ -23,12 +23,7 @@ public struct Box : ICompositeRenderNode
     }
 
     public static Box Create(ReadOnlySpan<RenderDescription> items)
-    {
-        var box = new Box();
-        foreach (var item in items)
-            box.Add(item);
-        return box;
-    }
+        => LayoutExtensions.Create<Box>(items);
 
     public static implicit operator RenderDescription(Box b) => new()
     {

@@ -21,12 +21,7 @@ public struct HLayout : ICompositeRenderNode
     }
 
     public static HLayout Create(ReadOnlySpan<RenderDescription> items)
-    {
-        var layout = new HLayout();
-        foreach (var item in items)
-            layout.Add(item);
-        return layout;
-    }
+        => LayoutExtensions.Create<HLayout>(items);
 
     public static implicit operator RenderDescription(HLayout h) => new()
     {
