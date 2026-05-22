@@ -5,16 +5,14 @@ namespace HumbleEngine;
 
 public struct Box : ICompositeRenderNode
 {
-    private readonly BoxData _boxData;
-    private LayoutData       _layout;
+    private BoxData   _boxData;
+    private LayoutData _layout;
     private List<RenderDescription>? _children;
 
     public LayoutData Layout { get => _layout; set => _layout = value; }
 
-    public Box(SKColor color, float cornerRadius = 0f)
-    {
-        _boxData = new BoxData { BackgroundColor = color, CornerRadius = cornerRadius };
-    }
+    public Box Color(SKColor color)       { _boxData = _boxData with { BackgroundColor = color }; return this; }
+    public Box CornerRadius(float radius) { _boxData = _boxData with { CornerRadius    = radius }; return this; }
 
     public void Add(RenderDescription child)
     {

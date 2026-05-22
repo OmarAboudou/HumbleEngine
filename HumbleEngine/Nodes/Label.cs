@@ -22,9 +22,9 @@ public class Label : Node
         var width  = font.MeasureText(Text.Value);
         var height = font.Metrics.Descent - font.Metrics.Ascent;
 
-        ComputedBounds = new Rect(ComputedBounds.X, ComputedBounds.Y, width, height);
+        ComputedBounds = ComputedBounds with { Width = width, Height = height };
     }
 
     protected override RenderDescription RenderContent()
-        => new Span(Text.Value, Color.Value, FontSize.Value);
+        => new Span(Text.Value).Color(Color.Value).FontSize(FontSize.Value);
 }

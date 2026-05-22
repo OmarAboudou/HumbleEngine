@@ -4,19 +4,22 @@ namespace HumbleEngine;
 
 public struct Span : IRenderNode
 {
-    private readonly string  _content;
-    private readonly SKColor _color;
-    private readonly float   _fontSize;
-    private LayoutData       _layout;
+    private readonly string _content;
+    private SKColor         _color;
+    private float           _fontSize;
+    private LayoutData      _layout;
 
     public LayoutData Layout { get => _layout; set => _layout = value; }
 
-    public Span(string content, SKColor color = default, float fontSize = 16f)
+    public Span(string content)
     {
         _content  = content;
-        _color    = color == default ? SKColors.Black : color;
-        _fontSize = fontSize;
+        _color    = SKColors.Black;
+        _fontSize = 16f;
     }
+
+    public Span Color(SKColor color) { _color    = color; return this; }
+    public Span FontSize(float size) { _fontSize = size;  return this; }
 
     public static implicit operator RenderDescription(Span s) => new()
     {
@@ -26,6 +29,5 @@ public struct Span : IRenderNode
     };
 
     public RenderDescription At(Rect bounds) => ((RenderDescription)this) with { Bounds = bounds };
-
     public RenderDescription At(float x, float y) => At(new Rect(x, y, 0, 0));
 }

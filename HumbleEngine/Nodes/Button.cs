@@ -48,9 +48,9 @@ public class Button : Node
     protected override RenderDescription RenderContent()
     {
         var bg = _isHovered ? HoverColor.Value : BackgroundColor.Value;
-        return new Box(bg)
+        return new Box
         {
-            new Span(Text.Value, SKColors.Black, FontSize.Value).At(PaddingX, PaddingY)
-        };
+            new Span(Text.Value).Color(SKColors.Black).FontSize(FontSize.Value).At(PaddingX, PaddingY)
+        }.Color(bg);
     }
 }
