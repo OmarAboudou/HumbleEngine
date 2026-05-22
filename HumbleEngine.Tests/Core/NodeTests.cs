@@ -101,7 +101,7 @@ public class NodeTests
     {
         var node = new TestNode();
 
-        node.MarkDirty();
+        node.MarkPaintDirty();
 
         Assert.That(node.IsDirty, Is.True);
     }
@@ -110,11 +110,62 @@ public class NodeTests
     public void ClearDirty_ResetsIsDirty()
     {
         var node = new TestNode();
-        node.MarkDirty();
+        node.MarkPaintDirty();
 
         node.ClearDirty();
 
         Assert.That(node.IsDirty, Is.False);
+    }
+
+    [Test]
+    public void MarkPaintDirty_SetsDirtyLevelToPaint()
+    {
+        var node = new TestNode();
+
+        node.MarkPaintDirty();
+
+        Assert.That(node.Dirty, Is.EqualTo(DirtyLevel.Paint));
+    }
+
+    [Test]
+    public void MarkLayoutDirty_SetsDirtyLevelToLayout()
+    {
+        var node = new TestNode();
+
+        node.MarkLayoutDirty();
+
+        Assert.That(node.Dirty, Is.EqualTo(DirtyLevel.Layout));
+    }
+
+    [Test]
+    public void MarkLogicDirty_SetsDirtyLevelToLogic()
+    {
+        var node = new TestNode();
+
+        node.MarkLogicDirty();
+
+        Assert.That(node.Dirty, Is.EqualTo(DirtyLevel.Logic));
+    }
+
+    [Test]
+    public void MarkDirty_OnlyEscalates_NeverDecreases()
+    {
+        var node = new TestNode();
+        node.MarkLogicDirty();
+
+        node.MarkPaintDirty();
+
+        Assert.That(node.Dirty, Is.EqualTo(DirtyLevel.Logic));
+    }
+
+    [Test]
+    public void MarkDirty_WithExplicitLevel()
+    {
+        var node = new TestNode();
+
+        node.MarkDirty(DirtyLevel.Layout);
+
+        Assert.That(node.Dirty, Is.EqualTo(DirtyLevel.Layout));
     }
 
     [Test]
@@ -146,7 +197,7 @@ public class NodeTests
     {
         var node = new TestNode();
         var prop = new ReactiveProperty<string>("initial");
-        prop.Connect(_ => node.MarkDirty());
+        prop.Connect(_ => node.MarkPaintDirty());
 
         prop.Value = "changed";
 
