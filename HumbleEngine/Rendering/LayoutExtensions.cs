@@ -2,6 +2,16 @@ namespace HumbleEngine;
 
 public static class LayoutExtensions
 {
+    public static T Create<T>(ReadOnlySpan<RenderDescription> items)
+        where T : struct, ICompositeRenderNode
+    {
+        var builder = new T();
+        foreach (var item in items)
+            builder.Add(item);
+        return builder;
+    }
+
+
     public static T AddRange<T>(this T builder, IEnumerable<RenderDescription> items)
         where T : struct, ICompositeRenderNode
     {
