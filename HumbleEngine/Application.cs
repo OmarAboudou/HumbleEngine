@@ -1,3 +1,4 @@
+using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
 using SkiaSharp;
@@ -7,9 +8,13 @@ namespace HumbleEngine;
 public sealed class Application : IDisposable
 {
     private readonly IWindow _window;
-    private GRContext?  _grContext;   // contexte GPU SkiaSharp — wraps le contexte OpenGL
-    private SKSurface?  _surface;    // surface de rendu liée au framebuffer de la fenêtre
+    private GRContext?      _grContext;
+    private SKSurface?      _surface;
+    private IInputContext?  _inputContext;
     private readonly RenderNodeTree _renderTree = new();
+
+    private List<Node> _hoveredPath = new();
+    private Node?      _pressedNode;
 
     public Node? Root { get; set; }
 
@@ -56,6 +61,15 @@ public sealed class Application : IDisposable
 
         CreateSurface();
 
+        _inputContext = _window.CreateInput();
+        if (_inputContext.Mice.Count > 0)
+        {
+            var mouse = _inputContext.Mice[0];
+            mouse.MouseMove += OnMouseMoved;
+            mouse.MouseDown += OnMousePressed;
+            mouse.MouseUp   += OnMouseReleased;
+        }
+
         Root?.Init();
         Root?.MarkLayoutDirty();
     }
@@ -83,6 +97,42 @@ public sealed class Application : IDisposable
         if (_surface is null)
             throw new InvalidOperationException(
                 "SkiaSharp n'a pas pu créer la surface de rendu (SKSurface).");
+    }
+
+    private void OnMouseMoved(IMouse mouse, System.Numerics.Vector2 position)
+    {
+        if (Root is null) return;
+
+        var hit     = HitTest.Find(Root, position.X, position.Y);
+        var newPath = HitTest.GetHoveredPath(hit);
+
+        foreach (var node in _hoveredPath)
+            if (!newPath.Contains(node)) node.OnMouseLeave();
+
+        foreach (var node in newPath)
+            if (!_hoveredPath.Contains(node)) node.OnMouseEnter();
+
+        _hoveredPath = newPath;
+    }
+
+    private void OnMousePressed(IMouse mouse, MouseButton button)
+    {
+        if (button != MouseButton.Left) return;
+
+        _pressedNode = HitTest.FirstInteractive(_hoveredPath);
+        _pressedNode?.OnMouseDown();
+    }
+
+    private void OnMouseReleased(IMouse mouse, MouseButton button)
+    {
+        if (button != MouseButton.Left) return;
+
+        _pressedNode?.OnMouseUp();
+
+        if (_pressedNode is not null && _hoveredPath.Contains(_pressedNode))
+            HitTest.DispatchClick(_pressedNode);
+
+        _pressedNode = null;
     }
 
     private void OnUpdate(double delta) => Root?.Update((float)delta);
@@ -123,6 +173,7 @@ public sealed class Application : IDisposable
     {
         _surface?.Dispose();
         _grContext?.Dispose();
+        _inputContext?.Dispose();
         _window.Dispose();
     }
 }

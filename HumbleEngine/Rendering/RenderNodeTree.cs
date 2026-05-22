@@ -9,6 +9,7 @@ public sealed class RenderNodeTree
 
     // Tableaux typés — un par RenderNodeKind avec données
     private readonly List<TextData> _textData = new();
+    private readonly List<BoxData>  _boxData  = new();
 
     // --- Construction ---
 
@@ -19,6 +20,7 @@ public sealed class RenderNodeTree
         _nodes.Clear();
         _subtreeSizes.Clear();
         _textData.Clear();
+        _boxData.Clear();
 
         var desc = root.Render();
         if (desc.Kind != RenderNodeKind.None)
@@ -56,6 +58,9 @@ public sealed class RenderNodeTree
             case RenderNodeKind.Text:
                 _textData.Add(desc.Text);
                 return _textData.Count - 1;
+            case RenderNodeKind.Box:
+                _boxData.Add(desc.Box);
+                return _boxData.Count - 1;
             default:
                 return -1;
         }
@@ -73,9 +78,23 @@ public sealed class RenderNodeTree
                 case RenderNodeKind.Text:
                     PaintText(canvas, node.Bounds, _textData[node.Index]);
                     break;
-                // Column et autres conteneurs n'ont pas de visuel propre
+                case RenderNodeKind.Box:
+                    PaintBox(canvas, node.Bounds, _boxData[node.Index]);
+                    break;
+                // Column n'a pas de visuel propre
             }
         }
+    }
+
+    private static void PaintBox(SKCanvas canvas, Rect bounds, BoxData data)
+    {
+        using var paint = new SKPaint { Color = data.BackgroundColor, IsAntialias = true };
+        var rect = new SKRect(bounds.X, bounds.Y, bounds.X + bounds.Width, bounds.Y + bounds.Height);
+
+        if (data.CornerRadius > 0)
+            canvas.DrawRoundRect(rect, data.CornerRadius, data.CornerRadius, paint);
+        else
+            canvas.DrawRect(rect, paint);
     }
 
     private static void PaintText(SKCanvas canvas, Rect bounds, TextData data)
