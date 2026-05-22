@@ -3,7 +3,7 @@ namespace HumbleEngine;
 public class ReactiveProperty<T> : ISignal<T>
 {
     private T _value;
-    private readonly List<Action<T>> _listeners = new();
+    private readonly MutableSignal<T> _signal = new();
 
     public ReactiveProperty(T initial) => _value = initial;
 
@@ -14,12 +14,12 @@ public class ReactiveProperty<T> : ISignal<T>
         {
             if (EqualityComparer<T>.Default.Equals(_value, value)) return;
             _value = value;
-            foreach (var l in _listeners.ToArray()) l(value);
+            _signal.Emit(value);
         }
     }
 
-    public void Connect(Action<T> listener)    => _listeners.Add(listener);
-    public void Disconnect(Action<T> listener) => _listeners.Remove(listener);
+    public void Connect(Action<T> listener)    => _signal.Connect(listener);
+    public void Disconnect(Action<T> listener) => _signal.Disconnect(listener);
 
     public void BindFrom(ReactiveProperty<T> source)
     {
