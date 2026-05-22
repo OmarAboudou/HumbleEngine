@@ -12,6 +12,12 @@ public interface ISignal<out T>
     void Disconnect(Action<T> listener);
 }
 
+public interface ISignal<out T1, out T2>
+{
+    void Connect(Action<T1, T2> listener);
+    void Disconnect(Action<T1, T2> listener);
+}
+
 public sealed class MutableSignal : ISignal
 {
     private readonly List<Action> _listeners = new();
@@ -64,4 +70,31 @@ public sealed class Signal<T> : ISignal<T>
 
     public void Connect(Action<T> listener)    => _owner.Connect(listener);
     public void Disconnect(Action<T> listener) => _owner.Disconnect(listener);
+}
+
+public sealed class MutableSignal<T1, T2> : ISignal<T1, T2>
+{
+    private readonly List<Action<T1, T2>> _listeners = new();
+
+    public Signal<T1, T2> Signal { get; }
+
+    public MutableSignal() => Signal = new Signal<T1, T2>(this);
+
+    public void Emit(T1 value1, T2 value2)
+    {
+        foreach (var l in _listeners.ToArray()) l(value1, value2);
+    }
+
+    public void Connect(Action<T1, T2> listener)    => _listeners.Add(listener);
+    public void Disconnect(Action<T1, T2> listener) => _listeners.Remove(listener);
+}
+
+public sealed class Signal<T1, T2> : ISignal<T1, T2>
+{
+    private readonly MutableSignal<T1, T2> _owner;
+
+    internal Signal(MutableSignal<T1, T2> owner) => _owner = owner;
+
+    public void Connect(Action<T1, T2> listener)    => _owner.Connect(listener);
+    public void Disconnect(Action<T1, T2> listener) => _owner.Disconnect(listener);
 }
