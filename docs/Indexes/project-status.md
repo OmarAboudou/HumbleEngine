@@ -17,18 +17,21 @@ HumbleEngine/
 │   │                    IRenderElement, ICompositeRenderElement, RenderElementExtensions
 │   └── RenderElements/
 │       ├── Span/        Span, SpanData
-│       ├── Box/         Box, BoxData
+│       ├── Box/         Box, BoxData (BackgroundColor, CornerRadius, BorderColor, BorderWidth)
 │       ├── VLayout/     VLayout (vertical, XXXLayout = pas de visuel)
 │       └── HLayout/     HLayout (horizontal)
 └── Nodes/
     ├── Label.cs
     ├── Button.cs
+    ├── TextInput.cs
     └── Layout/          Column, Row
 
 HumbleEngine.Tests/
 ├── Core/                NodeTests, SignalTests, ReactivePropertyTests, ReactiveCollectionTests
+│                        TextInputTests
 ├── Rendering/           BoxConstraintsTests, LayoutTests
-└── Input/               HitTestTests
+├── Input/               HitTestTests
+└── Mvvm/                LoginViewModel, LoginScreen, MvvmTests
 ```
 
 Tous les types dans `namespace HumbleEngine;`
@@ -42,9 +45,9 @@ Tous les types dans `namespace HumbleEngine;`
 | 1 + 2 | Primitives + Premier rendu | ✅ | `docs/Status/phase-1-2.md` |
 | 3 | Input system, HitTest, Button | ✅ | `docs/Status/phase-3.md` |
 | 4 | Layout pivot, Column/Row, nomenclature | ✅ | `docs/Status/phase-4.md` |
-| 5 | TextInput, premier écran MVVM | ⬜ | |
+| 5 | TextInput, premier écran MVVM | ✅ | `docs/Status/phase-5.md` |
 
-Tests : **72/72** ✅
+Tests : **82/82** ✅
 
 ---
 
