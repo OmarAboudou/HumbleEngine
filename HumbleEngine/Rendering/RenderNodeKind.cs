@@ -3,7 +3,7 @@ namespace HumbleEngine;
 public enum RenderNodeKind
 {
     None,
-    Text,
+    Span,
     Box,
     Column,
 }

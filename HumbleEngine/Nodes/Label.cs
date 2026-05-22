@@ -26,5 +26,5 @@ public class Label : Node
     }
 
     protected override RenderDescription RenderContent()
-        => new Text(Text.Value, Color.Value, FontSize.Value);
+        => new Span(Text.Value, Color.Value, FontSize.Value);
 }

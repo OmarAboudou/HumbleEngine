@@ -8,7 +8,7 @@ public sealed class RenderNodeTree
     private readonly List<int>        _subtreeSizes = new();
 
     // Tableaux typés — un par RenderNodeKind avec données
-    private readonly List<TextData> _textData = new();
+    private readonly List<SpanData> _spanData = new();
     private readonly List<BoxData>  _boxData  = new();
 
     // --- Construction ---
@@ -19,7 +19,7 @@ public sealed class RenderNodeTree
     {
         _nodes.Clear();
         _subtreeSizes.Clear();
-        _textData.Clear();
+        _spanData.Clear();
         _boxData.Clear();
 
         var desc = root.Render();
@@ -55,9 +55,9 @@ public sealed class RenderNodeTree
     {
         switch (desc.Kind)
         {
-            case RenderNodeKind.Text:
-                _textData.Add(desc.Text);
-                return _textData.Count - 1;
+            case RenderNodeKind.Span:
+                _spanData.Add(desc.Span);
+                return _spanData.Count - 1;
             case RenderNodeKind.Box:
                 _boxData.Add(desc.Box);
                 return _boxData.Count - 1;
@@ -75,8 +75,8 @@ public sealed class RenderNodeTree
             var node = _nodes[i];
             switch (node.Kind)
             {
-                case RenderNodeKind.Text:
-                    PaintText(canvas, node.Bounds, _textData[node.Index]);
+                case RenderNodeKind.Span:
+                    PaintSpan(canvas, node.Bounds, _spanData[node.Index]);
                     break;
                 case RenderNodeKind.Box:
                     PaintBox(canvas, node.Bounds, _boxData[node.Index]);
@@ -97,7 +97,7 @@ public sealed class RenderNodeTree
             canvas.DrawRect(rect, paint);
     }
 
-    private static void PaintText(SKCanvas canvas, Rect bounds, TextData data)
+    private static void PaintSpan(SKCanvas canvas, Rect bounds, SpanData data)
     {
         if (string.IsNullOrEmpty(data.Content)) return;
 

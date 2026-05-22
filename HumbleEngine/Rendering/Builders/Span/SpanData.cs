@@ -2,7 +2,7 @@ using SkiaSharp;
 
 namespace HumbleEngine;
 
-public readonly struct TextData
+public readonly struct SpanData
 {
     public string  Content  { get; init; }
     public SKColor Color    { get; init; }

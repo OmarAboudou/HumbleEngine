@@ -50,7 +50,7 @@ public class Button : Node
         var bg = _isHovered ? HoverColor.Value : BackgroundColor.Value;
         return new Box(bg)
         {
-            new Text(Text.Value, SKColors.Black, FontSize.Value).At(PaddingX, PaddingY)
+            new Span(Text.Value, SKColors.Black, FontSize.Value).At(PaddingX, PaddingY)
         };
     }
 }
