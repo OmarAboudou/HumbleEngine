@@ -22,4 +22,8 @@ public readonly struct Text
         Kind = RenderNodeKind.Text,
         Text = new TextData { Content = t._content, Color = t._color, FontSize = t._fontSize }
     };
+
+    public RenderDescription At(Rect bounds) => ((RenderDescription)this) with { Bounds = bounds };
+
+    public RenderDescription At(float x, float y) => At(new Rect(x, y, 0, 0));
 }

@@ -45,14 +45,12 @@ public class Button : Node
         };
     }
 
-    public override RenderDescription Render()
+    protected override RenderDescription RenderContent()
     {
         var bg = _isHovered ? HoverColor.Value : BackgroundColor.Value;
-
-        RenderDescription text = new Text(Text.Value, SKColors.Black, FontSize.Value);
-        text = text with { Bounds = new Rect(PaddingX, PaddingY, 0, 0) };
-
-        RenderDescription box = new Box(bg) { text };
-        return box with { Bounds = ComputedBounds };
+        return new Box(bg)
+        {
+            new Text(Text.Value, SKColors.Black, FontSize.Value).At(PaddingX, PaddingY)
+        };
     }
 }
