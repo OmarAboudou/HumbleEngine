@@ -1,8 +1,9 @@
+using System.Collections;
 using Silk.NET.Input;
 
 namespace HumbleEngine;
 
-public abstract class Node
+public abstract class Node : IEnumerable<Node>
 {
     private readonly List<Node> _children = new();
 
@@ -22,6 +23,11 @@ public abstract class Node
     public void MarkLogicDirty()  => MarkDirty(DirtyLevel.Logic);
 
     internal void ClearDirty() => Dirty = DirtyLevel.None;
+
+    // Requis pour la syntaxe collection initializer : new Column { child1, child2 }
+    public void Add(Node child) => AddChild(child);
+    public IEnumerator<Node> GetEnumerator() => _children.GetEnumerator();
+    IEnumerator IEnumerable.GetEnumerator()  => GetEnumerator();
 
     public void AddChild(Node child)
     {
