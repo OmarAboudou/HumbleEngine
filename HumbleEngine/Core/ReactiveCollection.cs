@@ -6,9 +6,9 @@ public class ReactiveCollection<T> : IReadOnlyList<T>
 {
     private readonly List<T> _list = new();
 
-    private readonly SignalEmitter<(int Index, T Item)> _itemAdded   = new();
-    private readonly SignalEmitter<(int Index, T Item)> _itemRemoved = new();
-    private readonly SignalEmitter                      _reset        = new();
+    private readonly MutableSignal<(int Index, T Item)> _itemAdded   = new();
+    private readonly MutableSignal<(int Index, T Item)> _itemRemoved = new();
+    private readonly MutableSignal                      _reset        = new();
 
     public Signal<(int Index, T Item)> ItemAdded   => _itemAdded.Signal;
     public Signal<(int Index, T Item)> ItemRemoved => _itemRemoved.Signal;

@@ -1,55 +1,67 @@
 namespace HumbleEngine;
 
-public sealed class SignalEmitter
+public interface ISignal
+{
+    void Connect(Action listener);
+    void Disconnect(Action listener);
+}
+
+public interface ISignal<T>
+{
+    void Connect(Action<T> listener);
+    void Disconnect(Action<T> listener);
+}
+
+public sealed class MutableSignal : ISignal
 {
     private readonly List<Action> _listeners = new();
 
     public Signal Signal { get; }
 
-    public SignalEmitter() => Signal = new Signal(this);
+    public MutableSignal() => Signal = new Signal(this);
 
     public void Emit()
     {
         foreach (var l in _listeners.ToArray()) l();
     }
 
-    internal void AddListener(Action listener)    => _listeners.Add(listener);
-    internal void RemoveListener(Action listener) => _listeners.Remove(listener);
+    public void Connect(Action listener)    => _listeners.Add(listener);
+    public void Disconnect(Action listener) => _listeners.Remove(listener);
 }
 
-public sealed class Signal
+public sealed class Signal : ISignal
 {
-    private readonly SignalEmitter _emitter;
+    private readonly MutableSignal _owner;
 
-    internal Signal(SignalEmitter emitter) => _emitter = emitter;
+    internal Signal(MutableSignal owner) => _owner = owner;
 
-    public void Connect(Action listener)    => _emitter.AddListener(listener);
-    public void Disconnect(Action listener) => _emitter.RemoveListener(listener);
+    public void Connect(Action listener)    => _owner.Connect(listener);
+    public void Disconnect(Action listener) => _owner.Disconnect(listener);
 }
 
-public sealed class SignalEmitter<T>
+public sealed class MutableSignal<T> : ISignal<T>
 {
     private readonly List<Action<T>> _listeners = new();
 
     public Signal<T> Signal { get; }
 
-    public SignalEmitter() => Signal = new Signal<T>(this);
+    public MutableSignal() => Signal = new Signal<T>(this);
 
     public void Emit(T value)
     {
         foreach (var l in _listeners.ToArray()) l(value);
     }
 
-    internal void AddListener(Action<T> listener)    => _listeners.Add(listener);
-    internal void RemoveListener(Action<T> listener) => _listeners.Remove(listener);
+    public void Connect(Action<T> listener)    => _listeners.Add(listener);
+    public void Disconnect(Action<T> listener) => _listeners.Remove(listener);
 }
 
-public sealed class Signal<T>
+public sealed class Signal<T> : ISignal<T>
 {
-    private readonly SignalEmitter<T> _emitter;
+    private readonly MutableSignal<T> _owner;
 
-    internal Signal(SignalEmitter<T> emitter) => _emitter = emitter;
+    internal Signal(MutableSignal<T> owner) => _owner = owner;
 
-    public void Connect(Action<T> listener)    => _emitter.AddListener(listener);
-    public void Disconnect(Action<T> listener) => _emitter.RemoveListener(listener);
+    public void Connect(Action<T> listener)    => _owner.Connect(listener);
+    public void Disconnect(Action<T> listener) => _owner.Disconnect(listener);
 }
