@@ -11,7 +11,7 @@ public sealed class Application : IDisposable
     private GRContext?      _grContext;
     private SKSurface?      _surface;
     private IInputContext?  _inputContext;
-    private readonly RenderNodeTree _renderTree = new();
+    private readonly RenderTree _renderTree = new();
 
     private List<Node> _hoveredPath = new();
     private Node?      _pressedNode;

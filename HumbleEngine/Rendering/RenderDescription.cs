@@ -6,7 +6,7 @@ public readonly struct RenderDescription
 
     public static implicit operator RenderDescription(string content) => new Span(content);
 
-    public RenderNodeKind       Kind     { get; internal init; }
+    public RenderEntryKind       Kind     { get; internal init; }
     public Rect                 Bounds   { get; internal init; }
     public RenderDescription[]? Children { get; internal init; }
     public SpanData             Span     { get; internal init; }

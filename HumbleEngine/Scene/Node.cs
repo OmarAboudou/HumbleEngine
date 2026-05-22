@@ -62,7 +62,7 @@ public abstract class Node
 
     public Rect ComputedBounds { get; internal set; }
 
-    // Retourne la description visuelle de ce nœud pour le RenderNodeTree.
+    // Retourne la description visuelle de ce nœud pour le RenderTree.
     // Les nœuds purement logiques (conteneurs sans visuel propre) retournent None.
     public RenderDescription Render() => RenderContent() with { Owner = this };
 

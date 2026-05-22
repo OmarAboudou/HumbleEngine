@@ -2,12 +2,12 @@ using SkiaSharp;
 
 namespace HumbleEngine;
 
-public sealed class RenderNodeTree
+public sealed class RenderTree
 {
-    private readonly List<RenderNode> _nodes        = new();
+    private readonly List<RenderEntry> _nodes        = new();
     private readonly List<int>        _subtreeSizes = new();
 
-    // Tableaux typés — indexés par RenderNode.Index
+    // Tableaux typés — indexés par RenderEntry.Index
     private readonly List<SpanData>    _spanData    = new();
     private readonly List<BoxData>     _boxData     = new();
     private readonly List<LinearLayoutData> _linearLayoutData = new();
@@ -29,7 +29,7 @@ public sealed class RenderNodeTree
         _owners.Clear();
 
         var desc = root.Render();
-        if (desc.Kind != RenderNodeKind.None)
+        if (desc.Kind != RenderEntryKind.None)
             Flatten(desc, parentX: 0, parentY: 0);
     }
 
@@ -52,7 +52,7 @@ public sealed class RenderNodeTree
             foreach (var child in desc.Children)
                 subtreeSize += Flatten(child, absX, absY);
 
-        _nodes[myIndex]        = new RenderNode { Kind = desc.Kind, Index = dataIndex, Bounds = abs };
+        _nodes[myIndex]        = new RenderEntry { Kind = desc.Kind, Index = dataIndex, Bounds = abs };
         _subtreeSizes[myIndex] = subtreeSize;
 
         return subtreeSize;
@@ -62,14 +62,14 @@ public sealed class RenderNodeTree
     {
         switch (desc.Kind)
         {
-            case RenderNodeKind.Span:
+            case RenderEntryKind.Span:
                 _spanData.Add(desc.Span);
                 return _spanData.Count - 1;
-            case RenderNodeKind.Box:
+            case RenderEntryKind.Box:
                 _boxData.Add(desc.Box);
                 return _boxData.Count - 1;
-            case RenderNodeKind.VLayout:
-            case RenderNodeKind.HLayout:
+            case RenderEntryKind.VLayout:
+            case RenderEntryKind.HLayout:
                 _linearLayoutData.Add(desc.LinearLayout);
 
                 return _linearLayoutData.Count - 1;
@@ -97,7 +97,7 @@ public sealed class RenderNodeTree
 
         switch (node.Kind)
         {
-            case RenderNodeKind.Span:
+            case RenderEntryKind.Span:
             {
                 var span = _spanData[node.Index];
                 using var font = new SKFont(SKTypeface.Default, span.FontSize);
@@ -106,15 +106,15 @@ public sealed class RenderNodeTree
                 size = constraints.Constrain(layout.Width ?? iw, layout.Height ?? ih);
                 break;
             }
-            case RenderNodeKind.Box:
+            case RenderEntryKind.Box:
                 size = LayoutChildren(index, constraints, x, y, layout, ChildArrangement.Layer);
                 break;
 
-            case RenderNodeKind.VLayout:
+            case RenderEntryKind.VLayout:
                 size = LayoutChildren(index, constraints, x, y, layout, ChildArrangement.Vertical);
                 break;
 
-            case RenderNodeKind.HLayout:
+            case RenderEntryKind.HLayout:
                 size = LayoutChildren(index, constraints, x, y, layout, ChildArrangement.Horizontal);
                 break;
 
@@ -188,10 +188,10 @@ public sealed class RenderNodeTree
             var node = _nodes[i];
             switch (node.Kind)
             {
-                case RenderNodeKind.Span:
+                case RenderEntryKind.Span:
                     PaintSpan(canvas, node.Bounds, _spanData[node.Index]);
                     break;
-                case RenderNodeKind.Box:
+                case RenderEntryKind.Box:
                     PaintBox(canvas, node.Bounds, _boxData[node.Index]);
                     break;
             }

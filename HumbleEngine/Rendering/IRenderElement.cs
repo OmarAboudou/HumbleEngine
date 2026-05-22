@@ -1,6 +1,6 @@
 namespace HumbleEngine;
 
-public interface IRenderNode
+public interface IRenderElement
 {
     LayoutData Layout { get; set; }
 }
