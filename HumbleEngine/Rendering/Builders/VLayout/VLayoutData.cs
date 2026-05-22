@@ -1,6 +1,6 @@
 namespace HumbleEngine;
 
-public readonly struct ColumnData
+public readonly struct VLayoutData
 {
     public float Spacing { get; init; }
 }

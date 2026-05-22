@@ -1,9 +1,5 @@
 namespace HumbleEngine;
 
-// Description visuelle retournée par Node.Render().
-// Valeur transitoire — jamais stockée dans RenderNodeTree.
-// Les constructeurs sont internal : seuls les builders du moteur
-// (Text, Column, Box, etc.) peuvent créer des RenderDescription.
 public readonly struct RenderDescription
 {
     public static readonly RenderDescription None = default;
@@ -15,8 +11,8 @@ public readonly struct RenderDescription
     public RenderDescription[]? Children { get; internal init; }
     public SpanData             Span     { get; internal init; }
     public BoxData              Box      { get; internal init; }
+    public VLayoutData          VLayout  { get; internal init; }
+    public HLayoutData          HLayout  { get; internal init; }
     public LayoutData           Layout   { get; internal init; }
-    public ColumnData           Column   { get; internal init; }
-    public RowData              Row      { get; internal init; }
-    public Node?                Owner    { get; internal init; }  // Node propriétaire de cette description racine
+    public Node?                Owner    { get; internal init; }
 }
