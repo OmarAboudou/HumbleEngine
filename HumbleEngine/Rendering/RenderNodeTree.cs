@@ -8,9 +8,10 @@ public sealed class RenderNodeTree
     private readonly List<int>        _subtreeSizes = new();
 
     // Tableaux typés — indexés par RenderNode.Index
-    private readonly List<SpanData>   _spanData   = new();
-    private readonly List<BoxData>    _boxData    = new();
-    private readonly List<ColumnData> _columnData = new();
+    private readonly List<SpanData>    _spanData    = new();
+    private readonly List<BoxData>     _boxData     = new();
+    private readonly List<VLayoutData> _vLayoutData = new();
+    private readonly List<HLayoutData> _hLayoutData = new();
 
     // Tableaux parallèles — même index que _nodes
     private readonly List<LayoutData> _layoutData = new();
@@ -24,7 +25,8 @@ public sealed class RenderNodeTree
         _subtreeSizes.Clear();
         _spanData.Clear();
         _boxData.Clear();
-        _columnData.Clear();
+        _vLayoutData.Clear();
+        _hLayoutData.Clear();
         _layoutData.Clear();
         _owners.Clear();
 
@@ -68,9 +70,12 @@ public sealed class RenderNodeTree
             case RenderNodeKind.Box:
                 _boxData.Add(desc.Box);
                 return _boxData.Count - 1;
-            case RenderNodeKind.Column:
-                _columnData.Add(desc.Column);
-                return _columnData.Count - 1;
+            case RenderNodeKind.VLayout:
+                _vLayoutData.Add(desc.VLayout);
+                return _vLayoutData.Count - 1;
+            case RenderNodeKind.HLayout:
+                _hLayoutData.Add(desc.HLayout);
+                return _hLayoutData.Count - 1;
             default:
                 return -1;
         }
@@ -78,7 +83,6 @@ public sealed class RenderNodeTree
 
     // --- Layout ---
 
-    // Calcule les bounds de chaque nœud et les écrit sur les Nodes propriétaires (pour HitTest).
     public void Layout(BoxConstraints constraints)
     {
         if (_nodes.Count == 0) return;
@@ -100,17 +104,21 @@ public sealed class RenderNodeTree
             {
                 var span = _spanData[node.Index];
                 using var font = new SKFont(SKTypeface.Default, span.FontSize);
-                float intrinsicW = font.MeasureText(span.Content ?? "");
-                float intrinsicH = font.Metrics.Descent - font.Metrics.Ascent;
-                size = constraints.Constrain(layout.Width ?? intrinsicW, layout.Height ?? intrinsicH);
+                float iw = font.MeasureText(span.Content ?? "");
+                float ih = font.Metrics.Descent - font.Metrics.Ascent;
+                size = constraints.Constrain(layout.Width ?? iw, layout.Height ?? ih);
                 break;
             }
             case RenderNodeKind.Box:
-                size = LayoutChildren(index, constraints, x, y, layout, isColumn: false);
+                size = LayoutChildren(index, constraints, x, y, layout, ChildArrangement.Layer);
                 break;
 
-            case RenderNodeKind.Column:
-                size = LayoutChildren(index, constraints, x, y, layout, isColumn: true);
+            case RenderNodeKind.VLayout:
+                size = LayoutChildren(index, constraints, x, y, layout, ChildArrangement.Vertical);
+                break;
+
+            case RenderNodeKind.HLayout:
+                size = LayoutChildren(index, constraints, x, y, layout, ChildArrangement.Horizontal);
                 break;
 
             default:
@@ -122,33 +130,54 @@ public sealed class RenderNodeTree
         return size;
     }
 
-    private Size LayoutChildren(int index, BoxConstraints constraints, float x, float y, LayoutData layout, bool isColumn)
+    private enum ChildArrangement { Layer, Vertical, Horizontal }
+
+    private Size LayoutChildren(int index, BoxConstraints constraints, float x, float y, LayoutData layout, ChildArrangement arrangement)
     {
         float contentMaxW = Math.Max(0, (layout.Width  ?? constraints.MaxWidth)  - layout.PaddingX * 2);
         float contentMaxH = Math.Max(0, (layout.Height ?? constraints.MaxHeight) - layout.PaddingY * 2);
         var childConstraints = BoxConstraints.Loose(new Size(contentMaxW, contentMaxH));
 
-        float childX  = x + layout.PaddingX;
-        float childY  = y + layout.PaddingY;
-        float maxW    = 0;
-        float accH    = 0;
-        bool  first   = true;
+        float childX = x + layout.PaddingX;
+        float childY = y + layout.PaddingY;
+        float accW   = 0;
+        float accH   = 0;
+        bool  first  = true;
 
         foreach (int childIdx in ChildIndices(index))
         {
-            if (isColumn && !first)
-                accH += _columnData[_nodes[index].Index].Spacing;
+            float spacing = arrangement switch
+            {
+                ChildArrangement.Vertical   => first ? 0 : _vLayoutData[_nodes[index].Index].Spacing,
+                ChildArrangement.Horizontal => first ? 0 : _hLayoutData[_nodes[index].Index].Spacing,
+                _                           => 0
+            };
 
-            float cy       = childY + (isColumn ? accH : 0);
-            var childSize  = LayoutNode(childIdx, childConstraints, childX, cy);
+            float cx = childX + (arrangement == ChildArrangement.Horizontal ? accW + spacing : 0);
+            float cy = childY + (arrangement == ChildArrangement.Vertical   ? accH + spacing : 0);
 
-            maxW = Math.Max(maxW, childSize.Width);
-            if (isColumn) accH += childSize.Height;
-            else          accH  = Math.Max(accH, childSize.Height);
+            var childSize = LayoutNode(childIdx, childConstraints, cx, cy);
+
+            switch (arrangement)
+            {
+                case ChildArrangement.Vertical:
+                    accH += childSize.Height + (first ? 0 : _vLayoutData[_nodes[index].Index].Spacing);
+                    accW  = Math.Max(accW, childSize.Width);
+                    break;
+                case ChildArrangement.Horizontal:
+                    accW += childSize.Width + (first ? 0 : _hLayoutData[_nodes[index].Index].Spacing);
+                    accH  = Math.Max(accH, childSize.Height);
+                    break;
+                case ChildArrangement.Layer:
+                    accW = Math.Max(accW, childSize.Width);
+                    accH = Math.Max(accH, childSize.Height);
+                    break;
+            }
+
             first = false;
         }
 
-        float ownW = layout.Width  ?? (maxW + layout.PaddingX * 2);
+        float ownW = layout.Width  ?? (accW + layout.PaddingX * 2);
         float ownH = layout.Height ?? (accH + layout.PaddingY * 2);
         return constraints.Constrain(ownW, ownH);
     }
