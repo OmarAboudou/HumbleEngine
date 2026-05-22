@@ -1,8 +1,9 @@
+using System.Collections;
 using SkiaSharp;
 
 namespace HumbleEngine;
 
-public struct Box
+public struct Box : IEnumerable<RenderDescription>
 {
     private readonly SKColor _color;
     private readonly float   _cornerRadius;
@@ -26,4 +27,9 @@ public struct Box
         Box      = new BoxData { BackgroundColor = b._color, CornerRadius = b._cornerRadius },
         Children = b._children?.ToArray() ?? Array.Empty<RenderDescription>()
     };
+
+    public IEnumerator<RenderDescription> GetEnumerator() =>
+        (_children ?? Enumerable.Empty<RenderDescription>()).GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
