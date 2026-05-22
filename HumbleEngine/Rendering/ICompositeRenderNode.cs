@@ -2,4 +2,7 @@ using System.Collections.Generic;
 
 namespace HumbleEngine;
 
-public interface ICompositeRenderNode : IRenderNode, IEnumerable<RenderDescription> { }
+public interface ICompositeRenderNode : IRenderNode, IEnumerable<RenderDescription>
+{
+    void Add(RenderDescription child);
+}
