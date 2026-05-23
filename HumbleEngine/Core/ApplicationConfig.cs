@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace HumbleEngine;
 
 public record ApplicationConfig(
@@ -5,6 +7,8 @@ public record ApplicationConfig(
     WindowOptions WindowOptions
 )
 {
+    public IReadOnlyList<IPass> Passes { get; init; } = [];
+
     public static ApplicationConfig Default(Node scene)
-        => new(scene, WindowOptions.Default);
+        => new(scene, WindowOptions.Default) { Passes = [new UpdatePass()] };
 }
