@@ -1,7 +1,9 @@
 using HumbleEngine;
-using SilkWin = Silk.NET.Windowing.IWindow;
-using SilkWinState = Silk.NET.Windowing.WindowState;
+using SilkRawImage  = Silk.NET.Core.RawImage;
+using SilkVec2      = Silk.NET.Maths.Vector2D<int>;
+using SilkWin       = Silk.NET.Windowing.IWindow;
 using SilkWinBorder = Silk.NET.Windowing.WindowBorder;
+using SilkWinState  = Silk.NET.Windowing.WindowState;
 
 namespace HumbleEngine.Silk;
 
@@ -27,7 +29,15 @@ public class SilkWindow : SilkViewport, IWindow
     public WindowBorder WindowBorder { get => ToWindowBorder(_window.WindowBorder);         set => _window.WindowBorder = ToSilkBorder(value); }
     public bool         IsVisible    { get => _window.IsVisible;  set => _window.IsVisible  = value; }
     public bool         TopMost      { get => _window.TopMost;    set => _window.TopMost    = value; }
-    public IWindow?  Parent  => _window.Parent is SilkWin w ? new SilkWindow(w) : null;
+    public IWindow?  Parent     => _window.Parent is SilkWin w ? new SilkWindow(w) : null;
+    public Insets BorderSize
+    {
+        get
+        {
+            var b = _window.BorderSize;
+            return new Insets(b.Origin.X, b.Origin.Y, b.Size.X, b.Size.Y);
+        }
+    }
     public IMonitor? Monitor
     {
         get
@@ -56,6 +66,14 @@ public class SilkWindow : SilkViewport, IWindow
             TopMost      = options.TopMost,
         };
         return new SilkWindow(_window.CreateWindow(opts));
+    }
+
+    public void SetWindowIcon(ReadOnlySpan<RawImage> icons)
+    {
+        var silkIcons = new SilkRawImage[icons.Length];
+        for (var i = 0; i < icons.Length; i++)
+            silkIcons[i] = new SilkRawImage(icons[i].Width, icons[i].Height, icons[i].Pixels);
+        _window.SetWindowIcon(silkIcons);
     }
 
     private static WindowState ToWindowState(SilkWinState s) => s switch

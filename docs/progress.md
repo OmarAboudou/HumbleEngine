@@ -4,7 +4,7 @@
 
 ### Core (`HumbleEngine/`)
 
-#### Système réactif
+#### `Core/` — Système réactif
 - **`Signal`**, **`Signal<T>`**, **`Signal<T1,T2>`** — système d'événements avec Connect/Disconnect/Emit
 - **`ReadOnlySignal`** — vue en lecture seule d'un signal (Connect/Disconnect seulement)
 - **`IReadOnlySignal`** — interfaces correspondantes
@@ -14,38 +14,67 @@
 - **`ReadOnlyListProperty<T>`** — vue en lecture seule avec accès aux signaux
 - Fix : `Signal.Emit` itère sur un snapshot pour éviter InvalidOperationException si un callback modifie les connexions pendant l'émission
 
-#### Arbre de scène
+#### `Core/` — Arbre de scène
 - **`Node`** — nœud abstrait avec :
   - Relation parent/enfant via `Property<Node?> _parent` et `ListProperty<Node> _children`
   - `SetParent()`, `Attach()`, `Detach()`
   - Lifecycle : `OnTreeEntered`, `OnTreeExited`, `OnChildrenEntered`, `OnChildrenExited` (définis, pas encore wirés)
   - Traversal itératif : `GetSubtreeDepthFirst()` (pre-order), `GetSubtreeReverseDepthFirst()`
 - **`UINode`** — stub vide, à développer
+- **`Application`** — static, `Run(Node root, IViewport viewport)`
 
-#### Types mathématiques
+#### `Core/` — Types partagés
+- **`RawImage`** — struct : `Width`, `Height`, `Pixels : Memory<byte>` (RGBA 32-bit)
+
+#### `Math/` — Types mathématiques
 - **`Vector2<T>`** — vecteur 2D générique avec contrainte `INumber<T>`, opérateurs +, -, *, /
+- **`Insets`** — distances depuis les bords : `Left`, `Top`, `Right`, `Bottom` (int)
 
-#### Plateforme
-- **`IViewport`** — abstraction d'une surface de rendu :
-  - `Size : Vector2<int>`, `FramesPerSecond`, `UpdatesPerSecond`, `VSync`
-  - Signals : `OnUpdate(double delta)`, `OnRender(double delta)`, `OnResized(Vector2<int>)`, `OnClosing`
-  - `Run()`, `Close()`
-- **`IWindow : IViewport`** — fenêtre Desktop :
-  - `Title`, `Position : Vector2<int>`, `WindowState`, `WindowBorder`, `IsVisible`, `TopMost`, `Parent`, `Monitor : IMonitor?`
+#### `Windowing/` — Plateforme fenêtrage
+- **`IViewport`** — abstraction d'une surface de rendu (1:1 avec `Silk.NET.Windowing.IView`) :
+  - `Handle`, `IsInitialized`, `IsClosing`, `Time`, `Size`, `FramebufferSize`
+  - `FramesPerSecond`, `UpdatesPerSecond`, `VSync`
+  - Signals : `OnLoad`, `OnUpdate(double)`, `OnRender(double)`, `OnResized`, `OnFramebufferResize`, `OnFocusChanged(bool)`, `OnClosing`
+  - `Input : IInputContext`
+  - `Focus()`, `Run()`, `Close()`
+  - `PointToClient()`, `PointToScreen()`, `PointToFramebuffer()`
+- **`IWindow : IViewport`** — fenêtre Desktop (1:1 avec `Silk.NET.Windowing.IWindow`) :
+  - `Title`, `Position`, `WindowState`, `WindowBorder`, `IsVisible`, `TopMost`
+  - `Parent : IWindow?`, `Monitor : IMonitor?`, `BorderSize : Insets`
   - Signals : `OnMove`, `OnStateChanged`, `OnFileDrop`
   - `CreateChildWindow(WindowOptions) : IWindow`
+  - `SetWindowIcon(ReadOnlySpan<RawImage>)`
 - **`IMonitor`** — écran physique en lecture seule : `Index`, `Name`, `IsPrimary`, `Position`, `Size`, `RefreshRate`
 - **`WindowOptions`** — record de configuration (Title, Size, Position?, WindowState, WindowBorder, IsVisible, TopMost)
 - **`WindowState`** — enum : Normal, Minimized, Maximized, Fullscreen
 - **`WindowBorder`** — enum : Resizable, Fixed, Hidden
 
-#### Application
-- **`Application`** — static, `Run(Node root, IViewport viewport)`
+#### `Input/` — Système d'entrées (1:1 avec `Silk.NET.Input`)
+- **`IInputContext`** — point d'entrée : `Handle`, `Keyboards`, `Mice`, `Gamepads`, `Joysticks`, `OtherDevices`, `OnConnectionChanged`
+- **`IKeyboard`** — `SupportedKeys`, `ClipboardText`, `IsKeyPressed(Key)`, `IsScancodePressed(int)`, `BeginInput()`, `EndInput()`, signals `OnKeyDown(Key, int)`, `OnKeyUp(Key, int)`, `OnKeyChar(char)`
+- **`IMouse`** — `SupportedButtons`, `ScrollWheels`, `Position`, `Cursor`, `DoubleClickTime`, `DoubleClickRange`, `IsButtonPressed(MouseButton)`, signals `OnButtonDown`, `OnButtonUp`, `OnClick`, `OnDoubleClick`, `OnMove`, `OnScroll`
+- **`ICursor`** — `Type`, `StandardCursor`, `CursorMode`, `IsConfined`, `HotspotX`, `HotspotY`, `Image : RawImage`, `IsSupported(CursorMode)`, `IsSupported(StandardCursor)`
+- **`IInputDevice`** — `Name`, `Index`, `IsConnected`
+- **`IGamepad : IInputDevice`** — stub, à compléter
+- **`IJoystick : IInputDevice`** — stub, à compléter
+- **Enums** : `Key`, `MouseButton`, `CursorMode`, `CursorType`, `StandardCursor`
+- **Struct** : `ScrollWheel` — `X : float`, `Y : float`
 
 ### Silk (`HumbleEngine.Silk/`)
-- **`SilkViewport : IViewport`** — wrapping `Silk.NET.Windowing.IView`, branche les événements Silk sur les Signals Core
-- **`SilkWindow : SilkViewport, IWindow`** — wrapping `Silk.NET.Windowing.IWindow`, conversions des enums Silk ↔ Core à la frontière
-- **`SilkMonitor : IMonitor`** — wrapping `Silk.NET.Windowing.IMonitor`, `IsPrimary` déterminé via `Monitor.GetMainMonitor()`
+
+#### `Windowing/`
+- **`SilkViewport : IViewport`** — wrapping `Silk.NET.Windowing.IView`
+- **`SilkWindow : SilkViewport, IWindow`** — wrapping `Silk.NET.Windowing.IWindow`, conversions enums Silk ↔ Core à la frontière
+- **`SilkMonitor : IMonitor`** — wrapping `Silk.NET.Windowing.IMonitor`, `IsPrimary` via `Monitor.GetMainMonitor()`
+
+#### `Input/`
+- **`SilkInputContext : IInputContext`** — wrapping `Silk.NET.Input.IInputContext`
+- **`SilkKeyboard : IKeyboard`** — wrapping `Silk.NET.Input.IKeyboard`
+- **`SilkMouse : IMouse`** — wrapping `Silk.NET.Input.IMouse`
+- **`SilkCursor : ICursor`** — wrapping `Silk.NET.Input.ICursor`
+- **`SilkInputDevice : IInputDevice`** — wrapping `Silk.NET.Input.IInputDevice`
+- **`SilkGamepad : IGamepad`** — stub (membres `IInputDevice` seulement)
+- **`SilkJoystick : IJoystick`** — stub (membres `IInputDevice` seulement)
 
 ### Tests (`HumbleEngine.Tests/`)
 - **`SignalTests`** (7 tests) — émission, déconnexion, ré-entrance
@@ -58,32 +87,43 @@
 
 ## Décisions architecturales
 
+### Organisation des fichiers
+- Dossiers miroirs des packages Silk : `Core/`, `Math/`, `Windowing/`, `Input/`
+- `namespace HumbleEngine` unique pour tout le Core (pas de sous-namespaces)
+- `namespace HumbleEngine.Silk` unique pour tout Silk
+- Même structure de dossiers dans `HumbleEngine.Silk/`
+
+### Stratégie d'abstraction
+- Mapping 1:1 avec Silk tant qu'aucune autre plateforme n'est supportée
+- Les compromis et réconciliations se feront quand une 2e plateforme arrivera (SDL, Mobile...)
+- Exception : détails internes de la boucle Silk (`DoRender`, `DoUpdate`, `DoEvents`, etc.) non exposés dans le Core
+
 ### Plateforme
-- Pas d'abstraction `OS` pour l'instant — on construit les abstractions Core depuis les implémentations concrètes (Silk d'abord, puis Skia, puis Mobile)
 - `IViewport` = toute surface renderable (Desktop, Mobile, Web)
 - `IWindow : IViewport` = fenêtre Desktop uniquement
-- `IMonitor` = réalité physique en lecture seule, pas un Node — on le *découvre* via `IWindow.Monitor`, on ne le crée pas
-- Parenté des fenêtres OS fixée à la création (`IWindow.CreateChildWindow()`) — reparenting non portable (Wayland l'interdit, Win32/macOS fragile)
-- `WindowNode` (à faire) = Node qui possède un `IWindow` et expose ses propriétés via `Property<T>` — il HAS un IWindow, il n'en EST pas un
-- Multi-fenêtre via `IWindow.CreateChildWindow()` — le Core ne sait rien des fenêtres enfants, c'est l'appli qui orchestre
-
-### Update loop (à implémenter)
-- Les Nodes qui veulent un update implémentent `IUpdate` avec `Update(double delta)`
-- `UpdateFlag { Inherit, Run, DontRun }` pour contrôler l'update par sous-arbre (Inherit = héritage depuis le parent → pause d'une sous-arbre gratuite)
-- Liste plate des Nodes actifs mise à jour via `OnTreeEntered`/`OnTreeExited` — O(k) par frame, pas O(n)
-- Si liste vide → mode event-driven naturel, CPU soulagé
-- `IUpdate` calé sur `UpdatesPerSecond` (fixed timestep, comme `_physics_process` dans Godot)
-- `OnRender` calé sur `FramesPerSecond` (variable, comme `_process` dans Godot)
+- `IMonitor` = réalité physique en lecture seule — on le *découvre* via `IWindow.Monitor`, on ne le crée pas
+- Parenté des fenêtres OS fixée à la création (`CreateChildWindow()`) — reparenting non portable (Wayland l'interdit)
+- `WindowNode` (à faire) = Node qui possède un `IWindow` — il HAS un IWindow, il n'en EST pas un
+- Multi-fenêtre via `IWindow.CreateChildWindow()` — le Core ne sait rien des fenêtres enfants
 
 ### Types
 - `Vector2<T> where T : INumber<T>` pour distinguer pixels (int) et coordonnées logiques (float)
+- `Insets` (pas `Thickness`) — terme issu d'Android/iOS/Flutter, décrit des distances vers l'intérieur
+- `RawImage` — pixels RGBA 32-bit non-prémultipliés, little-endian (aligné sur `Silk.NET.Core.RawImage`)
 - Conversions Silk ↔ Core uniquement à la frontière dans `HumbleEngine.Silk`
+
+### Update loop (à implémenter)
+- Les Nodes qui veulent un update implémentent `IUpdate` avec `Update(double delta)`
+- `UpdateFlag { Inherit, Run, DontRun }` pour contrôler l'update par sous-arbre
+- Liste plate des Nodes actifs mise à jour via `OnTreeEntered`/`OnTreeExited` — O(k) par frame
+- `IUpdate` calé sur `UpdatesPerSecond` (fixed timestep)
+- `OnRender` calé sur `FramesPerSecond` (variable)
 
 ---
 
 ## Prochaines étapes suggérées
 
-1. **Input** — `IInput`, `IKeyboard`, `IMouse` dans Core + implémentation Silk
+1. **`IGamepad` / `IJoystick`** — compléter les stubs (Button, Thumbstick, Trigger, Hat, Axis, Deadzone...)
 2. **Wiring du lifecycle** — déclencher `OnTreeEntered`/`OnTreeExited` quand le parent change
 3. **`IUpdate` + UpdateFlag** — la boucle d'update sur les Nodes
 4. **`WindowNode`** — Node réactif qui wraps un `IWindow`
