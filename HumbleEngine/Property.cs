@@ -4,8 +4,8 @@ namespace HumbleEngine;
 
 public class Property<T> : IReadOnlyProperty<T>
 {
-    private Signal<T> _valueChanged = new();
-    public IReadOnlySignal<T> ValueChanged => _valueChanged.AsReadOnly();
+    private Signal<T, T> _valueChanged = new();
+    public IReadOnlySignal<T, T> ValueChanged => _valueChanged.AsReadOnly();
     
     public Property(T initialValue = default) => _value = initialValue;
     
@@ -18,8 +18,9 @@ public class Property<T> : IReadOnlyProperty<T>
             if(EqualityComparer<T>.Default.Equals(_value, value))
                 return;
             
+            T oldValue = _value;
             _value = value;
-            _valueChanged.Emit(_value);               
+            _valueChanged.Emit(oldValue, _value);               
         }
     }
 
@@ -34,14 +35,14 @@ public class ReadOnlyProperty<T> : IReadOnlyProperty<T>
 
     internal ReadOnlyProperty(Property<T> property) => _property = property;
     
-    public IReadOnlySignal<T> ValueChanged => _property.ValueChanged;
+    public IReadOnlySignal<T, T> ValueChanged => _property.ValueChanged;
 
     public T Value => _property.Value;
 }
 
 public interface IReadOnlyProperty<out T>
 {
-    public IReadOnlySignal<T> ValueChanged { get; }
+    public IReadOnlySignal<T, T> ValueChanged { get; }
     public T Value { get; }
 
 }
