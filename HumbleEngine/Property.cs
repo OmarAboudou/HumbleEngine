@@ -1,14 +1,16 @@
+using System.Runtime.CompilerServices;
+
 namespace HumbleEngine;
 
 public class Property<T> : IReadOnlyProperty<T>
 {
     private Signal<T> _valueChanged = new();
-    public ReadOnlySignal<T> ValueChanged => _valueChanged.AsReadOnly();
+    public IReadOnlySignal<T> ValueChanged => _valueChanged.AsReadOnly();
     
     public Property(T initialValue = default) => _value = initialValue;
     
     private T _value;
-    public T Value
+    public virtual T Value
     {
         get => _value;
         set
@@ -22,7 +24,7 @@ public class Property<T> : IReadOnlyProperty<T>
     }
 
     private ReadOnlyProperty<T>? _readOnlyProperty;
-    public ReadOnlyProperty<T> AsReadOnly() => _readOnlyProperty ??= new(this);
+    public ReadOnlyProperty<T> AsReadOnly() => _readOnlyProperty ??= new (this);
 
 }
 
@@ -32,14 +34,14 @@ public class ReadOnlyProperty<T> : IReadOnlyProperty<T>
 
     internal ReadOnlyProperty(Property<T> property) => _property = property;
     
-    public ReadOnlySignal<T> ValueChanged => _property.ValueChanged;
+    public IReadOnlySignal<T> ValueChanged => _property.ValueChanged;
 
     public T Value => _property.Value;
 }
 
-public interface IReadOnlyProperty<T>
+public interface IReadOnlyProperty<out T>
 {
-    public ReadOnlySignal<T> ValueChanged { get; }
+    public IReadOnlySignal<T> ValueChanged { get; }
     public T Value { get; }
 
 }
