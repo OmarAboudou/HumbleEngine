@@ -22,7 +22,9 @@
   - `internal bool _isInTree` — état d'appartenance à l'arbre actif
   - Traversal itératif : `GetSubtreeDepthFirst()` (pre-order), `GetSubtreeReverseDepthFirst()`
 - **`UINode`** — stub vide, à développer
-- **`Application`** — static, `Run(Node root, IViewport viewport)` — bootstrap `EnterTree` / `ExitTree` sur le root
+- **`Application`** — classe abstraite, `Run(ApplicationConfig)` — crée le root via `CreateRootNode()`, attache la scène, bootstrap `EnterTree`/`ExitTree`
+- **`ApplicationConfig`** — record : `Scene : Node`, `WindowOptions`, `Default(Node)` helper
+- **`WindowNode`** — Node qui possède un `IWindow` (has-a, pas is-a)
 
 #### `Core/` — Types partagés
 - **`RawImage`** — struct : `Width`, `Height`, `Pixels : Memory<byte>` (RGBA 32-bit)
@@ -74,6 +76,7 @@
 ### Silk (`HumbleEngine.Silk/`)
 
 #### `Windowing/`
+- **`SilkApplication : Application`** — `CreateRootNode` crée un `SilkWindow` + `WindowNode`, `RunLoop` démarre la boucle Silk
 - **`SilkViewport : IViewport`** — wrapping `Silk.NET.Windowing.IView`
 - **`SilkWindow : SilkViewport, IWindow`** — wrapping `Silk.NET.Windowing.IWindow`, conversions enums Silk ↔ Core à la frontière
 - **`SilkMonitor : IMonitor`** — wrapping `Silk.NET.Windowing.IMonitor`, `IsPrimary` via `Monitor.GetMainMonitor()`
@@ -136,7 +139,7 @@
 
 ## Prochaines étapes suggérées
 
-1. **Système de passes** — IPass, registration dans Application, UpdatePass
+1. **Système de passes** — IPass, ApplicationConfig.Passes, UpdatePass
 2. **`IUpdate` + UpdateFlag** — la boucle d'update sur les Nodes
 4. **`WindowNode`** — Node réactif qui wraps un `IWindow`
 5. **`IRenderer` (Skia)** — abstraction du rendu 2D
