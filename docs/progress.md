@@ -18,10 +18,11 @@
 - **`Node`** — nœud abstrait avec :
   - Relation parent/enfant via `Property<Node?> _parent` et `ListProperty<Node> _children`
   - `SetParent()`, `Attach()`, `Detach()`
-  - Lifecycle : `OnTreeEntered`, `OnTreeExited`, `OnChildrenEntered`, `OnChildrenExited` (définis, pas encore wirés)
+  - Lifecycle wirés : `OnTreeEntered` (top-down), `OnChildrenEntered` (bottom-up), `OnChildrenExited` (top-down), `OnTreeExited` (bottom-up)
+  - `internal bool _isInTree` — état d'appartenance à l'arbre actif
   - Traversal itératif : `GetSubtreeDepthFirst()` (pre-order), `GetSubtreeReverseDepthFirst()`
 - **`UINode`** — stub vide, à développer
-- **`Application`** — static, `Run(Node root, IViewport viewport)`
+- **`Application`** — static, `Run(Node root, IViewport viewport)` — bootstrap `EnterTree` / `ExitTree` sur le root
 
 #### `Core/` — Types partagés
 - **`RawImage`** — struct : `Width`, `Height`, `Pixels : Memory<byte>` (RGBA 32-bit)
@@ -92,7 +93,8 @@
 - **`PropertyTests`** (7 tests) — valeur initiale, ValueChanged, ReadOnly
 - **`ListPropertyTests`** (13 tests) — Add, Remove, Insert, signals, AsReadOnly
 - **`NodeTraversalTests`** (8 tests) — DepthFirst, ReverseDepthFirst
-- **Total : 35 tests, tous verts**
+- **`NodeLifecycleTests`** (8 tests) — EnterTree/ExitTree, propagation, reparenting, hors arbre
+- **Total : 43 tests, tous verts**
 
 ---
 
@@ -134,8 +136,7 @@
 
 ## Prochaines étapes suggérées
 
-1. **Wiring du lifecycle** — déclencher `OnTreeEntered`/`OnTreeExited` quand le parent change
-2. **Wiring du lifecycle** — déclencher `OnTreeEntered`/`OnTreeExited` quand le parent change
-3. **`IUpdate` + UpdateFlag** — la boucle d'update sur les Nodes
+1. **Système de passes** — IPass, registration dans Application, UpdatePass
+2. **`IUpdate` + UpdateFlag** — la boucle d'update sur les Nodes
 4. **`WindowNode`** — Node réactif qui wraps un `IWindow`
 5. **`IRenderer` (Skia)** — abstraction du rendu 2D

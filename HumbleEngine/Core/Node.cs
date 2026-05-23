@@ -10,6 +10,13 @@ public abstract class Node : IEnumerable<Node>
         {
             oldP?._children.Remove(this);
             newP?._children.Add(this);
+
+            bool wasInTree = oldP?._isInTree ?? false;
+            bool nowInTree = newP?._isInTree ?? false;
+
+            if      (!wasInTree &&  nowInTree) EnterTree();
+            else if ( wasInTree && !nowInTree) ExitTree();
+            else if ( wasInTree &&  nowInTree) { ExitTree(); EnterTree(); }
         });
     }
 
@@ -19,33 +26,48 @@ public abstract class Node : IEnumerable<Node>
     private readonly ListProperty<Node> _children = new();
     public ReadOnlyProperty<Node?> Parent => _parent.AsReadOnly();
     public IReadOnlyList<Node> Children => _children.AsReadOnly();
-    
+
     public void SetParent(Node? parent)
     {
         if (parent == this)
-        {
             throw new ArgumentException($"A {nameof(Node)} cannot be its own child.", nameof(parent));
-        }
         if (ReferenceEquals(_parent.Value, parent))
-        {
-            Console.WriteLine($"{this} is already a child of {parent}");
             return;
-        }
-        
         _parent.Value = parent;
     }
 
     public void Attach(Node node) => node.SetParent(this);
     public void Detach(Node node) => node.SetParent(null);
+
     #endregion
 
-    #region Life Cycle
+    #region Lifecycle
 
-    public virtual void OnTreeEntered() { }
+    internal bool _isInTree = false;
+
+    internal void EnterTree()
+    {
+        _isInTree = true;
+        OnTreeEntered();
+        foreach (var child in _children)
+            child.EnterTree();
+        OnChildrenEntered();
+    }
+
+    internal void ExitTree()
+    {
+        OnChildrenExited();
+        foreach (var child in _children)
+            child.ExitTree();
+        OnTreeExited();
+        _isInTree = false;
+    }
+
+    public virtual void OnTreeEntered()     { }
     public virtual void OnChildrenEntered() { }
-    public virtual void OnChildrenExited() { }
-    public virtual void OnTreeExited() { }
-    
+    public virtual void OnChildrenExited()  { }
+    public virtual void OnTreeExited()      { }
+
     #endregion
 
     #region Traversal
