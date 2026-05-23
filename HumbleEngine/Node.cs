@@ -47,8 +47,25 @@ public abstract class Node : IEnumerable<Node>
     public virtual void OnTreeExited() { }
     
     #endregion
-    
 
+    #region Traversal
+
+    public IEnumerable<Node> GetSubtreeDepthFirst()
+    {
+        Stack<Node> stack = new();
+        stack.Push(this);
+        while (stack.Count > 0)
+        {
+            var node = stack.Pop();
+            yield return node;
+            foreach (var child in node._children.Reverse())
+                stack.Push(child);
+        }
+    }
+
+    public IEnumerable<Node> GetSubtreeReverseDepthFirst() => GetSubtreeDepthFirst().Reverse();
+
+    #endregion
     
     public IEnumerator<Node> GetEnumerator() 
         => _children.GetEnumerator();
