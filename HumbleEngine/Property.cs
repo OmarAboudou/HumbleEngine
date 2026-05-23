@@ -1,5 +1,3 @@
-using System.Runtime.CompilerServices;
-
 namespace HumbleEngine;
 
 public class Property<T> : IReadOnlyProperty<T>
