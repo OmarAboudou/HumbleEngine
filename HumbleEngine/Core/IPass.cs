@@ -2,6 +2,6 @@ namespace HumbleEngine;
 
 public interface IPass
 {
-    void Execute(PassContext context);
+    void Execute(Node root, double delta);
     bool ShouldExecute() => true;
 }

@@ -4,9 +4,9 @@ namespace HumbleEngine;
 
 public class UpdatePass : IPass
 {
-    public void Execute(PassContext context)
+    public void Execute(Node root, double delta)
     {
-        foreach (var node in context.Root.GetSubtreeDepthFirst().OfType<IUpdate>())
-            node.Update(context.Delta);
+        foreach (var node in root.GetSubtreeDepthFirst().OfType<IUpdate>())
+            node.Update(delta);
     }
 }
