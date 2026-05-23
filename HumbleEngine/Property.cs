@@ -7,7 +7,7 @@ public class Property<T> : IReadOnlyProperty<T>
     private Signal<T, T> _valueChanged = new();
     public IReadOnlySignal<T, T> ValueChanged => _valueChanged.AsReadOnly();
     
-    public Property(T initialValue = default) => _value = initialValue;
+    public Property(T? initialValue = default) => _value = initialValue!;
     
     private T _value;
     public virtual T Value

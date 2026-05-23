@@ -9,9 +9,9 @@ public class ListProperty<T> : IReadOnlyListProperty<T>, IList<T>
     private readonly Signal<(T item, int index)> _added = new();
     private readonly Signal<(T item, int index)> _removed = new();
 
-    private ReadOnlySignal<(T item, int index)> Added 
+    public ReadOnlySignal<(T item, int index)> Added 
         => _added.AsReadOnly();
-    private ReadOnlySignal<(T item, int index)> Removed 
+    public ReadOnlySignal<(T item, int index)> Removed 
         => _removed.AsReadOnly();
 
     public IEnumerator<T> GetEnumerator() 
@@ -21,7 +21,7 @@ public class ListProperty<T> : IReadOnlyListProperty<T>, IList<T>
 
     public void Add(T item)
     {
-        Insert(_list.Count - 1, item);    
+        Insert(_list.Count, item);
     }
 
     public void Clear()

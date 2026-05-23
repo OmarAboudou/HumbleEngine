@@ -7,7 +7,7 @@ public class Signal : IReadOnlySignal
     public void Connect(Action callback) => Connections.Add(callback);
     public void Disconnect(Action callback) => Connections.Remove(callback);
     
-    public void Emit() => Connections.ForEach(connection => connection.Invoke());
+    public void Emit() { foreach (var c in Connections.ToArray()) c.Invoke(); }
     
     private ReadOnlySignal? _readOnlySignal;
     public ReadOnlySignal AsReadOnly() => _readOnlySignal ??= new ReadOnlySignal(this);
@@ -20,7 +20,7 @@ public class Signal<T> : IReadOnlySignal<T>
     public void Connect(Action<T> callback) => Connections.Add(callback);
     public void Disconnect(Action<T> callback) => Connections.Remove(callback);
     
-    public void Emit(T arg) => Connections.ForEach(connection => connection.Invoke(arg));
+    public void Emit(T arg) { foreach (var c in Connections.ToArray()) c.Invoke(arg); }
     
     private ReadOnlySignal<T>? _readOnlySignal;
     public ReadOnlySignal<T> AsReadOnly() => _readOnlySignal ??= new ReadOnlySignal<T>(this);
@@ -34,7 +34,7 @@ public class Signal<T1, T2> : IReadOnlySignal<T1, T2>
     public void Connect(Action<T1, T2> callback) => Connections.Add(callback);
     public void Disconnect(Action<T1, T2> callback) => Connections.Remove(callback);
     
-    public void Emit(T1 arg1, T2 arg2) => Connections.ForEach(connection => connection.Invoke(arg1,arg2));
+    public void Emit(T1 arg1, T2 arg2) { foreach (var c in Connections.ToArray()) c.Invoke(arg1, arg2); }
     
     private ReadOnlySignal<T1, T2>? _readOnlySignal;
     public ReadOnlySignal<T1, T2> AsReadOnly() => _readOnlySignal ??= new ReadOnlySignal<T1, T2>(this);
