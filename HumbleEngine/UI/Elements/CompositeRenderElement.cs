@@ -4,10 +4,11 @@ namespace HumbleEngine;
 
 public abstract record CompositeRenderElement : RenderElement, IEnumerable
 {
-    protected ListProperty<RenderElement> Children { get; init; } = new();
+    private ListProperty<RenderElement> PrivateChildren { get; init; } = new();
+    public ReadOnlyListProperty<RenderElement> Children => PrivateChildren.AsReadOnly();
     
     public void Add(RenderElement e)
-        => Children.Add(e);
+        => PrivateChildren.Add(e);
 
     public void Add(IReadOnlyList<RenderElement> e)
     {
@@ -15,6 +16,6 @@ public abstract record CompositeRenderElement : RenderElement, IEnumerable
             Add(renderElement);
     }
 
-    public IEnumerator GetEnumerator() => Children.GetEnumerator();
+    public IEnumerator GetEnumerator() => PrivateChildren.GetEnumerator();
 
 }
