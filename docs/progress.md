@@ -55,8 +55,18 @@
 - **`IMouse`** — `SupportedButtons`, `ScrollWheels`, `Position`, `Cursor`, `DoubleClickTime`, `DoubleClickRange`, `IsButtonPressed(MouseButton)`, signals `OnButtonDown`, `OnButtonUp`, `OnClick`, `OnDoubleClick`, `OnMove`, `OnScroll`
 - **`ICursor`** — `Type`, `StandardCursor`, `CursorMode`, `IsConfined`, `HotspotX`, `HotspotY`, `Image : RawImage`, `IsSupported(CursorMode)`, `IsSupported(StandardCursor)`
 - **`IInputDevice`** — `Name`, `Index`, `IsConnected`
-- **`IGamepad : IInputDevice`** — stub, à compléter
-- **`IJoystick : IInputDevice`** — stub, à compléter
+- **`IGamepad : IInputDevice`** — `Buttons`, `Thumbsticks`, `Triggers`, `VibrationMotors`, `Deadzone`, signals `OnButtonDown`, `OnButtonUp`, `OnThumbstickMoved`, `OnTriggerMoved`
+- **`IMotor`** — `Index`, `Speed` (get/set)
+- **`ButtonName`** — enum : Unknown, A, B, X, Y, LeftBumper, RightBumper, Back, Start, Home, LeftStick, RightStick, DPadUp, DPadRight, DPadDown, DPadLeft
+- **`GamepadButton`** — struct readonly : `Name : ButtonName`, `Index`, `Pressed`
+- **`Thumbstick`** — struct readonly : `Index`, `X`, `Y`, `Position` (magnitude), `Direction` (atan2)
+- **`Trigger`** — struct readonly : `Index`, `Position`
+- **`DeadzoneMethod`** — enum : Traditional, AdaptiveGradient
+- **`Deadzone`** — struct readonly : `Value`, `Method`, `Apply(float)`
+- **`IJoystick : IInputDevice`** — `Axes`, `Buttons`, `Hats`, `Deadzone`, signals `OnButtonDown`, `OnButtonUp`, `OnAxisMoved`, `OnHatMoved`
+- **`Axis`** — struct readonly : `Index`, `Position`
+- **`HatPosition`** — enum : Centered, Up, Down, Left, Right, UpLeft, UpRight, DownLeft, DownRight
+- **`Hat`** — struct readonly : `Index`, `Position : HatPosition`
 - **Enums** : `Key`, `MouseButton`, `CursorMode`, `CursorType`, `StandardCursor`
 - **Struct** : `ScrollWheel` — `X : float`, `Y : float`
 
@@ -73,8 +83,9 @@
 - **`SilkMouse : IMouse`** — wrapping `Silk.NET.Input.IMouse`
 - **`SilkCursor : ICursor`** — wrapping `Silk.NET.Input.ICursor`
 - **`SilkInputDevice : IInputDevice`** — wrapping `Silk.NET.Input.IInputDevice`
-- **`SilkGamepad : IGamepad`** — stub (membres `IInputDevice` seulement)
-- **`SilkJoystick : IJoystick`** — stub (membres `IInputDevice` seulement)
+- **`SilkGamepad : IGamepad`** — wrapping `Silk.NET.Input.IGamepad`, conversions ButtonName/DeadzoneMethod à la frontière
+- **`SilkMotor : IMotor`** — wrapping `Silk.NET.Input.IMotor`
+- **`SilkJoystick : IJoystick`** — wrapping `Silk.NET.Input.IJoystick`, conversion `Position2D` → `HatPosition` à la frontière
 
 ### Tests (`HumbleEngine.Tests/`)
 - **`SignalTests`** (7 tests) — émission, déconnexion, ré-entrance
@@ -123,7 +134,7 @@
 
 ## Prochaines étapes suggérées
 
-1. **`IGamepad` / `IJoystick`** — compléter les stubs (Button, Thumbstick, Trigger, Hat, Axis, Deadzone...)
+1. **Wiring du lifecycle** — déclencher `OnTreeEntered`/`OnTreeExited` quand le parent change
 2. **Wiring du lifecycle** — déclencher `OnTreeEntered`/`OnTreeExited` quand le parent change
 3. **`IUpdate` + UpdateFlag** — la boucle d'update sur les Nodes
 4. **`WindowNode`** — Node réactif qui wraps un `IWindow`
