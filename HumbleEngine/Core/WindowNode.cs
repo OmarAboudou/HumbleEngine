@@ -1,8 +1,9 @@
 namespace HumbleEngine;
 
-public class WindowNode : Node
+public class WindowNode : Node, IRootNode
 {
-    public IWindow Window { get; }
+    public IWindow   Window   { get; }
+    public IViewport Viewport => Window;
 
     public WindowNode(IWindow window)
     {

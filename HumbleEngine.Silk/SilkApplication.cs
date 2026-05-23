@@ -6,11 +6,9 @@ using SilkWinBorder = Silk.NET.Windowing.WindowBorder;
 
 namespace HumbleEngine.Silk;
 
-public class SilkApplication : Application
+public class SilkApplication : Application<WindowNode>
 {
-    private SilkWindow? _window;
-
-    protected override Node CreateRootNode(ApplicationConfig config)
+    protected override WindowNode CreateRootNode(ApplicationConfig config)
     {
         var opts = SilkWinOpts.Default with
         {
@@ -24,11 +22,8 @@ public class SilkApplication : Application
         };
 
         var silkWin = global::Silk.NET.Windowing.Window.Create(opts);
-        _window = new SilkWindow(silkWin);
-        return new WindowNode(_window);
+        return new WindowNode(new SilkWindow(silkWin));
     }
-
-    protected override void RunLoop() => _window!.Run();
 
     private static SilkWinState ToSilkState(WindowState s) => s switch
     {

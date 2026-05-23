@@ -1,16 +1,15 @@
 namespace HumbleEngine;
 
-public abstract class Application
+public abstract class Application<TRoot> where TRoot : Node, IRootNode
 {
-    protected abstract Node CreateRootNode(ApplicationConfig config);
-    protected abstract void RunLoop();
+    protected abstract TRoot CreateRootNode(ApplicationConfig config);
 
     public void Run(ApplicationConfig config)
     {
-        var root = CreateRootNode(config);
+        TRoot root = CreateRootNode(config);
         root.Attach(config.Scene);
         root.EnterTree();
-        RunLoop();
+        root.Viewport.Run();
         root.ExitTree();
     }
 }
