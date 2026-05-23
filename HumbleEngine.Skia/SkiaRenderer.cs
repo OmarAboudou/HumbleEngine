@@ -4,8 +4,6 @@ namespace HumbleEngine.Skia;
 
 public class SkiaRenderer : IRenderer
 {
-    private readonly Func<string, nint> _getProcAddress;
-
     private IViewport?  _viewport;
     private GRContext?  _grContext;
     private SKSurface?  _surface;
@@ -16,18 +14,16 @@ public class SkiaRenderer : IRenderer
     public IReadOnlySignal<ICanvas> OnBeginFrame => _onBeginFrame.AsReadOnly();
     public IReadOnlySignal         OnEndFrame   => _onEndFrame.AsReadOnly();
 
-    // getProcAddress: typically GL.GetProcAddress from Silk
-    public SkiaRenderer(Func<string, nint> getProcAddress)
-    {
-        _getProcAddress = getProcAddress;
-    }
-
     public void Attach(IViewport viewport)
     {
         _viewport = viewport;
-        _viewport.OnLoad.Connect(OnLoad);
         _viewport.OnFramebufferResize.Connect(OnFramebufferResize);
         _viewport.OnRender.Connect(OnRender);
+
+        if (viewport.IsInitialized)
+            OnLoad();
+        else
+            _viewport.OnLoad.Connect(OnLoad);
     }
 
     public void Detach()
@@ -44,8 +40,9 @@ public class SkiaRenderer : IRenderer
 
     private void OnLoad()
     {
-        var glInterface = GRGlInterface.Create(name => _getProcAddress(name));
-        _grContext = GRContext.CreateGl(glInterface);
+        var ctx         = _viewport!.GraphicsContext!;
+        var glInterface = GRGlInterface.Create(ctx.GetProcAddress);
+        _grContext      = GRContext.CreateGl(glInterface);
         CreateSurface();
     }
 
@@ -72,8 +69,8 @@ public class SkiaRenderer : IRenderer
 
         var renderTarget = new GRBackendRenderTarget(
             size.X, size.Y,
-            sampleCount:  0,
-            stencilBits:  8,
+            sampleCount: 0,
+            stencilBits: 8,
             new GRGlFramebufferInfo(fboId: 0, format: 0x8058) // GL_RGBA8
         );
 

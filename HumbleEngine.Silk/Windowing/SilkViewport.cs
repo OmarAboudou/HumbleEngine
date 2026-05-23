@@ -49,6 +49,10 @@ public class SilkViewport : IViewport
     public IReadOnlySignal<bool>         OnFocusChanged       => _onFocusChanged.AsReadOnly();
     public IReadOnlySignal               OnClosing            => _onClosing.AsReadOnly();
 
+    private SilkGraphicsContext? _graphicsContext;
+    public IGraphicsContext? GraphicsContext
+        => _view.GLContext is { } ctx ? (_graphicsContext ??= new SilkGraphicsContext(ctx)) : null;
+
     public IInputContext Input => _input ??= new SilkInputContext(_view.CreateInput());
 
     public void         Focus()                          => _view.Focus();

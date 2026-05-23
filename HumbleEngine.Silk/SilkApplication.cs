@@ -1,4 +1,5 @@
 using HumbleEngine;
+using Silk.NET.Windowing;
 using SilkVec2      = Silk.NET.Maths.Vector2D<int>;
 using SilkWinOpts   = Silk.NET.Windowing.WindowOptions;
 using SilkWinState  = Silk.NET.Windowing.WindowState;
@@ -8,6 +9,11 @@ namespace HumbleEngine.Silk;
 
 public class SilkApplication : Application<WindowNode>
 {
+    protected IRenderer? Renderer { get; private set; }
+
+    protected virtual IRenderer? CreateRenderer() => null;
+    protected virtual void OnRendererCreated(IRenderer renderer) { }
+
     protected override WindowNode CreateRootNode(ApplicationConfig config)
     {
         var opts = SilkWinOpts.Default with
@@ -19,10 +25,30 @@ public class SilkApplication : Application<WindowNode>
             WindowBorder = ToSilkBorder(config.WindowOptions.WindowBorder),
             IsVisible    = config.WindowOptions.IsVisible,
             TopMost      = config.WindowOptions.TopMost,
+            API          = GraphicsAPI.Default,
         };
 
-        var silkWin = global::Silk.NET.Windowing.Window.Create(opts);
-        return new WindowNode(new SilkWindow(silkWin));
+        var silkWin    = global::Silk.NET.Windowing.Window.Create(opts);
+        var silkWindow = new SilkWindow(silkWin);
+        var root       = new WindowNode(silkWindow);
+
+        root.Viewport.OnLoad.Connect(() =>
+        {
+            var renderer = CreateRenderer();
+            if (renderer is null) return;
+
+            Renderer = renderer;
+            renderer.Attach(root.Viewport);
+            OnRendererCreated(renderer);
+        });
+
+        root.Viewport.OnClosing.Connect(() =>
+        {
+            Renderer?.Detach();
+            Renderer = null;
+        });
+
+        return root;
     }
 
     private static SilkWinState ToSilkState(WindowState s) => s switch
