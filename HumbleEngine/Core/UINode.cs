@@ -1,6 +1,6 @@
 namespace HumbleEngine;
 
-public class UINode
+public abstract class UINode : Node
 {
-    
+    public abstract RenderElement Render();
 }

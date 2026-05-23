@@ -1,6 +1,6 @@
 namespace HumbleEngine;
 
-public record Box : RenderElement
+public record Box : CompositeRenderElement
 {
     public Color BorderColor { get; init; }
     public float BorderWidth { get; init; }

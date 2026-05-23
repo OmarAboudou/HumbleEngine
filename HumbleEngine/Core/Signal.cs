@@ -27,9 +27,9 @@ public class Signal<T> : IReadOnlySignal<T>
 
 }
 
-public class Signal<T1, T2> : IReadOnlySignal<T1, T2>
+public record Signal<T1, T2> : IReadOnlySignal<T1, T2>
 {
-    internal readonly List<Action<T1, T2>> Connections = [];
+    internal List<Action<T1, T2>> Connections { get; init; }= [];
     
     public void Connect(Action<T1, T2> callback) => Connections.Add(callback);
     public void Disconnect(Action<T1, T2> callback) => Connections.Remove(callback);
@@ -63,14 +63,14 @@ public class ReadOnlySignal<T> : IReadOnlySignal<T>
     public void Disconnect(Action<T> callback) => _signal.Disconnect(callback);
 }
 
-public class ReadOnlySignal<T1, T2> : IReadOnlySignal<T1, T2>
+public record ReadOnlySignal<T1, T2> : IReadOnlySignal<T1, T2>
 {
-    private readonly Signal<T1, T2> _signal;
+    private Signal<T1, T2> Signal { get; init; }
     
-    internal ReadOnlySignal(Signal<T1, T2> signal) => _signal = signal;
+    internal ReadOnlySignal(Signal<T1, T2> signal) => Signal = signal;
     
-    public void Connect(Action<T1, T2> callback) => _signal.Connect(callback);
-    public void Disconnect(Action<T1, T2> callback) => _signal.Disconnect(callback);
+    public void Connect(Action<T1, T2> callback) => Signal.Connect(callback);
+    public void Disconnect(Action<T1, T2> callback) => Signal.Disconnect(callback);
 }
 
 // -----------------------------------------------------------

@@ -1,7 +1,13 @@
 namespace HumbleEngine;
 
-public record Text(string Content) : RenderElement
+public record Text : RenderElement
 {
+    public Text(string content)           : this(new Property<string>(content)) { }
+    public Text(Property<string> content) { ContentProperty = content; }
+
+    private Property<string> ContentProperty { get; init; } = default!;
+    public string Content => ContentProperty.Value;
+
     public float        FontSize { get; init; } = 16f;
     public Color        Color    { get; init; } = Color.Black;
     public TextAlign    Align    { get; init; }

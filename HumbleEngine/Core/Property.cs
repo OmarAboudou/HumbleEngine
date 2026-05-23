@@ -1,8 +1,8 @@
 namespace HumbleEngine;
 
-public class Property<T> : IReadOnlyProperty<T>
+public record Property<T> : IReadOnlyProperty<T>
 {
-    private Signal<T, T> _valueChanged = new();
+    private Signal<T, T> _valueChanged { get; init; }= new();
     public IReadOnlySignal<T, T> ValueChanged => _valueChanged.AsReadOnly();
     
     public Property(T? initialValue = default) => _value = initialValue!;
