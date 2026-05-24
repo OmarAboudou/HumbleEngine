@@ -9,6 +9,8 @@ public abstract class Node : IEnumerable<Node>, IDisposable
         Children = _children.AsReadOnly();
     }
 
+    #region Tree Structure
+
     public Node? Parent { get; private set; }
     
     private readonly List<Node> _children = [];
@@ -54,6 +56,8 @@ public abstract class Node : IEnumerable<Node>, IDisposable
         
     }
 
+    #endregion
+    
     public IEnumerator<Node> GetEnumerator() 
         => Children.GetEnumerator();
 
