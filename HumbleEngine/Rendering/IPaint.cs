@@ -1,6 +1,6 @@
 namespace HumbleEngine;
 
-public interface IPaint
+public interface IPaint : IDisposable
 {
     Color       Color      { get; set; }
     PaintStyle  Style      { get; set; }

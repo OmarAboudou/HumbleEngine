@@ -91,6 +91,14 @@ public class SkiaRenderer : IRenderer
         _canvas  = null;
     }
 
+    public IPaint CreatePaint() => new SkiaPaint();
+
+    public IFont CreateFont(ITypeface? typeface, float size)
+    {
+        var skia = typeface as SkiaTypeface ?? new SkiaTypeface(SKTypeface.Default);
+        return new SkiaFont(skia, size);
+    }
+
     public IShader CreateLinearGradient(Vector2<float> start, Vector2<float> end, Color[] colors, float[]? positions = null)
         => SkiaShader.CreateLinearGradient(start, end, colors, positions);
 

@@ -12,7 +12,10 @@ public class SilkApplication : Application<WindowNode>
     protected IRenderer? Renderer { get; private set; }
 
     protected virtual IRenderer? CreateRenderer() => null;
-    protected virtual void OnRendererCreated(IRenderer renderer) { }
+    protected virtual void OnRendererCreated(IRenderer renderer)
+    {
+        ConnectRenderPasses(renderer);
+    }
 
     protected override WindowNode CreateRootNode(ApplicationConfig config)
     {

@@ -19,6 +19,9 @@ public abstract record RenderElement
     public CornerRadius CornerRadius { get; init; }
     public Overflow     Overflow     { get; init; }
 
+    public Color BorderColor { get; init; }
+    public float BorderWidth { get; init; }
+
     public Matrix Transform { get; init; } = Matrix.Identity;
 
     /// <summary>
@@ -46,7 +49,11 @@ public static class RenderElementExtensions
     public static T Opacity<T>(this T el, float v)            where T : RenderElement => el with { Opacity      = v        };
     public static T Background<T>(this T el, Color color)     where T : RenderElement => el with { Background   = color    };
     public static T CornerRadius<T>(this T el, CornerRadius r) where T : RenderElement => el with { CornerRadius = r        };
-    public static T Overflow<T>(this T el, Overflow overflow) where T : RenderElement => el with { Overflow     = overflow  };
+    public static T Overflow<T>(this T el, Overflow overflow)   where T : RenderElement => el with { Overflow     = overflow  };
+
+    public static T BorderColor<T>(this T el, Color color)     where T : RenderElement => el with { BorderColor  = color     };
+    public static T BorderWidth<T>(this T el, float width)     where T : RenderElement => el with { BorderWidth  = width     };
+    public static T Border<T>(this T el, Color color, float width) where T : RenderElement => el with { BorderColor = color, BorderWidth = width };
 
     /// <inheritdoc cref="RenderElement.Anchor"/>
     public static T Anchor<T>(this T el, Anchor anchor)       where T : RenderElement => el with { Anchor       = anchor   };

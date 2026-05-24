@@ -9,4 +9,6 @@ public class SkiaPaint : IPaint
     public float      StrokeWidth { get; set; } = 1f;
     public bool       IsAntialias { get; set; } = true;
     public IShader?   Shader      { get; set; }
+
+    public void Dispose() { } // no native resources — SKPaint created transiently in SkiaCanvas.ToSk
 }
