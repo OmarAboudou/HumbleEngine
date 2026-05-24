@@ -6,7 +6,8 @@ public abstract class Application<TRoot> where TRoot : Node, IRootNode
     protected ApplicationConfig? Config   { get; private set; }
     protected IRenderer?         Renderer { get; private set; }
 
-    private readonly BlackBoard _board = new();
+    private readonly BlackBoard  _board = new();
+    private IFixedUpdatePass[]? _fixedUpdatePasses;
     private IUpdatePass[]?      _updatePasses;
     private IRenderPass[]?      _renderPasses;
 
@@ -15,9 +16,10 @@ public abstract class Application<TRoot> where TRoot : Node, IRootNode
 
     public void Run(ApplicationConfig config)
     {
-        Config        = config;
-        _updatePasses = config.Passes.OfType<IUpdatePass>().ToArray();
-        _renderPasses = config.Passes.OfType<IRenderPass>().ToArray();
+        Config             = config;
+        _fixedUpdatePasses = config.Passes.OfType<IFixedUpdatePass>().ToArray();
+        _updatePasses      = config.Passes.OfType<IUpdatePass>().ToArray();
+        _renderPasses      = config.Passes.OfType<IRenderPass>().ToArray();
 
         Root = CreateRootNode(config);
         Root.Attach(config.Scene);
@@ -40,7 +42,14 @@ public abstract class Application<TRoot> where TRoot : Node, IRootNode
 
         Root.Viewport.OnUpdate.Connect(delta =>
         {
-            foreach (var pass in _updatePasses)
+            foreach (var pass in _fixedUpdatePasses!)
+                if (pass.ShouldExecute())
+                    pass.Execute(Root, delta, _board);
+        });
+
+        Root.Viewport.OnRender.Connect(delta =>
+        {
+            foreach (var pass in _updatePasses!)
                 if (pass.ShouldExecute())
                     pass.Execute(Root, delta, _board);
         });

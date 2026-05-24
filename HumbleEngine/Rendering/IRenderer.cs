@@ -6,7 +6,7 @@ public interface IRenderer
     void Detach();
 
     IReadOnlySignal<ICanvas> OnBeginFrame { get; }
-    IReadOnlySignal         OnEndFrame   { get; }
+    IReadOnlySignal          OnEndFrame   { get; }
 
     IPaint CreatePaint();
 
