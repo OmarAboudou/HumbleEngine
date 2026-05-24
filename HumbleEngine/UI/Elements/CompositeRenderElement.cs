@@ -7,18 +7,13 @@ public abstract record CompositeRenderElement : RenderElement, IEnumerable
     private ListProperty<RenderElement> PrivateChildren { get; init; } = new();
     public ReadOnlyListProperty<RenderElement> Children => PrivateChildren.AsReadOnly();
 
-    public void Add(Func<RenderElement> action)
-    {
-        Add(action());
-    }
-    
-    public void Add(RenderElement e)
-        => PrivateChildren.Add(e);
+    public void Add(RenderElement el)              => PrivateChildren.Add(el);
+    public void Add(UINode node)                   => Add(new NodeElement(node));
+    public void Add(Func<RenderElement> factory)   => Add(factory());
 
-    public void Add(IReadOnlyList<RenderElement> e)
+    public void Add(IEnumerable<RenderElement> elements)
     {
-        foreach (RenderElement renderElement in e) 
-            Add(renderElement);
+        foreach (var el in elements) Add(el);
     }
 
     public IEnumerator GetEnumerator() => PrivateChildren.GetEnumerator();

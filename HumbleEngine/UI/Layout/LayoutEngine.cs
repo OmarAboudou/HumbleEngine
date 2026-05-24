@@ -20,15 +20,25 @@ public sealed class LayoutEngine
     // ── Dispatch ───────────────────────────────────────────────────────────────
 
     private LayoutNode Compute(RenderElement el, Constraints c, float ox, float oy,
-                               object anchor, string path)
-        => el switch
+        object anchor, string path)
+    {
+        while (el is NodeElement ne)
+        {
+            el = ne.Node.GetElement();
+        }
+        return el switch
         {
             VLayout  v  => ComputeFlow(v,  c, isVertical: true,  ox, oy, anchor, path),
             HLayout  h  => ComputeFlow(h,  c, isVertical: false, ox, oy, anchor, path),
             Stack    s  => ComputeStack(s, c, ox, oy, anchor, path),
             CompositeRenderElement ce => ComputeComposite(ce, c, ox, oy, anchor, path),
             _           => ComputeLeaf(el, c, ox, oy, anchor, path),
-        };
+        };  
+    } 
+
+    // Résout un NodeElement vers son élément interne pour les décisions de layout.
+    private static RenderElement Effective(RenderElement el)
+        => el is NodeElement ne ? ne.Node.GetElement() : el;
 
     private static ElementId MakeId(RenderElement el, object anchor, string path)
         => el.Key != null ? ElementId.FromKey(el.Key)
@@ -64,8 +74,9 @@ public sealed class LayoutEngine
     private (float w, float h) Measure(RenderElement el, Constraints c)
     {
         var node = Compute(el, c, 0f, 0f, el, "");
-        return (node.Box.Width  + el.Margin.Left + el.Margin.Right,
-                node.Box.Height + el.Margin.Top  + el.Margin.Bottom);
+        var eff  = Effective(el);
+        return (node.Box.Width  + eff.Margin.Left + eff.Margin.Right,
+                node.Box.Height + eff.Margin.Top  + eff.Margin.Bottom);
     }
 
     // ── Leaf ───────────────────────────────────────────────────────────────────
@@ -142,9 +153,10 @@ public sealed class LayoutEngine
 
         for (int i = 0; i < n; i++)
         {
-            var ch       = children[i];
-            bool fillMain = isVertical ? ch.Height.Kind == LengthKind.Fill
-                                       : ch.Width.Kind  == LengthKind.Fill;
+            var ch      = children[i];
+            var eff     = Effective(ch);
+            bool fillMain = isVertical ? eff.Height.Kind == LengthKind.Fill
+                                       : eff.Width.Kind  == LengthKind.Fill;
             if (fillMain) { fillCount++; continue; }
 
             measured[i] = isVertical
@@ -161,9 +173,10 @@ public sealed class LayoutEngine
 
         for (int i = 0; i < n; i++)
         {
-            var ch       = children[i];
-            bool fillMain = isVertical ? ch.Height.Kind == LengthKind.Fill
-                                       : ch.Width.Kind  == LengthKind.Fill;
+            var ch      = children[i];
+            var eff     = Effective(ch);
+            bool fillMain = isVertical ? eff.Height.Kind == LengthKind.Fill
+                                       : eff.Width.Kind  == LengthKind.Fill;
             if (!fillMain) continue;
 
             measured[i] = isVertical
@@ -224,7 +237,8 @@ public sealed class LayoutEngine
             }
 
             var (chAnchor, chBase) = ChildScope(el, anchor, path);
-            string childPath = chBase.Length > 0 ? $"{chBase}/{ch.GetType().Name}:{i}" : $"{ch.GetType().Name}:{i}";
+            string typeName  = Effective(ch).GetType().Name;
+            string childPath = chBase.Length > 0 ? $"{chBase}/{typeName}:{i}" : $"{typeName}:{i}";
             childNodes[i] = Compute(ch, new Constraints(measured[i].w, measured[i].h), childOx, childOy, chAnchor, childPath);
 
             cursor += (isVertical ? measured[i].h : measured[i].w);
@@ -290,13 +304,15 @@ public sealed class LayoutEngine
         for (int i = 0; i < children.Count; i++)
         {
             var ch         = children[i];
-            var childAnchorPos = ch.Anchor ?? Anchor.TopLeft;
+            var eff        = Effective(ch);
+            var childAnchorPos = eff.Anchor ?? Anchor.TopLeft;
 
             (float childW, float childH, float childX, float childY)
-                = ResolveAnchor(childAnchorPos, ch, contentW, contentH, contentX, contentY);
+                = ResolveAnchor(childAnchorPos, eff, contentW, contentH, contentX, contentY);
 
             var (chAnchor, chBase) = ChildScope(el, anchor, path);
-            string childPath = chBase.Length > 0 ? $"{chBase}/{ch.GetType().Name}:{i}" : $"{ch.GetType().Name}:{i}";
+            string typeName  = eff.GetType().Name;
+            string childPath = chBase.Length > 0 ? $"{chBase}/{typeName}:{i}" : $"{typeName}:{i}";
             childNodes[i] = Compute(ch,
                 new Constraints(childW + ch.Margin.Left + ch.Margin.Right,
                                  childH + ch.Margin.Top  + ch.Margin.Bottom),
@@ -369,7 +385,8 @@ public sealed class LayoutEngine
         var (chAnchor, chBase) = ChildScope(el, anchor, path);
         for (int i = 0; i < children.Count; i++)
         {
-            string childPath = chBase.Length > 0 ? $"{chBase}/{children[i].GetType().Name}:{i}" : $"{children[i].GetType().Name}:{i}";
+            string typeName  = Effective(children[i]).GetType().Name;
+            string childPath = chBase.Length > 0 ? $"{chBase}/{typeName}:{i}" : $"{typeName}:{i}";
             childNodes[i] = Compute(children[i], new Constraints(contentW, contentH), contentX, contentY, chAnchor, childPath);
         }
 

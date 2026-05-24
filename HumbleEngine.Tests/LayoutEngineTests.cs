@@ -10,8 +10,20 @@ public class LayoutEngineTests
     private record Leaf      : RenderElement { }
     private record Container : CompositeRenderElement { }
 
+    private sealed class TestNode : UINode
+    {
+        private readonly RenderElement _el;
+        public TestNode(RenderElement el) => _el = el;
+        protected override RenderElement Render() => _el;
+    }
+
+    private sealed class NoOpMeasurer : ITextMeasurer
+    {
+        public float MeasureText(string text, Font font) => 0f;
+    }
+
     private static LayoutNode Layout(RenderElement root, float vw = 800, float vh = 600)
-        => new LayoutEngine().Layout(root, vw, vh);
+        => new LayoutEngine().Layout(new TestNode(root), vw, vh, new NoOpMeasurer());
 
     private static LayoutBox Box(LayoutNode node) => node.Box;
 

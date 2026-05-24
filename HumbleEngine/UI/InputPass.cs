@@ -38,6 +38,7 @@ public class InputPass : IUpdatePass
             foreach (var (_, cbs) in nowHovered)
                 cbs.Click?.Invoke();
         _wasLeftDown = isLeftDown;
+
     }
 
     private static void Collect(LayoutNode node, Vector2<float> pos,
