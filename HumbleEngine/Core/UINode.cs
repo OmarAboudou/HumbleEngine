@@ -11,7 +11,7 @@ public abstract class UINode : Node
     {
         if (_dirty)
         {
-            _cached = Render();
+            _cached = Render() with { Key = this };
             _dirty  = false;
         }
         return _cached!;
