@@ -4,13 +4,7 @@ namespace HumbleEngine;
 // Inside a fit-content parent, TextBlock fills the available width and prevents shrinking.
 public record TextBlock : RenderElement
 {
-    public TextBlock(string content, Action? onMouseEnter = null, Action? onMouseExit = null, Action? onClick = null)
-        : this(new Property<string>(content))
-    {
-        OnMouseEnter = onMouseEnter;
-        OnMouseExit  = onMouseExit;
-        OnClick      = onClick;
-    }
+    public TextBlock(string content) : this(new Property<string>(content)) { }
     public TextBlock(Property<string> content) { ContentProperty = content; }
 
     private Property<string> ContentProperty { get; init; } = default!;

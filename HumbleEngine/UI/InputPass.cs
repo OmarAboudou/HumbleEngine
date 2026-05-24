@@ -45,8 +45,8 @@ public class InputPass : IUpdatePass
     {
         if (!node.Box.Contains(pos)) return;
         var el = node.Element;
-        if (el.OnMouseEnter != null || el.OnMouseExit != null || el.OnClick != null)
-            result[node.Id] = (el.OnMouseEnter, el.OnMouseExit, el.OnClick);
+        if (el.MouseEnter != null || el.MouseExit != null || el.Click != null)
+            result[node.Id] = (el.MouseEnter, el.MouseExit, el.Click);
         foreach (var child in node.Children)
             Collect(child, pos, result);
     }

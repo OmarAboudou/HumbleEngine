@@ -4,9 +4,9 @@ public abstract record RenderElement
 {
     public object? Key { get; init; }
 
-    public Action? OnMouseEnter { get; set; }
-    public Action? OnMouseExit  { get; set; }
-    public Action? OnClick      { get; set; }
+    public Action? MouseEnter { get; init; }
+    public Action? MouseExit  { get; init; }
+    public Action? Click      { get; init; }
 
     public Length  Width     { get; init; }
     public Length  Height    { get; init; }
@@ -65,4 +65,8 @@ public static class RenderElementExtensions
     public static T Translate<T>(this T el, float x, float y) where T : RenderElement => el with { Transform = el.Transform * Matrix.CreateTranslation(x, y)     };
     public static T Scale<T>(this T el, float sx, float sy)   where T : RenderElement => el with { Transform = el.Transform * Matrix.CreateScale(sx, sy)          };
     public static T Rotate<T>(this T el, float degrees)       where T : RenderElement => el with { Transform = el.Transform * Matrix.CreateRotationDegrees(degrees) };
+
+    public static T OnMouseEnter<T>(this T el, Action? action) where T : RenderElement => el with { MouseEnter = action };
+    public static T OnMouseExit<T>(this T el, Action? action)  where T : RenderElement => el with { MouseExit  = action };
+    public static T OnClick<T>(this T el, Action? action)      where T : RenderElement => el with { Click      = action };
 }
