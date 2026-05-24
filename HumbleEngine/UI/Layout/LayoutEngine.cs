@@ -13,7 +13,8 @@ public sealed class LayoutEngine
         _vh       = viewportHeight;
         _measurer = measurer;
         // root.Key is set by UINode.GetElement() — use it as initial anchor
-        object anchor = root.Key ?? root;
+        object anchor = root.Key ?? throw new InvalidOperationException(
+            $"Le RenderElement racine doit avoir une Key. Utilisez UINode.GetElement() ou assignez une Key via .Key(...).");
         return Compute(root, new Constraints(viewportWidth, viewportHeight), 0f, 0f,
                        anchor, $"{root.GetType().Name}:0");
     }
