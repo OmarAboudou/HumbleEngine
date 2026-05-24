@@ -56,6 +56,33 @@ public abstract class Node : IEnumerable<Node>, IDisposable
         
     }
 
+    public IEnumerable<Node> GetSubtreeInDepthFirstOrder()
+    {
+        Stack<Node> nodeStack = new([this]);
+        while (nodeStack.Count > 0)
+        {
+            Node node = nodeStack.Pop();
+            yield return node;
+            for (int i = node.Children.Count - 1; i >= 0; i--)
+            {
+                nodeStack.Push(node.Children[i]);
+            }
+        }
+    }
+
+    public IEnumerable<Node> GetSubtreeInReverseDepthFirstOrder()
+        => GetSubtreeInDepthFirstOrder().Reverse();
+
+    public IEnumerable<Node> GetAncestorsClosestToFarthest()
+    {
+        Node? Ancestor = this.Parent;
+        while (Ancestor != null)
+        {
+            yield return Ancestor;
+            Ancestor = Ancestor.Parent;
+        }
+    }
+    
     #endregion
     
     public IEnumerator<Node> GetEnumerator() 
