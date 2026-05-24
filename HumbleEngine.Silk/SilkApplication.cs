@@ -7,16 +7,8 @@ using SilkWinBorder = Silk.NET.Windowing.WindowBorder;
 
 namespace HumbleEngine.Silk;
 
-public class SilkApplication : Application<WindowNode>
+public abstract class SilkApplication : Application<WindowNode>
 {
-    protected IRenderer? Renderer { get; private set; }
-
-    protected virtual IRenderer? CreateRenderer() => null;
-    protected virtual void OnRendererCreated(IRenderer renderer)
-    {
-        ConnectRenderPasses(renderer);
-    }
-
     protected override WindowNode CreateRootNode(ApplicationConfig config)
     {
         var opts = SilkWinOpts.Default with
@@ -28,30 +20,11 @@ public class SilkApplication : Application<WindowNode>
             WindowBorder = ToSilkBorder(config.WindowOptions.WindowBorder),
             IsVisible    = config.WindowOptions.IsVisible,
             TopMost      = config.WindowOptions.TopMost,
-            API          = GraphicsAPI.Default,
+            API          = global::Silk.NET.Windowing.GraphicsAPI.Default,
         };
 
-        var silkWin    = global::Silk.NET.Windowing.Window.Create(opts);
-        var silkWindow = new SilkWindow(silkWin);
-        var root       = new WindowNode(silkWindow);
-
-        root.Viewport.OnLoad.Connect(() =>
-        {
-            var renderer = CreateRenderer();
-            if (renderer is null) return;
-
-            Renderer = renderer;
-            renderer.Attach(root.Viewport);
-            OnRendererCreated(renderer);
-        });
-
-        root.Viewport.OnClosing.Connect(() =>
-        {
-            Renderer?.Detach();
-            Renderer = null;
-        });
-
-        return root;
+        var silkWin = Window.Create(opts);
+        return new WindowNode(new SilkWindow(silkWin));
     }
 
     private static SilkWinState ToSilkState(WindowState s) => s switch

@@ -2,43 +2,13 @@ using SkiaSharp;
 
 namespace HumbleEngine.Skia;
 
-public class SkiaRenderer : IRenderer
+public class SkiaRenderer : RendererBase
 {
-    private IViewport?  _viewport;
-    private GRContext?  _grContext;
-    private SKSurface?  _surface;
-    private SkiaCanvas? _canvas;
+    private GRContext?   _grContext;
+    private SKSurface?   _surface;
+    private SkiaCanvas?  _canvas;
 
-    private readonly Signal<ICanvas> _onBeginFrame = new();
-    private readonly Signal         _onEndFrame   = new();
-    public IReadOnlySignal<ICanvas> OnBeginFrame => _onBeginFrame.AsReadOnly();
-    public IReadOnlySignal         OnEndFrame   => _onEndFrame.AsReadOnly();
-
-    public void Attach(IViewport viewport)
-    {
-        _viewport = viewport;
-        _viewport.OnFramebufferResize.Connect(OnFramebufferResize);
-        _viewport.OnRender.Connect(OnRender);
-
-        if (viewport.IsInitialized)
-            OnLoad();
-        else
-            _viewport.OnLoad.Connect(OnLoad);
-    }
-
-    public void Detach()
-    {
-        if (_viewport is null) return;
-        _viewport.OnLoad.Disconnect(OnLoad);
-        _viewport.OnFramebufferResize.Disconnect(OnFramebufferResize);
-        _viewport.OnRender.Disconnect(OnRender);
-        _viewport = null;
-        DestroySurface();
-        _grContext?.Dispose();
-        _grContext = null;
-    }
-
-    private void OnLoad()
+    protected override void Initialize()
     {
         // GRGlInterface.Create() resolves GL functions via the platform's native mechanism
         // (glXGetProcAddress on Linux). Passing a custom delegate crashes in SkiaSharp 3.x.
@@ -47,27 +17,11 @@ public class SkiaRenderer : IRenderer
         CreateSurface();
     }
 
-    private void OnFramebufferResize(Vector2<int> _)
+    protected override void CreateSurface()
     {
-        DestroySurface();
-        CreateSurface();
-    }
+        if (_grContext is null || Viewport is null) return;
 
-    private void OnRender(double _)
-    {
-        if (_surface is null || _canvas is null) return;
-
-        _onBeginFrame.Emit(_canvas);
-        _surface.Canvas.Flush();
-        _onEndFrame.Emit();
-    }
-
-    private void CreateSurface()
-    {
-        if (_grContext is null || _viewport is null) return;
-
-        var size = _viewport.FramebufferSize;
-
+        var size = Viewport.FramebufferSize;
         var renderTarget = new GRBackendRenderTarget(
             size.X, size.Y,
             sampleCount: 0,
@@ -76,27 +30,26 @@ public class SkiaRenderer : IRenderer
         );
 
         _surface?.Dispose();
-        _surface = SKSurface.Create(
-            _grContext,
-            renderTarget,
-            GRSurfaceOrigin.BottomLeft,
-            SKColorType.Rgba8888
-        );
-        _canvas = new SkiaCanvas(_surface.Canvas);
+        _surface = SKSurface.Create(_grContext, renderTarget, GRSurfaceOrigin.BottomLeft, SKColorType.Rgba8888);
+        _canvas  = new SkiaCanvas(_surface.Canvas);
     }
 
-    private void DestroySurface()
+    protected override void DestroySurface()
     {
         _surface?.Dispose();
         _surface = null;
         _canvas  = null;
     }
 
-    public IPaint CreatePaint() => new SkiaPaint();
+    protected override void     DestroyGraphics() { base.DestroyGraphics(); _grContext?.Dispose(); _grContext = null; }
+    protected override ICanvas? GetCanvas()       => _canvas;
+    protected override void     Flush()           => _surface?.Canvas.Flush();
 
-    public IShader CreateLinearGradient(Vector2<float> start, Vector2<float> end, Color[] colors, float[]? positions = null)
+    public override IPaint CreatePaint() => new SkiaPaint();
+
+    public override IShader CreateLinearGradient(Vector2<float> start, Vector2<float> end, Color[] colors, float[]? positions = null)
         => SkiaShader.CreateLinearGradient(start, end, colors, positions);
 
-    public IShader CreateRadialGradient(Vector2<float> center, float radius, Color[] colors, float[]? positions = null)
+    public override IShader CreateRadialGradient(Vector2<float> center, float radius, Color[] colors, float[]? positions = null)
         => SkiaShader.CreateRadialGradient(center, radius, colors, positions);
 }

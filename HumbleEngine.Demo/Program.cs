@@ -5,7 +5,7 @@ var scene  = new DemoScene();
 var config = ApplicationConfig.Default(scene) with
 {
     WindowOptions = new WindowOptions("HumbleEngine Demo", new Vector2<int>(1280, 720)),
-    RenderPasses  = [new UIRenderPass()],
+    Passes        = [new UpdatePass(), new UIRenderPass()],
 };
 
 new DemoApp().Run(config);

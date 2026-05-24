@@ -1,7 +1,6 @@
 namespace HumbleEngine;
 
-public interface IRenderPass
+public interface IRenderPass : IPass
 {
-    void Execute(Node root, RenderContext context);
-    bool ShouldExecute() => true;
+    void Execute(Node root, RenderContext context, BlackBoard board);
 }

@@ -2,9 +2,9 @@ using System.Linq;
 
 namespace HumbleEngine;
 
-public class UpdatePass : IPass
+public class UpdatePass : IUpdatePass
 {
-    public void Execute(Node root, double delta)
+    public void Execute(Node root, double delta, BlackBoard board)
     {
         foreach (var node in root.GetSubtreeDepthFirst().OfType<IUpdate>())
             node.Update(delta);

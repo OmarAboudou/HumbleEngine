@@ -4,7 +4,7 @@ public class UIRenderPass : IRenderPass
 {
     private readonly LayoutEngine _layout = new();
 
-    public void Execute(Node root, RenderContext context)
+    public void Execute(Node root, RenderContext context, BlackBoard board)
     {
         var viewport = (root as IRootNode)?.Viewport;
         float vw = viewport?.Size.X ?? 0f;
