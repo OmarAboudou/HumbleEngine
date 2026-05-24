@@ -160,7 +160,8 @@
 - **`SignalTests`** (7 tests), **`PropertyTests`** (7 tests), **`ListPropertyTests`** (13 tests)
 - **`NodeTraversalTests`** (8 tests), **`NodeLifecycleTests`** (8 tests)
 - **`LayoutEngineTests`** (28 tests) — Leaf, VLayout, HLayout, Stack : dimensions, Fill, Auto, Gap, Padding, Margin, alignements. Helper `TestNode : UINode` + `NoOpMeasurer` pour tester sans canvas.
-- **Total : 71 tests, tous verts**
+- **`AnimationTests`** (18 tests) — `Tween<T>` : valeur initiale, `To()`, avance, completion, idempotence, interruption, dépassement. `Easing` : bornes Linear/EaseOut. `Lerp` : float, Color. `ImplicitAnimation<T>` : état initial, changement propriété, atteinte cible, interruption. `UINode.AdvanceAnimations` : dirty quand en cours, pas dirty quand complet.
+- **Total : 89 tests, tous verts**
 
 ---
 
@@ -203,6 +204,26 @@
 - `InputPass` lit `UILayoutCache` (frame précédente) en update, `UIRenderPass` écrit en render — latence d'une frame imperceptible à 60+ fps
 - Hit-testing : collecte récursive de tous les éléments sous le curseur (parents + enfants) ; pas encore de propagation/stopPropagation
 
+### Animations (`Animations/`)
+- **`IAnimation`** — interface de base : `IsComplete`, `Advance(delta)`
+- **`IAnimation<T> : IAnimation`** — ajoute `T Value`
+- **`Easing`** — static class : `Linear`, `EaseIn`, `EaseOut`, `EaseInOut` (`Func<float,float>`)
+- **`Lerp`** — static class : `Float`, `Color` (RGBA byte-exact), `Vector2`
+- **`Tween<T> : IAnimation<T>`** — interpolation explicite A→B : `To(target)` idempotent, interruption propre (`_from = Value` courant), duration/easing overridable par `To()`
+- **`ImplicitAnimation<T> : IAnimation<T>`** — suit un `ReadOnlyProperty<T>` via `ValueChanged` ; démarre automatiquement à chaque changement, interruption propre
+
+#### Intégration UINode / passes
+- **`UINode.AddAnimation(IAnimation)`** — enregistre une animation (protected)
+- **`UINode.AdvanceAnimations(double delta)`** — avance toutes les animations non-complètes et appelle `MarkDirty()` si au moins une est active (internal, appelé par `AnimationPass`)
+- **`AnimationPass : IUpdatePass`** — passe `OnRender` qui traverse l'arbre et appelle `AdvanceAnimations` sur tous les UINodes
+- Dans la démo : `AnimationPass` ajouté avant `UIRenderPass` dans la liste des passes
+
+#### Pattern UINode avec Tween
+- Déclarer `Tween<T>` en champ + `AddAnimation(tween)` dans le constructeur
+- Dans `Render()` : `tween.To(targetValue)` — idempotent, donc sûr à appeler chaque frame
+- `AnimationPass` avance le tween chaque frame ; quand non-complet → `MarkDirty()` → `UIRenderPass` re-rend
+- **`NavItemNode`** : démontre `Tween<Color>` pour la transition hover bg+fg
+
 ### Layout caching
 - `UINode.IsDirty` (`internal`) — lecture du flag `_dirty` sans effet de bord ; le flag passe à `false` lors du premier `GetElement()` dans `Layout()`
 - `UIRenderPass._cache` — `Dictionary<UINode, (LayoutNode, vw, vh)>` ; skip layout si aucun UINode du sous-arbre de scène n'est dirty **et** viewport inchangé
@@ -212,7 +233,7 @@
 
 ## Prochaines étapes
 
-1. **Animations** — `IAnimation<T>`, `Tween<T>`, `ImplicitAnimation<T>`, `AnimationPass`
+1. **Propagation d'events** — `IAnimation<T>`, `Tween<T>`, `ImplicitAnimation<T>`, `AnimationPass`
 3. **Propagation d'events** — bubble/capture, `StopPropagation`
 4. **Injection de données** — équivalent `InheritedWidget` / Context pour theme, locale, sans prop drilling
 5. **`TextBlock` min-content** — largeur minimale = mot le plus long, pour les parents fit-content
