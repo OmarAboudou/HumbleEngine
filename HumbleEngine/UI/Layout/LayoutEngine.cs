@@ -2,30 +2,39 @@ namespace HumbleEngine;
 
 public sealed class LayoutEngine
 {
-    private float          _vw;
-    private float          _vh;
+    private float         _vw;
+    private float         _vh;
     private ITextMeasurer _measurer = null!;
+    private UINode?       _owner;
 
     public LayoutNode Layout(RenderElement root, float viewportWidth, float viewportHeight,
-                             ITextMeasurer measurer)
+                             ITextMeasurer measurer, UINode owner)
     {
         _vw       = viewportWidth;
         _vh       = viewportHeight;
         _measurer = measurer;
-        return Compute(root, new Constraints(viewportWidth, viewportHeight), 0f, 0f);
+        _owner    = owner;
+        return Compute(root, new Constraints(viewportWidth, viewportHeight), 0f, 0f,
+                       $"{root.GetType().Name}:0");
     }
 
     // ── Dispatch ───────────────────────────────────────────────────────────────
 
-    private LayoutNode Compute(RenderElement el, Constraints c, float ox, float oy)
+    private LayoutNode Compute(RenderElement el, Constraints c, float ox, float oy, string path)
         => el switch
         {
-            VLayout  v  => ComputeFlow(v,  c, isVertical: true,  ox, oy),
-            HLayout  h  => ComputeFlow(h,  c, isVertical: false, ox, oy),
-            Stack    s  => ComputeStack(s, c, ox, oy),
-            CompositeRenderElement ce => ComputeComposite(ce, c, ox, oy),
-            _           => ComputeLeaf(el, c, ox, oy),
+            VLayout  v  => ComputeFlow(v,  c, isVertical: true,  ox, oy, path),
+            HLayout  h  => ComputeFlow(h,  c, isVertical: false, ox, oy, path),
+            Stack    s  => ComputeStack(s, c, ox, oy, path),
+            CompositeRenderElement ce => ComputeComposite(ce, c, ox, oy, path),
+            _           => ComputeLeaf(el, c, ox, oy, path),
         };
+
+    private ElementId MakeId(RenderElement el, string path)
+        => el.Key != null ? ElementId.FromKey(el.Key)
+                          : _owner != null ? ElementId.FromPath(_owner, path) : default;
+
+    // ── Length helpers ─────────────────────────────────────────────────────────
 
     // ── Length helpers ─────────────────────────────────────────────────────────
 
@@ -50,16 +59,15 @@ public sealed class LayoutEngine
     // Returns (totalWidth, totalHeight) including the element's own margins.
     private (float w, float h) Measure(RenderElement el, Constraints c)
     {
-        var node = Compute(el, c, 0f, 0f);
+        var node = Compute(el, c, 0f, 0f, "");
         return (node.Box.Width  + el.Margin.Left + el.Margin.Right,
                 node.Box.Height + el.Margin.Top  + el.Margin.Bottom);
     }
 
     // ── Leaf ───────────────────────────────────────────────────────────────────
 
-    private LayoutNode ComputeLeaf(RenderElement el, Constraints c, float ox, float oy)
+    private LayoutNode ComputeLeaf(RenderElement el, Constraints c, float ox, float oy, string path)
     {
-        // c.MaxWidth/Height includes this element's margin (see Measure).
         float availW = Math.Max(0f, c.MaxWidth  - el.Margin.Left - el.Margin.Right);
         float availH = Math.Max(0f, c.MaxHeight - el.Margin.Top  - el.Margin.Bottom);
 
@@ -86,12 +94,13 @@ public sealed class LayoutEngine
         float w = ApplyMinMax(baseW, el.MinWidth,  el.MaxWidth,  availW);
         float h = ApplyMinMax(baseH, el.MinHeight, el.MaxHeight, availH);
 
-        return LayoutNode.Leaf(el, new LayoutBox(ox + el.Margin.Left, oy + el.Margin.Top, w, h));
+        return new LayoutNode(el, new LayoutBox(ox + el.Margin.Left, oy + el.Margin.Top, w, h), [])
+            { Id = MakeId(el, path) };
     }
 
     // ── Flow layout (VLayout / HLayout) ───────────────────────────────────────
 
-    private LayoutNode ComputeFlow(FlowLayout el, Constraints c, bool isVertical, float ox, float oy)
+    private LayoutNode ComputeFlow(FlowLayout el, Constraints c, bool isVertical, float ox, float oy, string path)
     {
         float availW = Math.Max(0f, c.MaxWidth  - el.Margin.Left - el.Margin.Right);
         float availH = Math.Max(0f, c.MaxHeight - el.Margin.Top  - el.Margin.Bottom);
@@ -116,7 +125,8 @@ public sealed class LayoutEngine
         {
             if (autoW && isVertical)  selfW = ApplyMinMax(padH, el.MinWidth,  el.MaxWidth,  availW);
             if (autoH && !isVertical) selfH = ApplyMinMax(padV, el.MinHeight, el.MaxHeight, availH);
-            return new LayoutNode(el, new LayoutBox(ox + el.Margin.Left, oy + el.Margin.Top, selfW, selfH), []);
+            return new LayoutNode(el, new LayoutBox(ox + el.Margin.Left, oy + el.Margin.Top, selfW, selfH), [])
+                { Id = MakeId(el, path) };
         }
 
         // ── Pass 1: measure non-Fill children ──────────────────────────────────
@@ -209,7 +219,8 @@ public sealed class LayoutEngine
                 childOy = contentOriY + crossOff;
             }
 
-            childNodes[i] = Compute(ch, new Constraints(measured[i].w, measured[i].h), childOx, childOy);
+            string childPath = path.Length > 0 ? $"{path}/{ch.GetType().Name}:{i}" : "";
+            childNodes[i] = Compute(ch, new Constraints(measured[i].w, measured[i].h), childOx, childOy, childPath);
 
             cursor += (isVertical ? measured[i].h : measured[i].w);
             if (i < n - 1) cursor += el.Gap + gapExtra;
@@ -217,7 +228,7 @@ public sealed class LayoutEngine
 
         return new LayoutNode(el,
             new LayoutBox(ox + el.Margin.Left, oy + el.Margin.Top, selfW, selfH),
-            childNodes);
+            childNodes) { Id = MakeId(el, path) };
     }
 
     private static void GetMainAlignment(MainAlignment alignment, int count,
@@ -253,7 +264,7 @@ public sealed class LayoutEngine
 
     // ── Stack ──────────────────────────────────────────────────────────────────
 
-    private LayoutNode ComputeStack(Stack el, Constraints c, float ox, float oy)
+    private LayoutNode ComputeStack(Stack el, Constraints c, float ox, float oy, string path)
     {
         float availW = Math.Max(0f, c.MaxWidth  - el.Margin.Left - el.Margin.Right);
         float availH = Math.Max(0f, c.MaxHeight - el.Margin.Top  - el.Margin.Bottom);
@@ -279,15 +290,16 @@ public sealed class LayoutEngine
             (float childW, float childH, float childX, float childY)
                 = ResolveAnchor(anchor, ch, contentW, contentH, contentX, contentY);
 
+            string childPath = path.Length > 0 ? $"{path}/{ch.GetType().Name}:{i}" : "";
             childNodes[i] = Compute(ch,
                 new Constraints(childW + ch.Margin.Left + ch.Margin.Right,
                                  childH + ch.Margin.Top  + ch.Margin.Bottom),
-                childX, childY);
+                childX, childY, childPath);
         }
 
         return new LayoutNode(el,
             new LayoutBox(ox + el.Margin.Left, oy + el.Margin.Top, selfW, selfH),
-            childNodes);
+            childNodes) { Id = MakeId(el, path) };
     }
 
     private (float w, float h, float x, float y) ResolveAnchor(
@@ -330,7 +342,7 @@ public sealed class LayoutEngine
 
     // ── Generic composite (Box, etc.) ──────────────────────────────────────────
 
-    private LayoutNode ComputeComposite(CompositeRenderElement el, Constraints c, float ox, float oy)
+    private LayoutNode ComputeComposite(CompositeRenderElement el, Constraints c, float ox, float oy, string path)
     {
         float availW = Math.Max(0f, c.MaxWidth  - el.Margin.Left - el.Margin.Right);
         float availH = Math.Max(0f, c.MaxHeight - el.Margin.Top  - el.Margin.Bottom);
@@ -349,10 +361,13 @@ public sealed class LayoutEngine
         var childNodes = new LayoutNode[children.Count];
 
         for (int i = 0; i < children.Count; i++)
-            childNodes[i] = Compute(children[i], new Constraints(contentW, contentH), contentX, contentY);
+        {
+            string childPath = path.Length > 0 ? $"{path}/{children[i].GetType().Name}:{i}" : "";
+            childNodes[i] = Compute(children[i], new Constraints(contentW, contentH), contentX, contentY, childPath);
+        }
 
         return new LayoutNode(el,
             new LayoutBox(ox + el.Margin.Left, oy + el.Margin.Top, selfW, selfH),
-            childNodes);
+            childNodes) { Id = MakeId(el, path) };
     }
 }

@@ -2,7 +2,13 @@ namespace HumbleEngine;
 
 public record Text : RenderElement
 {
-    public Text(string content) : this(new Property<string>(content)) { }
+    public Text(string content, Action? onMouseEnter = null, Action? onMouseExit = null, Action? onClick = null)
+        : this(new Property<string>(content))
+    {
+        OnMouseEnter = onMouseEnter;
+        OnMouseExit  = onMouseExit;
+        OnClick      = onClick;
+    }
     public Text(Property<string> content) { ContentProperty = content; }
 
     private Property<string> ContentProperty { get; init; } = default!;

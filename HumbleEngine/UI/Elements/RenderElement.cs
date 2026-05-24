@@ -2,7 +2,11 @@ namespace HumbleEngine;
 
 public abstract record RenderElement
 {
-    public object? Key    { get; init; }
+    public object? Key { get; init; }
+
+    public Action? OnMouseEnter { get; set; }
+    public Action? OnMouseExit  { get; set; }
+    public Action? OnClick      { get; set; }
 
     public Length  Width     { get; init; }
     public Length  Height    { get; init; }

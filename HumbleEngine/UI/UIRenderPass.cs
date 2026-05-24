@@ -14,11 +14,14 @@ public class UIRenderPass : IRenderPass
             .OfType<UINode>()
             .Where(n => n.Parent.Value is not UINode);
 
+        var cacheRoots = new List<(UINode, LayoutNode)>();
         foreach (var uiNode in rootUINodes)
         {
-            var layoutNode = _layout.Layout(uiNode.GetElement(), vw, vh, context.Canvas);
+            var layoutNode = _layout.Layout(uiNode.GetElement(), vw, vh, context.Canvas, uiNode);
+            cacheRoots.Add((uiNode, layoutNode));
             Draw(layoutNode, context.Canvas, context.Renderer);
         }
+        board.Set(new UILayoutCache(cacheRoots));
     }
 
     private void Draw(LayoutNode node, ICanvas canvas, IRenderer renderer)

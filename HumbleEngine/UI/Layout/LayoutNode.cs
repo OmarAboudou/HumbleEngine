@@ -5,6 +5,5 @@ namespace HumbleEngine;
 /// </summary>
 public sealed record LayoutNode(RenderElement Element, LayoutBox Box, IReadOnlyList<LayoutNode> Children)
 {
-    public static LayoutNode Leaf(RenderElement element, LayoutBox box)
-        => new(element, box, []);
+    public ElementId Id { get; init; }
 }
