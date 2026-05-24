@@ -2,7 +2,7 @@ using System.Collections;
 
 namespace HumbleEngine.Core;
 
-public abstract class Node : IEnumerable<Node>
+public abstract class Node : IEnumerable<Node>, IDisposable
 {
     public Node()
     {
@@ -11,9 +11,9 @@ public abstract class Node : IEnumerable<Node>
 
     public Node? Parent { get; private set; }
     
-    private List<Node> _children = [];
+    private readonly List<Node> _children = [];
     
-    public IReadOnlyList<Node> Children;
+    public readonly IReadOnlyList<Node> Children;
 
     public void Add(Node node)
     {
@@ -59,4 +59,9 @@ public abstract class Node : IEnumerable<Node>
 
     IEnumerator IEnumerable.GetEnumerator() 
         => GetEnumerator();
+
+    public void Dispose()
+    {
+        _children.ForEach(x => x.Dispose());
+    }
 }
