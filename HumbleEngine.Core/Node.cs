@@ -1,17 +1,21 @@
+using System.Collections;
+
 namespace HumbleEngine.Core;
 
-public abstract class Node
+public abstract class Node : IEnumerable<Node>
 {
-    public Node? Parent { get; private set; }
-    private List<Node> _children = [];
-    public IReadOnlyList<Node> Children;
-    
     public Node()
     {
         Children = _children.AsReadOnly();
     }
+
+    public Node? Parent { get; private set; }
     
-    public void AddChild(Node node)
+    private List<Node> _children = [];
+    
+    public IReadOnlyList<Node> Children;
+
+    public void Add(Node node)
     {
         if (node.Parent == null)
         {
@@ -34,7 +38,7 @@ public abstract class Node
         }
     }
 
-    public void RemoveChild(Node node)
+    public void Remove(Node node)
     {
         if (node.Parent == this)
         {
@@ -49,5 +53,10 @@ public abstract class Node
         }
         
     }
-    
+
+    public IEnumerator<Node> GetEnumerator() 
+        => Children.GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator() 
+        => GetEnumerator();
 }
