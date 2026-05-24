@@ -7,7 +7,8 @@ public record ApplicationConfig(
     WindowOptions WindowOptions
 )
 {
-    public IReadOnlyList<IPass> Passes { get; init; } = [];
+    public IReadOnlyList<IPass>       Passes       { get; init; } = [];
+    public IReadOnlyList<IRenderPass> RenderPasses { get; init; } = [];
 
     public static ApplicationConfig Default(Node scene)
         => new(scene, WindowOptions.Default) { Passes = [new UpdatePass()] };

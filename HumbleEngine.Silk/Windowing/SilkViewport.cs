@@ -1,5 +1,6 @@
 using HumbleEngine;
 using Silk.NET.Input;
+using Silk.NET.Windowing;
 using SilkVec2 = Silk.NET.Maths.Vector2D<int>;
 using SilkView = Silk.NET.Windowing.IView;
 
@@ -49,14 +50,10 @@ public class SilkViewport : IViewport
     public IReadOnlySignal<bool>         OnFocusChanged       => _onFocusChanged.AsReadOnly();
     public IReadOnlySignal               OnClosing            => _onClosing.AsReadOnly();
 
-    private SilkGraphicsContext? _graphicsContext;
-    public IGraphicsContext? GraphicsContext
-        => _view.GLContext is { } ctx ? (_graphicsContext ??= new SilkGraphicsContext(ctx)) : null;
-
     public IInputContext Input => _input ??= new SilkInputContext(_view.CreateInput());
 
     public void         Focus()                          => _view.Focus();
-    public void         Run()                            => _view.Run(() => { });
+    public void         Run()                            => _view.Run();
     public void         Close()                          => _view.Close();
     public Vector2<int> PointToClient(Vector2<int> p)      => ToVec(_view.PointToClient(ToSilk(p)));
     public Vector2<int> PointToScreen(Vector2<int> p)      => ToVec(_view.PointToScreen(ToSilk(p)));

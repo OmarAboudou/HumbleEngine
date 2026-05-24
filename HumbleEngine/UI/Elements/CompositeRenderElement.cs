@@ -6,6 +6,11 @@ public abstract record CompositeRenderElement : RenderElement, IEnumerable
 {
     private ListProperty<RenderElement> PrivateChildren { get; init; } = new();
     public ReadOnlyListProperty<RenderElement> Children => PrivateChildren.AsReadOnly();
+
+    public void Add(Func<RenderElement> action)
+    {
+        Add(action());
+    }
     
     public void Add(RenderElement e)
         => PrivateChildren.Add(e);

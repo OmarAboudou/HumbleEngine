@@ -40,8 +40,9 @@ public class SkiaRenderer : IRenderer
 
     private void OnLoad()
     {
-        var ctx         = _viewport!.GraphicsContext!;
-        var glInterface = GRGlInterface.Create(ctx.GetProcAddress);
+        // GRGlInterface.Create() resolves GL functions via the platform's native mechanism
+        // (glXGetProcAddress on Linux). Passing a custom delegate crashes in SkiaSharp 3.x.
+        var glInterface = GRGlInterface.Create();
         _grContext      = GRContext.CreateGl(glInterface);
         CreateSurface();
     }
@@ -92,12 +93,6 @@ public class SkiaRenderer : IRenderer
     }
 
     public IPaint CreatePaint() => new SkiaPaint();
-
-    public IFont CreateFont(ITypeface? typeface, float size)
-    {
-        var skia = typeface as SkiaTypeface ?? new SkiaTypeface(SKTypeface.Default);
-        return new SkiaFont(skia, size);
-    }
 
     public IShader CreateLinearGradient(Vector2<float> start, Vector2<float> end, Color[] colors, float[]? positions = null)
         => SkiaShader.CreateLinearGradient(start, end, colors, positions);

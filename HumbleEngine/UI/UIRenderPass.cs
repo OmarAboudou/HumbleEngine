@@ -16,7 +16,7 @@ public class UIRenderPass : IRenderPass
 
         foreach (var uiNode in rootUINodes)
         {
-            var layoutNode = _layout.Layout(uiNode.GetElement(), vw, vh);
+            var layoutNode = _layout.Layout(uiNode.GetElement(), vw, vh, context.Canvas);
             Draw(layoutNode, context.Canvas, context.Renderer);
         }
     }
@@ -44,6 +44,8 @@ public class UIRenderPass : IRenderPass
 
         if (el is Text textEl)
             DrawText(textEl, box, canvas, renderer);
+        else if (el is TextBlock tbEl)
+            DrawTextBlock(tbEl, box, canvas, renderer);
 
         foreach (var child in node.Children)
             Draw(child, canvas, renderer);
@@ -73,21 +75,43 @@ public class UIRenderPass : IRenderPass
         DrawRect(el.CornerRadius, box.ToRect(), canvas, paint);
     }
 
-    private static void DrawText(Text el, LayoutBox box, ICanvas canvas, IRenderer renderer)
+    private static void DrawTextBlock(TextBlock el, LayoutBox box, ICanvas canvas, IRenderer renderer)
     {
-        using var font  = renderer.CreateFont(el.Typeface, el.FontSize);
         using var paint = renderer.CreatePaint();
         paint.Color       = Tinted(el.Color, el.Opacity);
         paint.IsAntialias = true;
 
+        var   lines      = canvas.BreakLines(el.Content, el.Font, box.Width);
+        float lineHeight = el.Font.Size;
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            float lineWidth = canvas.MeasureText(lines[i], el.Font);
+            float x = el.Align switch
+            {
+                TextAlign.Center => box.X + (box.Width - lineWidth) / 2f,
+                TextAlign.Right  => box.X +  box.Width - lineWidth,
+                _                => box.X,
+            };
+            canvas.DrawText(lines[i], x, box.Y + lineHeight * (i + 1), el.Font, paint);
+        }
+    }
+
+    private static void DrawText(Text el, LayoutBox box, ICanvas canvas, IRenderer renderer)
+    {
+        using var paint = renderer.CreatePaint();
+        paint.Color       = Tinted(el.Color, el.Opacity);
+        paint.IsAntialias = true;
+
+        float textWidth = canvas.MeasureText(el.Content, el.Font);
         float x = el.Align switch
         {
-            TextAlign.Center => box.X + (box.Width - font.MeasureText(el.Content)) / 2f,
-            TextAlign.Right  => box.X +  box.Width - font.MeasureText(el.Content),
+            TextAlign.Center => box.X + (box.Width - textWidth) / 2f,
+            TextAlign.Right  => box.X +  box.Width - textWidth,
             _                => box.X,
         };
 
-        canvas.DrawText(el.Content, x, box.Y + el.FontSize, font, paint);
+        canvas.DrawText(el.Content, x, box.Y + el.Font.Size, el.Font, paint);
     }
 
     private static void DrawRect(CornerRadius cr, Rect rect, ICanvas canvas, IPaint paint)

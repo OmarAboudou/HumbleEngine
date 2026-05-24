@@ -2,13 +2,16 @@ namespace HumbleEngine;
 
 public sealed class LayoutEngine
 {
-    private float _vw;
-    private float _vh;
+    private float          _vw;
+    private float          _vh;
+    private ITextMeasurer _measurer = null!;
 
-    public LayoutNode Layout(RenderElement root, float viewportWidth, float viewportHeight)
+    public LayoutNode Layout(RenderElement root, float viewportWidth, float viewportHeight,
+                             ITextMeasurer measurer)
     {
-        _vw = viewportWidth;
-        _vh = viewportHeight;
+        _vw       = viewportWidth;
+        _vh       = viewportHeight;
+        _measurer = measurer;
         return Compute(root, new Constraints(viewportWidth, viewportHeight), 0f, 0f);
     }
 
@@ -63,8 +66,25 @@ public sealed class LayoutEngine
         float rw = Resolve(el.Width,  availW);
         float rh = Resolve(el.Height, availH);
 
-        float w = ApplyMinMax(rw < 0f ? availW : rw, el.MinWidth,  el.MaxWidth,  availW);
-        float h = ApplyMinMax(rh < 0f ? availH : rh, el.MinHeight, el.MaxHeight, availH);
+        float baseW = rw >= 0f ? rw : availW;
+        float baseH = rh >= 0f ? rh : availH;
+
+        if (el is Text t)
+        {
+            if (rw < 0f) baseW = _measurer.MeasureText(t.Content, t.Font);
+            if (rh < 0f) baseH = t.Font.Size;
+        }
+        else if (el is TextBlock tb)
+        {
+            if (rh < 0f)
+            {
+                var lines = _measurer.BreakLines(tb.Content, tb.Font, baseW);
+                baseH = lines.Length * tb.Font.Size;
+            }
+        }
+
+        float w = ApplyMinMax(baseW, el.MinWidth,  el.MaxWidth,  availW);
+        float h = ApplyMinMax(baseH, el.MinHeight, el.MaxHeight, availH);
 
         return LayoutNode.Leaf(el, new LayoutBox(ox + el.Margin.Left, oy + el.Margin.Top, w, h));
     }

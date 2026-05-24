@@ -1,6 +1,6 @@
 namespace HumbleEngine;
 
-public interface ICanvas
+public interface ICanvas : ITextMeasurer
 {
     void Save();
     void Restore();
@@ -16,5 +16,5 @@ public interface ICanvas
     void DrawLine(float x0, float y0, float x1, float y1, IPaint paint);
     void DrawPath(IPath path, IPaint paint);
     void DrawImage(IImage image, float x, float y, IPaint? paint = null);
-    void DrawText(string text, float x, float y, IFont font, IPaint paint);
+    void DrawText(string text, float x, float y, Font font, IPaint paint);
 }

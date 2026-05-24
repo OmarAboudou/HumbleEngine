@@ -37,9 +37,15 @@ public class SkiaCanvas : ICanvas
     public void DrawImage(IImage image, float x, float y, IPaint? paint = null)
         => _canvas.DrawImage(((SkiaImage)image).NativeImage, x, y, paint is null ? null : ToSk(paint));
 
-    public void DrawText(string text, float x, float y, IFont font, IPaint paint)
+    public float MeasureText(string text, Font font)
     {
-        using var skFont  = ToSk(font);
+        using var skFont = ToSk(font);
+        return skFont.MeasureText(text);
+    }
+
+    public void DrawText(string text, float x, float y, Font font, IPaint paint)
+    {
+        using var skFont = ToSk(font);
         _canvas.DrawText(text, x, y, skFont, ToSk(paint));
     }
 
@@ -81,9 +87,21 @@ public class SkiaCanvas : ICanvas
         _                        => SKPaintStyle.Fill,
     };
 
-    internal static SKFont ToSk(IFont font)
+    internal static SKFont ToSk(Font font)
     {
-        var typeface = font.Typeface is SkiaTypeface st ? st.NativeTypeface : SKTypeface.Default;
-        return new SKFont(typeface, font.Size, font.ScaleX, font.SkewX);
+        if (font.Typeface.HasValue)
+        {
+            var tf    = font.Typeface.Value;
+            var style = (tf.IsBold, tf.IsItalic) switch
+            {
+                (true,  true)  => SKFontStyle.BoldItalic,
+                (true,  false) => SKFontStyle.Bold,
+                (false, true)  => SKFontStyle.Italic,
+                _              => SKFontStyle.Normal,
+            };
+            using var skTypeface = SKTypeface.FromFamilyName(tf.FamilyName, style);
+            return new SKFont(skTypeface, font.Size, font.ScaleX, font.SkewX);
+        }
+        return new SKFont(SKTypeface.Default, font.Size, font.ScaleX, font.SkewX);
     }
 }

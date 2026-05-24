@@ -2,22 +2,39 @@ namespace HumbleEngine;
 
 public abstract class Application<TRoot> where TRoot : Node, IRootNode
 {
+    protected TRoot?              Root   { get; private set; }
+    protected ApplicationConfig?  Config { get; private set; }
+
     protected abstract TRoot CreateRootNode(ApplicationConfig config);
 
     public void Run(ApplicationConfig config)
     {
-        TRoot root = CreateRootNode(config);
-        root.Attach(config.Scene);
-        root.EnterTree();
+        Config     = config;
+        Root       = CreateRootNode(config);
+        Root.Attach(config.Scene);
+        Root.EnterTree();
 
-        root.Viewport.OnUpdate.Connect(delta =>
+        Root.Viewport.OnUpdate.Connect(delta =>
         {
             foreach (var pass in config.Passes)
                 if (pass.ShouldExecute())
-                    pass.Execute(root, delta);
+                    pass.Execute(Root, delta);
         });
 
-        root.Viewport.Run();
-        root.ExitTree();
+        Root.Viewport.Run();
+        Root.ExitTree();
+    }
+
+    protected void ConnectRenderPasses(IRenderer renderer)
+    {
+        if (Config is null || Root is null) return;
+
+        renderer.OnBeginFrame.Connect(canvas =>
+        {
+            var ctx = new RenderContext(renderer, canvas);
+            foreach (var pass in Config.RenderPasses)
+                if (pass.ShouldExecute())
+                    pass.Execute(Root, ctx);
+        });
     }
 }

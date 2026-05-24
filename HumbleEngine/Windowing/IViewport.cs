@@ -21,8 +21,7 @@ public interface IViewport
     IReadOnlySignal<bool>        OnFocusChanged      { get; }
     IReadOnlySignal              OnClosing           { get; }
 
-    IGraphicsContext? GraphicsContext { get; }
-    IInputContext     Input           { get; }
+    IInputContext Input { get; }
 
     void         Focus();
     void         Run();
