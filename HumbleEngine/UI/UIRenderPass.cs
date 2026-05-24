@@ -3,6 +3,7 @@ namespace HumbleEngine;
 public class UIRenderPass : IRenderPass
 {
     private readonly LayoutEngine _layout = new();
+    private readonly Dictionary<UINode, (LayoutNode layout, float vw, float vh)> _cache = new();
 
     public void Execute(Node root, RenderContext context, BlackBoard board)
     {
@@ -17,7 +18,24 @@ public class UIRenderPass : IRenderPass
         var cacheRoots = new List<(UINode, LayoutNode)>();
         foreach (var uiNode in rootUINodes)
         {
-            var layoutNode = _layout.Layout(uiNode, vw, vh, context.Canvas);
+            bool viewportChanged = !_cache.TryGetValue(uiNode, out var cached)
+                                   || cached.vw != vw || cached.vh != vh;
+
+            bool anyDirty = uiNode.GetSubtreeDepthFirst()
+                                  .OfType<UINode>()
+                                  .Any(n => n.IsDirty);
+
+            LayoutNode layoutNode;
+            if (viewportChanged || anyDirty)
+            {
+                layoutNode        = _layout.Layout(uiNode, vw, vh, context.Canvas);
+                _cache[uiNode]    = (layoutNode, vw, vh);
+            }
+            else
+            {
+                layoutNode = cached.layout;
+            }
+
             cacheRoots.Add((uiNode, layoutNode));
             Draw(layoutNode, context.Canvas, context.Renderer);
         }

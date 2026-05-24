@@ -21,7 +21,7 @@
   - Lifecycle : `OnTreeEntered` (top-down), `OnChildrenEntered` (bottom-up), `OnChildrenExited` (top-down), `OnTreeExited` (bottom-up)
   - `internal bool _isInTree` — état d'appartenance à l'arbre actif
   - Traversal itératif : `GetSubtreeDepthFirst()` (pre-order), `GetSubtreeReverseDepthFirst()`
-- **`UINode : Node`** — nœud UI abstrait avec `abstract RenderElement Render()`. `UIRenderPass` ne rend que les racines (UINode dont le parent n'est pas UINode). Chaque sous-arbre = overlay indépendant.
+- **`UINode : Node`** — nœud UI abstrait avec `abstract RenderElement Render()`. `UIRenderPass` ne rend que les racines (UINode dont le parent n'est pas UINode). Chaque sous-arbre = overlay indépendant. `internal bool IsDirty` expose le flag dirty pour le caching côté moteur.
 - **`IRootNode`** — interface : `IViewport Viewport { get; }`
 - **`WindowNode : Node, IRootNode`** — Node Desktop, possède un `IWindow`
 - **`Application<TRoot> where TRoot : Node, IRootNode`** — classe abstraite :
@@ -119,6 +119,7 @@
   - Passe `ICanvas` (qui est `ITextMeasurer`) au `LayoutEngine`
   - `DrawBackground`, `DrawBorder`, `DrawText` (single-line avec alignement), `DrawTextBlock` (multi-ligne via `BreakLines`)
   - Transforms : Save/Restore canvas si `Transform ≠ Identity`
+  - **Layout caching** : cache `UINode → (LayoutNode, vw, vh)` ; ne recompute que si le viewport change ou si `anyDirty` (`GetSubtreeDepthFirst().OfType<UINode>().Any(n => n.IsDirty)`)
 - **`InputPass : IUpdatePass`** — hit-testing sur `UILayoutCache`, dispatch events :
   - Détecte entrée/sortie hover par comparaison frame courante vs frame précédente → fire `MouseEnter`/`MouseExit`
   - Détecte clic (relâchement bouton gauche) → fire `Click`
@@ -202,12 +203,16 @@
 - `InputPass` lit `UILayoutCache` (frame précédente) en update, `UIRenderPass` écrit en render — latence d'une frame imperceptible à 60+ fps
 - Hit-testing : collecte récursive de tous les éléments sous le curseur (parents + enfants) ; pas encore de propagation/stopPropagation
 
+### Layout caching
+- `UINode.IsDirty` (`internal`) — lecture du flag `_dirty` sans effet de bord ; le flag passe à `false` lors du premier `GetElement()` dans `Layout()`
+- `UIRenderPass._cache` — `Dictionary<UINode, (LayoutNode, vw, vh)>` ; skip layout si aucun UINode du sous-arbre de scène n'est dirty **et** viewport inchangé
+- La propagation dirty est implicite : les UINodes embarqués (`NavItemNode`, etc.) sont des enfants dans l'arbre de scène → `GetSubtreeDepthFirst()` les atteint directement
+
 ---
 
 ## Prochaines étapes
 
-1. **Réconciliation — layout caching** — ne recomputer le `LayoutNode` tree que si le UINode (ou un `NodeElement` embarqué) est dirty ; propagation dirty à travers les frontières de composition
-2. **Animations** — `IAnimation<T>`, `Tween<T>`, `ImplicitAnimation<T>`, `AnimationPass`
+1. **Animations** — `IAnimation<T>`, `Tween<T>`, `ImplicitAnimation<T>`, `AnimationPass`
 3. **Propagation d'events** — bubble/capture, `StopPropagation`
 4. **Injection de données** — équivalent `InheritedWidget` / Context pour theme, locale, sans prop drilling
 5. **`TextBlock` min-content** — largeur minimale = mot le plus long, pour les parents fit-content

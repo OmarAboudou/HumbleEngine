@@ -6,6 +6,7 @@ public abstract class UINode : Node
     private bool           _dirty = true;
 
     protected void MarkDirty() => _dirty = true;
+    internal  bool IsDirty   => _dirty;
 
     public RenderElement GetElement()
     {
