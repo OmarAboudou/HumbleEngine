@@ -6,17 +6,15 @@ public sealed class LayoutEngine
     private float         _vh;
     private ITextMeasurer _measurer = null!;
 
-    public LayoutNode Layout(RenderElement root, float viewportWidth, float viewportHeight,
+    public LayoutNode Layout(UINode node, float viewportWidth, float viewportHeight,
                              ITextMeasurer measurer)
     {
         _vw       = viewportWidth;
         _vh       = viewportHeight;
         _measurer = measurer;
-        // root.Key is set by UINode.GetElement() — use it as initial anchor
-        object anchor = root.Key ?? throw new InvalidOperationException(
-            $"Le RenderElement racine doit avoir une Key. Utilisez UINode.GetElement() ou assignez une Key via .Key(...).");
+        var root  = node.GetElement();
         return Compute(root, new Constraints(viewportWidth, viewportHeight), 0f, 0f,
-                       anchor, $"{root.GetType().Name}:0");
+                       root.Key!, $"{root.GetType().Name}:0");
     }
 
     // ── Dispatch ───────────────────────────────────────────────────────────────

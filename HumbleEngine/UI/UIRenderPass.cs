@@ -17,7 +17,7 @@ public class UIRenderPass : IRenderPass
         var cacheRoots = new List<(UINode, LayoutNode)>();
         foreach (var uiNode in rootUINodes)
         {
-            var layoutNode = _layout.Layout(uiNode.GetElement(), vw, vh, context.Canvas);
+            var layoutNode = _layout.Layout(uiNode, vw, vh, context.Canvas);
             cacheRoots.Add((uiNode, layoutNode));
             Draw(layoutNode, context.Canvas, context.Renderer);
         }
