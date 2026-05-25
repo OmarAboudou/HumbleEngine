@@ -7,7 +7,7 @@ public class Window : Node
     {
         Title = CreateProperty("Humble Platform Window");
         PlatformWindow = platformWindow;
-        PlatformWindow.Title.Bind2Way(Title);
+        Title.Bind2WayTo(PlatformWindow.Title);
     }
     
     internal PlatformWindow PlatformWindow
