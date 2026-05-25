@@ -12,22 +12,11 @@ public class Signal<TDelegate>
     }
 
     private readonly List<TDelegate> _connections = [];
-    public static Signal<TDelegate> operator +(Signal<TDelegate> signal, TDelegate callback)
-    {
-        signal.Connect(callback);
-        return signal;
-    }
     
-    public static Signal<TDelegate> operator -(Signal<TDelegate> signal, TDelegate callback)
-    {
-        signal.Disconnect(callback);
-        return signal;
-    }
-    
-    private void Connect(TDelegate callback)
+    public void Connect(TDelegate callback)
         =>  _connections.Add(callback);
 
-    private void Disconnect(TDelegate callback)
+    public void Disconnect(TDelegate callback)
         => _connections.Remove(callback);
     
     

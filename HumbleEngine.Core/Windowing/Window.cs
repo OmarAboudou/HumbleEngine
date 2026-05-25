@@ -4,7 +4,7 @@ public abstract class Window : IDisposable
 {
     public Window()
     {
-        Title.Connect(SetTitle);
+        Title.ValueChanged.Connect(SetTitle);
     }
     
     public readonly Property<string> Title = new("Humble Engine Window");
