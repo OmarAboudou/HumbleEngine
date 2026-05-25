@@ -1,15 +1,15 @@
 using Silk.NET.Windowing;
-using Window = Silk.NET.Windowing.Window;
-using HumbleWindow = HumbleEngine.Core.Window;
+using SlkWindow = Silk.NET.Windowing.Window;
+using HmblWindow = HumbleEngine.Core.Window;
 
 namespace HumbleEngine.Silk;
 
-public class SilkWindow : HumbleWindow
+public class SilkWindow : HmblWindow
 {
     private IWindow window;
 
     public override void Initialize() 
-        => window = Window.Create(
+        => window = SlkWindow.Create(
             WindowOptions.Default with {
                 Title = Title.Value
             }
