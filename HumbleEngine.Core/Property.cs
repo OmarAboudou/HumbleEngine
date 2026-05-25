@@ -7,13 +7,24 @@ public interface IProperty<T>
     public void Connect(Action<T> callback);
     public void Disconnect(Action<T> callback);
 
-    public void BindFrom(IProperty<T> other);
+    public void BindFrom(IProperty<T> other) 
+        => BindFrom(other, IdentityFunction);
 
-    public void Bind2Way(IProperty<T> other);
+    public void Bind2Way(IProperty<T> other)
+        => Bind2Way(other, IdentityFunction, IdentityFunction);
     
-    public void BindFrom<TDest>(IProperty<TDest> other, Func<TDest, T> transformation);
+    public void BindFrom<TOther>(
+        IProperty<TOther> other,
+        Func<TOther, T> transformation);
 
-    public void Bind2Way<TDest>(IProperty<TDest> other, Func<TDest, T> transformationFrom, Func<T, TDest> transformationTo);
+    public void Bind2Way<TOther>(
+        IProperty<TOther> other,
+        Func<TOther, T> transformationFrom,
+        Func<T, TOther> transformationTo)
+    {
+        this.BindFrom(other, transformationFrom);
+        other.BindFrom(this, transformationTo);
+    }
     
 }
 
@@ -75,25 +86,13 @@ public class EditableProperty<T> : IProperty<T>, IDisposable
     
     private void CleanConnections()
         => _othersListeningToMe.RemoveAll(wr => !wr.TryGetTarget(out _));
-
-
-    public void BindFrom(IProperty<T> other)
-        => BindFrom(other, IdentityFunction);
-    public void Bind2Way(IProperty<T> other)
-        => Bind2Way(other, IdentityFunction, IdentityFunction);
-
+    
     public void BindFrom<TDest>(IProperty<TDest> other, Func<TDest, T> transformation)
     {
         Action<TDest> lambda = otherValue => Value = transformation(otherValue); 
         other.Connect(lambda);
         this._meListeningToOthers.Add(lambda);
         this.Value = transformation(other.Value);
-    }
-
-    public void Bind2Way<TDest>(IProperty<TDest> other, Func<TDest, T> transformationFrom, Func<T, TDest> transformationTo)
-    {
-        this.BindFrom(other, transformationFrom);
-        other.BindFrom(this, transformationTo);
     }
 
 
@@ -123,15 +122,7 @@ public class Property<T> : IProperty<T>
     public void Disconnect(Action<T> callback) 
         => _editableProperty.Disconnect(callback);
 
-    public void BindFrom(IProperty<T> other) 
-        => _editableProperty.BindFrom(other);
-
-    public void Bind2Way(IProperty<T> other) 
-        => _editableProperty.Bind2Way(other);
-
     public void BindFrom<TDest>(IProperty<TDest> other, Func<TDest, T> transformation) 
         => _editableProperty.BindFrom(other, transformation);
 
-    public void Bind2Way<TDest>(IProperty<TDest> other, Func<TDest, T> transformationFrom, Func<T, TDest> transformationTo) 
-        => _editableProperty.Bind2Way(other, transformationFrom, transformationTo);
 }
