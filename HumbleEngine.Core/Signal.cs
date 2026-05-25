@@ -3,7 +3,7 @@ namespace HumbleEngine.Core;
 public class Signal<TDelegate>
     where TDelegate : Delegate
 {
-    private Action<TDelegate> _callbackHandler;
+    private readonly Action<TDelegate> _callbackHandler;
     
     public Signal(in Action<TDelegate> callbackHandler, out Action emitter)
     {
@@ -12,13 +12,25 @@ public class Signal<TDelegate>
     }
 
     private readonly List<TDelegate> _connections = [];
+    public static Signal<TDelegate> operator +(Signal<TDelegate> signal, TDelegate callback)
+    {
+        signal.Connect(callback);
+        return signal;
+    }
     
-    public void Connect(TDelegate callback)
+    public static Signal<TDelegate> operator -(Signal<TDelegate> signal, TDelegate callback)
+    {
+        signal.Disconnect(callback);
+        return signal;
+    }
+    
+    private void Connect(TDelegate callback)
         =>  _connections.Add(callback);
 
-    public void Disconnect(TDelegate callback)
+    private void Disconnect(TDelegate callback)
         => _connections.Remove(callback);
-
+    
+    
     private void Emit()
     {
         foreach (var connection in _connections)
