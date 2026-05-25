@@ -9,7 +9,7 @@ public abstract class Application
     {
         using PlatformWindow platformWindow = CreatePlatformWindow();
         using Window window = new(platformWindow);
-        window.Add(config.scene);
+        window.Add(config.Scene);
         platformWindow.Loaded.Connect(() => {
             platformWindow.FixUpdated.Connect( (delta) => Console.WriteLine($"Fix Update {1/delta}/s") );
             platformWindow.Rendering.Connect( (delta) => window.Title.Value = $"{1.0 / delta}fps" );

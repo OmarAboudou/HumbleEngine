@@ -1,5 +1,7 @@
 namespace HumbleEngine.Core;
 
 public record ApplicationConfig(
-    Node scene
+    Node Scene,
+    IReadOnlyList<IFixedUpdatePass> FixedUpdatePasses,
+    IReadOnlyList<IRenderPass> RenderPasses
 );
