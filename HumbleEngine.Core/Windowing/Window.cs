@@ -7,7 +7,8 @@ public abstract class Window : IDisposable
         Title.Connect(SetTitle);
     }
     
-    public Property<string> Title { get; init; } = new("Humble Engine Window");
+    public readonly Property<string> Title = new("Humble Engine Window");
+    
     public abstract void Initialize();
 
     public abstract void Run();
@@ -16,8 +17,6 @@ public abstract class Window : IDisposable
     
     protected abstract void SetTitle(string title);
 
-    public void Dispose()
-    {
-        Reset();
-    }
+    public void Dispose() 
+        => Reset();
 }
