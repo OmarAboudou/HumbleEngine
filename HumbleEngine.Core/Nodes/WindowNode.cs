@@ -9,6 +9,7 @@ public class WindowNode : Node
     public WindowNode()
     {
         Window = Application.CreateWindowFunction!();
+        Window.Initialize();
         Title = Window.Title;
     }
     

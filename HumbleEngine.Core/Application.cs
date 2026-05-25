@@ -17,5 +17,6 @@ public abstract class Application
         {
             root
         };
+        windowNode.Window.Run();
     }
 }
