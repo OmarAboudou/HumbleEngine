@@ -1,6 +1,6 @@
 namespace HumbleEngine.Core;
 
-public interface IProperty<T>
+public interface IProperty<T> : IDisposable
 {
     public T Value { get; }
     
@@ -73,7 +73,7 @@ public interface IProperty<T>
     
 }
 
-public sealed class EditableProperty<T> : IProperty<T>, IDisposable
+public sealed class EditableProperty<T> : IProperty<T>
 {
     internal EditableProperty(T initialValue)
     {
@@ -205,6 +205,11 @@ public sealed class Property<T> : IProperty<T>
 
     public void UnbindFrom<TOther>(IProperty<TOther> other, Func<TOther, T> transformation) 
         => _editableProperty.UnbindFrom(other, transformation);
+
+    public void Dispose()
+    {
+        
+    }
 }
 
 public static class PropertyExtensions

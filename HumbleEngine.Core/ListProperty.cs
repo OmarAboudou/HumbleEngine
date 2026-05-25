@@ -2,7 +2,7 @@ using System.Collections;
 
 namespace HumbleEngine.Core;
 
-public interface IListProperty<T> : IReadOnlyList<T>
+public interface IListProperty<T> : IReadOnlyList<T>, IDisposable
 {
     public IReadOnlyList<T> List { get; }
     
@@ -212,20 +212,6 @@ public sealed class EditableListProperty<T> : IListProperty<T>, IList<T>
         _othersListeningToMeRemoving.RemoveAll(wr => !wr.TryGetTarget(out _));
     }
 
-    private EditableListProperty<T> ExtractEditableListProperty<T>(IListProperty<T> source)
-    {
-        if (source is EditableListProperty<T> editableListProperty)
-        {
-            return editableListProperty;
-        }
-        if (source is ListProperty<T> nonEditableListProperty)
-        {
-            return nonEditableListProperty._editableListProperty;
-        }
-
-        throw new Exception($"Could not extract an {nameof(EditableListProperty<T>)} from {source}");
-    }
-
 
     public IEnumerator<T> GetEnumerator()
         => List.GetEnumerator();
@@ -289,6 +275,14 @@ public sealed class EditableListProperty<T> : IListProperty<T>, IList<T>
             }
         }
     }
+
+    public void Dispose()
+    {
+        _othersListeningToMeAdding.Clear();
+        _othersListeningToMeRemoving.Clear();
+        _meListeningToOthersAdding.Clear();
+        _meListeningToOthersRemoving.Clear();
+    }
 }
 
 public sealed class ListProperty<T> : IListProperty<T>
@@ -328,6 +322,11 @@ public sealed class ListProperty<T> : IListProperty<T>
     public int Count => _editableListProperty.Count;
 
     public T this[int index] => _editableListProperty[index];
+
+    public void Dispose()
+    {
+        
+    }
 }
 
 public static class ListPropertyExtensions{
