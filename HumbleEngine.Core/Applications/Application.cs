@@ -11,8 +11,20 @@ public abstract class Application
         using Window window = new(platformWindow);
         window.Add(config.Scene);
         platformWindow.Loaded.Connect(() => {
-            platformWindow.FixUpdated.Connect( (delta) => Console.WriteLine($"Fix Update {1/delta}/s") );
-            platformWindow.Rendering.Connect( (delta) => window.Title.Value = $"{1.0 / delta}fps" );
+            platformWindow.FixUpdated.Connect((delta) =>
+            {
+                foreach (IFixedUpdatePass fixedUpdatePass in config.FixedUpdatePasses)
+                {
+                    fixedUpdatePass.Execute(window, delta);
+                }
+            } );
+            platformWindow.Rendering.Connect((delta) =>
+            {
+                foreach (IUpdatePass updatePass in config.UnderPasses)
+                {
+                    updatePass.Execute(window, delta);
+                }
+            });
         });
         platformWindow.Closing.Connect( () => Console.WriteLine("CLOSING !") );
         platformWindow.Run();

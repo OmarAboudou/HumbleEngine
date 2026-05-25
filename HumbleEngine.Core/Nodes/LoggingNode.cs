@@ -1,8 +1,8 @@
 namespace HumbleEngine.Core;
 
-public class LoggingNode : Node, IProcessable
+public class LoggingNode : Node, IUpdated
 {
-    public void Process(double delta)
+    public void OnUpdate(double delta)
     {
         Console.WriteLine($"{this} : processing (delta = {delta} | {1/delta} fps )");
     }
