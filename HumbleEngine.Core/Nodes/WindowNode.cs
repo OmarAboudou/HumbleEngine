@@ -2,16 +2,23 @@ namespace HumbleEngine.Core;
 
 public class WindowNode : Node
 {
-    internal readonly Window Window;
-    
-    public Property<string> Title { get; }
-
-    public WindowNode()
+    public WindowNode(){}
+    public WindowNode(Window window)
     {
-        Window = Application.CreateWindowFunction!();
-        Window.Initialize();
-        Title = Window.Title;
+        Window = window;
     }
+    
+    internal Window Window
+    {
+        get;
+        init
+        {
+            field = value;
+            field.Title.Bind2Way(Title);
+        }
+    }
+
+    public EditableProperty<string> Title { get; } = new("DEFAULT_WINDOW_TITLE");
     
     public override void Dispose()
     {

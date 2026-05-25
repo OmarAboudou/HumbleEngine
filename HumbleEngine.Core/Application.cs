@@ -2,21 +2,21 @@ namespace HumbleEngine.Core;
 
 public abstract class Application
 {
-    public Application()
-    {
-        CreateWindowFunction = CreateWindow;
-    }
 
     protected abstract Window CreateWindow();
     
-    protected internal static Func<Window>? CreateWindowFunction { get; internal set; }
-
     public void Run(ApplicationConfig config)
     {
-        WindowNode windowNode = new()
+        using Window window = CreateWindow();
+        WindowNode windowNode = new(window)
         {
             config.scene
         };
-        windowNode.Window.Run();
+        window.Loaded.Connect( () => Console.WriteLine("LOADED !") );
+        window.FixUpdated.Connect( (delta) => Console.WriteLine($"Fix Update {1/delta}/s") );
+        window.Rendering.Connect((delta) => windowNode.Title.Value = $"{1.0 / delta}fps");
+        window.Closing.Connect( () => Console.WriteLine("CLOSING !") );
+        window.Run();
+        
     }
 }

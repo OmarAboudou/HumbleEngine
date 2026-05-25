@@ -6,15 +6,22 @@ namespace HumbleEngine.Silk;
 
 public class SilkWindow : HmblWindow
 {
-    private IWindow window;
-
-    public override void Initialize() 
-        => window = SlkWindow.Create(
+    public SilkWindow()
+    {
+        window = SlkWindow.Create(
             WindowOptions.Default with {
-                Title = Title.Value
+                Title = Title.Value,
             }
         );
+        window.Load += EmitLoaded;
+        window.Update += EmitFixUpdated;
+        window.Render += EmitRendering;
+        window.Closing += EmitClosing;
 
+    }
+    
+    private IWindow window;
+    
     public override void Run() 
         => window.Run();
 
