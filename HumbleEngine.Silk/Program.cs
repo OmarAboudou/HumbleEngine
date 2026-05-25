@@ -1,13 +1,5 @@
-﻿using Silk.NET.Windowing;
+﻿using HumbleEngine.Core;
+using HumbleEngine.Silk;
+using Silk.NET.Windowing;
 
-namespace HumbleEngine.Silk;
-
-class Program
-{
-    static void Main(string[] args)
-    {
-        IWindow window = Window.Create(WindowOptions.Default);
-        
-        window.Run();
-    }
-}
+new SilkApplication().Run(new Node());

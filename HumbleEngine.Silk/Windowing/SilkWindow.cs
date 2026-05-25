@@ -8,8 +8,10 @@ public class SilkWindow : HumbleWindow
 {
     private IWindow window;
 
-    public override void Initialize() 
-        => window = Window.Create(WindowOptions.Default);
+    public override void Initialize()
+    {
+        window = Window.Create(WindowOptions.Default);
+    }
 
     public override void Run() 
         => window.Run();

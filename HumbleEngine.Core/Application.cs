@@ -13,6 +13,9 @@ public abstract class Application
 
     public void Run(Node root)
     {
-        
+        WindowNode windowNode = new()
+        {
+            root
+        };
     }
 }

@@ -2,7 +2,7 @@ using System.Collections;
 
 namespace HumbleEngine.Core;
 
-public abstract class Node : IEnumerable<Node>, IDisposable
+public class Node : IEnumerable<Node>, IDisposable
 {
     public Node()
     {
