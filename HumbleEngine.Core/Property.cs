@@ -26,6 +26,8 @@ public class Property<T> : IPropertyGetter<T>
         _value = initialValue;
     }
 
+    public static implicit operator T(Property<T> property) => property.Value;
+    
     public IPropertyGetter<T> Getter => field ??= new PropertyGetter<T>(this);
     private T _value;
     public T Value
@@ -58,13 +60,15 @@ public class Property<T> : IPropertyGetter<T>
         => ValueChangedEvent -= handler;
 }
 
-internal class PropertyGetter<T> : IPropertyGetter<T>
+public class PropertyGetter<T> : IPropertyGetter<T>
 {
     internal PropertyGetter(Property<T> property)
     {
         _property = property;
     }
 
+    public static implicit operator T(PropertyGetter<T> property) => property.Value;
+    
     private readonly Property<T> _property;
 
     public T Value => _property.Value;
