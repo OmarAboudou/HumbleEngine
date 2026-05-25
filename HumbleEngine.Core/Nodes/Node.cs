@@ -91,7 +91,7 @@ public abstract class Node : IEnumerable<Node>, IDisposable
     IEnumerator IEnumerable.GetEnumerator() 
         => GetEnumerator();
 
-    public void Dispose()
+    public virtual void Dispose()
     {
         _children.ForEach(x => x.Dispose());
     }
