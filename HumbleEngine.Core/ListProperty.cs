@@ -329,3 +329,77 @@ public sealed class ListProperty<T> : IListProperty<T>
 
     public T this[int index] => _editableListProperty[index];
 }
+
+public static class ListPropertyExtensions{
+public static void BindTo<TOther, T>(
+        this IListProperty<T> This,
+        IListProperty<TOther> other,
+        Func<T, TOther> transformation)
+        => other.BindFrom(This, transformation);
+    public static void UnbindTo<TOther, T>(
+        this IListProperty<T> This,
+        IListProperty<TOther> other,
+        Func<T, TOther> transformation)
+        => other.UnbindFrom(This, transformation);
+
+    public static void BindFrom<T>(
+        this IListProperty<T> This,IListProperty<T> other) 
+        => This.BindFrom(other, IdentityFunction);
+
+    public static void UnbindFrom<T>(
+        this IListProperty<T> This, IListProperty<T> other)
+        => This.UnbindFrom(other, IdentityFunction);
+
+    public static void BindTo<T>(
+        this IListProperty<T> This,IListProperty<T> other)
+        => This.BindTo(other, IdentityFunction);
+    public static void UnbindTo<T>(
+        this IListProperty<T> This,IListProperty<T> other)
+        => This.UnbindTo(other, IdentityFunction);
+
+    public static void Bind2WayFrom<T>(
+        this IListProperty<T> This,IListProperty<T> other)
+        => This.Bind2WayFrom(other, IdentityFunction, IdentityFunction);
+    public static void Unbind2WayFrom<T>(
+        this IListProperty<T> This,IListProperty<T> other)
+        => This.Unbind2WayFrom(other, IdentityFunction, IdentityFunction);
+
+    public static void Bind2WayTo<T>(
+        this IListProperty<T> This,IListProperty<T> other)
+        => other.Bind2WayFrom(This);
+    public static void Unbind2WayTo<T>(
+        this IListProperty<T> This,IListProperty<T> other)
+        => other.Unbind2WayFrom(This);
+    
+    public static void Bind2WayFrom<TOther, T>(
+        this IListProperty<T> This,
+        IListProperty<TOther> other,
+        Func<TOther, T> transformationFrom,
+        Func<T, TOther> transformationTo)
+    {
+        This.BindFrom(other, transformationFrom);
+        other.BindFrom(This, transformationTo);
+    }
+    public static void Unbind2WayFrom<TOther, T>(
+        this IListProperty<T> This,
+        IListProperty<TOther> other,
+        Func<TOther, T> transformationFrom,
+        Func<T, TOther> transformationTo)
+    {
+        other.UnbindFrom(This, transformationTo);
+        This.UnbindFrom(other, transformationFrom);
+    }
+
+    public static void Bind2WayTo<TOther, T>(
+        this IListProperty<T> This,
+        IListProperty<TOther> other,
+        Func<TOther, T> transformationFrom,
+        Func<T, TOther> transformationTo) 
+        => other.Bind2WayFrom(This, transformationTo, transformationFrom);
+    public static void Unbind2WayTo<TOther, T>(
+        this IListProperty<T> This,
+        IListProperty<TOther> other,
+        Func<TOther, T> transformationFrom,
+        Func<T, TOther> transformationTo)
+        => other.Unbind2WayFrom(This, transformationTo, transformationFrom);
+}
