@@ -11,11 +11,11 @@ public abstract class Application
     
     protected internal static Func<Window>? CreateWindowFunction { get; internal set; }
 
-    public void Run(Node root)
+    public void Run(ApplicationConfig config)
     {
         WindowNode windowNode = new()
         {
-            root
+            config.scene
         };
         windowNode.Window.Run();
     }
