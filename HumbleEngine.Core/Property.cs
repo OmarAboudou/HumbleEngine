@@ -5,8 +5,13 @@ public interface IPropertyGetter<T>
     public T Value { get; }
     
     public delegate void ValueChangedHandler(T value);
-    public Signal<ValueChangedHandler> ValueChanged { get; }
     
+    public Signal<ValueChangedHandler> ValueChanged { get; }
+
+    public void BindFrom(IPropertyGetter<T> property);
+    
+    public void BindFrom<TDest>(IPropertyGetter<TDest> source, Func<TDest, T> transformation);
+
 }
 
 public class Property<T> : IPropertyGetter<T>
@@ -14,14 +19,14 @@ public class Property<T> : IPropertyGetter<T>
     public Property(T initialValue)
     {
         _value = initialValue;
-        ValueChanged = new Signal<IPropertyGetter<T>.ValueChangedHandler>(c => c(_value), out _valueChangedEmitter);
+        ValueChanged = new Signal<IPropertyGetter<T>.ValueChangedHandler>(c => c(_value), out _emitter);
     }
     
     public static implicit operator T(Property<T> property) => property.Value;
     
     public Signal<IPropertyGetter<T>.ValueChangedHandler> ValueChanged { get; }
 
-    private Action _valueChangedEmitter;
+    private readonly Action _emitter;
     
     private T _value;
     
@@ -33,13 +38,38 @@ public class Property<T> : IPropertyGetter<T>
             if (!EqualityComparer<T>.Default.Equals(_value, value))
             {
                 _value = value;
-                _valueChangedEmitter();
+                _emitter();
             }
         }
     }
 
     public IPropertyGetter<T> Getter => field ??= new PropertyGetter<T>(this);
+
+    public void Bind2Way(IPropertyGetter<T> property)
+    {
+        this.BindFrom(property);
+        property.BindFrom(this);
+    }
+
+    public void Bind2Way<TDest>(
+        IPropertyGetter<TDest> source,
+        Func<TDest, T> transformationFrom,
+        Func<T, TDest> transformationTo)
+    {
+        this.BindFrom(source, transformationFrom);
+        source.BindFrom(this, transformationTo);
+    }
     
+    public void BindFrom(IPropertyGetter<T> property)
+        => BindFrom(property, IdentityFunction);
+    
+    public void BindFrom<TDest>(
+        IPropertyGetter<TDest> source,
+        Func<TDest, T> transformation)
+    {
+        source.ValueChanged.Connect( value => Value = transformation(value) );
+        Value = transformation(source.Value);
+    }
 }
 
 public class PropertyGetter<T> : IPropertyGetter<T>
@@ -58,4 +88,9 @@ public class PropertyGetter<T> : IPropertyGetter<T>
     public Signal<IPropertyGetter<T>.ValueChangedHandler> ValueChanged
         => _property.ValueChanged;
 
+    public void BindFrom(IPropertyGetter<T> property) 
+        => _property.BindFrom(property);
+
+    public void BindFrom<TDest>(IPropertyGetter<TDest> source, Func<TDest, T> transformation) 
+        => _property.BindFrom(source, transformation);
 }
