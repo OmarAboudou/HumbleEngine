@@ -1,19 +1,18 @@
 namespace HumbleEngine.Core;
 
-public abstract class Window : IDisposable
+public abstract class PlatformWindow : HumbleObject
 {
-    public Window()
+    protected PlatformWindow()
     {
+        Title = CreateProperty("DEFAULT_WINDOW_TITLE");
         Title.Connect(SetTitle);
-        Loaded = new Signal(out EmitLoaded);
-        FixUpdated = new Signal<double>("delta", out EmitFixUpdated);
-        Rendering = new Signal<double>("delta", out EmitRendering);
-        Closing = new Signal(out EmitClosing);
+        Loaded = CreateSignal(out EmitLoaded);
+        FixUpdated = CreateSignal("delta", out EmitFixUpdated);
+        Rendering = CreateSignal("delta", out EmitRendering);
+        Closing = CreateSignal(out EmitClosing);
     }
 
-    // public abstract void Initialize();
-
-    public readonly EditableProperty<string> Title = new("Humble Engine Window");
+    public readonly EditableProperty<string> Title;
     
     public readonly Signal Loaded;
     protected Action EmitLoaded;
@@ -33,5 +32,9 @@ public abstract class Window : IDisposable
 
     protected abstract void SetTitle(string title);
 
-    public void Dispose() => Reset();
+    public override void Dispose()
+    {
+        base.Dispose();
+        Reset();
+    }
 }

@@ -2,21 +2,21 @@ namespace HumbleEngine.Core;
 
 public abstract class Application
 {
-
-    protected abstract Window CreateWindow();
+    
+    protected abstract PlatformWindow CreatePlatformWindow();
     
     public void Run(ApplicationConfig config)
-    {
-        using Window window = CreateWindow();
-        WindowNode windowNode = new(window)
+    { ;
+        PlatformWindow platformWindow = CreatePlatformWindow();
+        Window window = new(platformWindow)
         {
             config.scene
         };
-        window.Loaded.Connect( () => Console.WriteLine("LOADED !") );
-        window.FixUpdated.Connect( (delta) => Console.WriteLine($"Fix Update {1/delta}/s") );
-        window.Rendering.Connect((delta) => windowNode.Title.Value = $"{1.0 / delta}fps");
-        window.Closing.Connect( () => Console.WriteLine("CLOSING !") );
-        window.Run();
+        platformWindow.Loaded.Connect( () => Console.WriteLine("LOADED !") );
+        platformWindow.FixUpdated.Connect( (delta) => Console.WriteLine($"Fix Update {1/delta}/s") );
+        platformWindow.Rendering.Connect((delta) => window.Title.Value = $"{1.0 / delta}fps");
+        platformWindow.Closing.Connect( () => Console.WriteLine("CLOSING !") );
+        platformWindow.Run();
         
     }
 }

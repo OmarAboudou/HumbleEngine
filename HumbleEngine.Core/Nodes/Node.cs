@@ -2,7 +2,7 @@ using System.Collections;
 
 namespace HumbleEngine.Core;
 
-public class Node : IEnumerable<Node>, IDisposable
+public class Node : HumbleObject, IEnumerable<Node>
 {
     public Node()
     {
@@ -91,8 +91,10 @@ public class Node : IEnumerable<Node>, IDisposable
     IEnumerator IEnumerable.GetEnumerator() 
         => GetEnumerator();
 
-    public virtual void Dispose()
+    public override void Dispose()
     {
+        base.Dispose();
         _children.ForEach(x => x.Dispose());
+        _children.Clear();
     }
 }

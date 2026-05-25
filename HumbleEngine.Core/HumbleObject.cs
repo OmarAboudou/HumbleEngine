@@ -4,7 +4,7 @@ public class HumbleObject : IDisposable
 {
     private readonly List<IDisposable> _disposables = [];
 
-    protected internal Signal CreateSignal(out Action emitter)
+    protected Signal CreateSignal(out Action emitter)
     {
         Signal s = new(out emitter);
         _disposables.Add(s);
@@ -25,7 +25,7 @@ public class HumbleObject : IDisposable
         return s;
     }
 
-    protected EditableProperty<T> CreateProperty<T>(T initialValue = default)
+    protected EditableProperty<T> CreateProperty<T>(T initialValue)
     {
         EditableProperty<T> property = new(initialValue);
         _disposables.Add(property);
@@ -33,7 +33,7 @@ public class HumbleObject : IDisposable
     }
 
 
-    public void Dispose()
+    public virtual void Dispose()
     {
         foreach (IDisposable disposable in _disposables)
         {
