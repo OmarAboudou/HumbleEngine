@@ -2,8 +2,17 @@ namespace HumbleEngine.Core;
 
 public interface IPropertyGetter<T>
 {
-    public delegate void ValueChangedHandler(T oldValue, T newValue);
+    public T Value { get; }
     
+    public delegate void NewValueHandler(T newValue);
+    
+    public void Connect(NewValueHandler handler);
+    
+    public void Disconnect(NewValueHandler handler);
+    
+    
+    public delegate void ValueChangedHandler(T oldValue, T newValue);
+
     public void Connect(ValueChangedHandler handler);
     
     public void Disconnect(ValueChangedHandler handler);
@@ -28,21 +37,25 @@ public class Property<T> : IPropertyGetter<T>
             {
                 T oldValue = _value;
                 _value = value;
-                ValueChanged?.Invoke(oldValue, value);
+                NewValueEvent?.Invoke(oldValue);
+                ValueChangedEvent?.Invoke(oldValue, value);
             }
         }
     }
 
-    public event IPropertyGetter<T>.ValueChangedHandler? ValueChanged;
-    public void Connect(IPropertyGetter<T>.ValueChangedHandler handler)
-    {
-        ValueChanged += handler;
-    }
+    private event IPropertyGetter<T>.NewValueHandler? NewValueEvent;
+    public void Connect(IPropertyGetter<T>.NewValueHandler handler)
+        => NewValueEvent += handler;
 
-    public void Disconnect(IPropertyGetter<T>.ValueChangedHandler handler)
-    {
-        ValueChanged -= handler;
-    }
+    public void Disconnect(IPropertyGetter<T>.NewValueHandler handler)
+        => NewValueEvent -= handler;
+
+    private event IPropertyGetter<T>.ValueChangedHandler? ValueChangedEvent;
+    public void Connect(IPropertyGetter<T>.ValueChangedHandler handler) 
+        => ValueChangedEvent += handler;
+
+    public void Disconnect(IPropertyGetter<T>.ValueChangedHandler handler) 
+        => ValueChangedEvent -= handler;
 }
 
 internal class PropertyGetter<T> : IPropertyGetter<T>
@@ -55,6 +68,12 @@ internal class PropertyGetter<T> : IPropertyGetter<T>
     private readonly Property<T> _property;
 
     public T Value => _property.Value;
+
+    public void Connect(IPropertyGetter<T>.NewValueHandler handler)
+        => _property.Connect(handler);
+
+    public void Disconnect(IPropertyGetter<T>.NewValueHandler handler)
+        => _property.Connect(handler);
 
     public void Connect(IPropertyGetter<T>.ValueChangedHandler handler)
         =>  _property.Connect(handler);
