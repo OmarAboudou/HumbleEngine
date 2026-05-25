@@ -1,5 +1,4 @@
 ﻿using HumbleEngine.Core;
-using HumbleEngine.Core.UpdatedPasses;
 using HumbleEngine.Silk;
 
 new SilkApplication()
@@ -7,7 +6,7 @@ new SilkApplication()
         new ApplicationConfig(
             new Node()
             {
-                new LoggingNode()
+                // new LoggingNode()
             },
             [new FixedUpdatePass()],
             [new UpdatePass()]

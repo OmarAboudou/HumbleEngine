@@ -1,4 +1,4 @@
-namespace HumbleEngine.Core.UpdatedPasses;
+namespace HumbleEngine.Core;
 
 public class FixedUpdatePass : IFixedUpdatePass
 {
