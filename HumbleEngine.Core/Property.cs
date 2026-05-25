@@ -19,14 +19,15 @@ public class Property<T> : IPropertyGetter<T>
     public Property(T initialValue)
     {
         _value = initialValue;
-        ValueChanged = new Signal<IPropertyGetter<T>.ValueChangedHandler>(c => c(_value), out _emitter);
+        ValueChanged = new Signal<IPropertyGetter<T>.ValueChangedHandler>(c => c(_value), out EmitValueChanged);
     }
     
     public static implicit operator T(Property<T> property) => property.Value;
     
     public Signal<IPropertyGetter<T>.ValueChangedHandler> ValueChanged { get; }
-
-    private readonly Action _emitter;
+    
+    // ReSharper disable once InconsistentNaming
+    private readonly Action EmitValueChanged;
     
     private T _value;
     
@@ -38,7 +39,7 @@ public class Property<T> : IPropertyGetter<T>
             if (!EqualityComparer<T>.Default.Equals(_value, value))
             {
                 _value = value;
-                _emitter();
+                EmitValueChanged();
             }
         }
     }

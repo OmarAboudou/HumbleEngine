@@ -3,13 +3,13 @@ namespace HumbleEngine.Core;
 public class Signal<TDelegate>
     where TDelegate : Delegate
 {
-    private readonly Action<TDelegate> _callbackHandler;
-    
     public Signal(in Action<TDelegate> callbackHandler, out Action emitter)
     {
         _callbackHandler = callbackHandler;
         emitter = Emit;
     }
+    
+    private readonly Action<TDelegate> _callbackHandler;
 
     private readonly List<TDelegate> _connections = [];
     
@@ -18,8 +18,8 @@ public class Signal<TDelegate>
 
     public void Disconnect(TDelegate callback)
         => _connections.Remove(callback);
-    
-    
+
+
     private void Emit()
     {
         foreach (var connection in _connections)
@@ -27,10 +27,7 @@ public class Signal<TDelegate>
     }
 }
 
-public class Signal : Signal<Action>
+public class Signal(out Action emitter) : Signal<Action>(e => e(), out emitter)
 {
-    public Signal(out Action emitter) : base((e) => e(), out Action _emitter)
-    {
-        emitter = _emitter;
-    }
+    
 }
