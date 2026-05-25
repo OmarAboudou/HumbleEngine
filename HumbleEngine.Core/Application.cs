@@ -1,7 +1,9 @@
 namespace HumbleEngine.Core;
 
-public class Application
+public abstract class Application
 {
+    protected abstract Window CreateWindow(); 
+    
     public void Run(Node root)
     {
         
