@@ -87,6 +87,7 @@ public class EditableProperty<T> : IProperty<T>, IDisposable
         Action<TDest> lambda = otherValue => Value = transformation(otherValue); 
         other.Connect(lambda);
         this._meListeningToOthers.Add(lambda);
+        this.Value = transformation(other.Value);
     }
 
     public void Bind2Way<TDest>(IProperty<TDest> other, Func<TDest, T> transformationFrom, Func<T, TDest> transformationTo)

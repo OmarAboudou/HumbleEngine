@@ -5,18 +5,15 @@ public class Window : Node
     public Window() : this(null) { }
     public Window(PlatformWindow platformWindow)
     {
-        Title = CreateProperty("Humble PlatformWindow");
+        Title = CreateProperty("Humble Platform Window");
         PlatformWindow = platformWindow;
+        PlatformWindow.Title.Bind2Way(Title);
     }
     
     internal PlatformWindow PlatformWindow
     {
         get;
-        private init
-        {
-            field = value;
-            field.Title.Bind2Way(Title);
-        }
+        private init;
     }
 
     public EditableProperty<string> Title { get; }

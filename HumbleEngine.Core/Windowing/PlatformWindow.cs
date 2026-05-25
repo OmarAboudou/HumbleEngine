@@ -2,7 +2,7 @@ namespace HumbleEngine.Core;
 
 public abstract class PlatformWindow : HumbleObject
 {
-    protected PlatformWindow()
+    public PlatformWindow()
     {
         Title = CreateProperty("DEFAULT_WINDOW_TITLE");
         Title.Connect(SetTitle);
