@@ -2,19 +2,19 @@ namespace HumbleEngine.Core;
 
 public class WindowNode : Node
 {
-    internal Window _window;
+    internal readonly Window Window;
     
     public Property<string> Title { get; }
 
     public WindowNode()
     {
-        _window = Application.CreateWindowFunction!();
-        Title = _window.Title;
+        Window = Application.CreateWindowFunction!();
+        Title = Window.Title;
     }
     
     public override void Dispose()
     {
         base.Dispose();
-        _window.Dispose();
+        Window.Dispose();
     }
 }
