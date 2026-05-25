@@ -32,6 +32,13 @@ public class HumbleObject : IDisposable
         return property;
     }
 
+    protected EditableListProperty<T> CreateListProperty<T>(IReadOnlyList<T>? initialElements = null)
+    {
+        EditableListProperty<T> listProperty = new(initialElements);
+        _disposables.Add(listProperty);
+        return listProperty;
+    }
+
 
     public virtual void Dispose()
     {

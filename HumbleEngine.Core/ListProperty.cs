@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 
 namespace HumbleEngine.Core;
 
@@ -68,15 +69,22 @@ public interface IListProperty<T> : IReadOnlyList<T>, IDisposable
 
 public sealed class EditableListProperty<T> : IListProperty<T>, IList<T>
 {
-    public EditableListProperty()
+
+    internal EditableListProperty() : this(null) { }
+    internal EditableListProperty(IReadOnlyList<T>? initialValues)
     {
+        if (initialValues is not null)
+        {
+            _list.AddRange(initialValues);
+        }
         List = _list.AsReadOnly();
+        
     }
     
-    private List<T> _list = [];
+    private readonly List<T> _list = [];
     public IReadOnlyList<T> List { get; } 
     
-    private delegate bool RefCheckingMethod(out object target);
+    private delegate bool RefCheckingMethod(out object? target);
     
     private readonly List<WeakReference<IListProperty<T>.ElementAddedHandler>> _othersListeningToMeAdding = [];
     private readonly List<(object weakRefToOther, RefCheckingMethod refCheckingMethod, Delegate lambda)> _meListeningToOthersAdding = [];
@@ -170,8 +178,7 @@ public sealed class EditableListProperty<T> : IListProperty<T>, IList<T>
         
         WeakReference<IListProperty<TOther>> weakReferenceToOther = new(other);
         RefCheckingMethod refCheckingMethod = Check;
-
-        ;
+        
         _meListeningToOthersAdding.Add( ( weakReferenceToOther, refCheckingMethod, OnAdding ) );
         _meListeningToOthersRemoving.Add( ( weakReferenceToOther, refCheckingMethod, OnRemoving ) );
         return;
@@ -182,9 +189,9 @@ public sealed class EditableListProperty<T> : IListProperty<T>, IList<T>
         void OnRemoving(int index, TOther _)
             => RemoveAt(index);
 
-        bool Check(out object target)
+        bool Check([NotNullWhen(true)] out object? target)
         {
-            bool result = weakReferenceToOther.TryGetTarget(out IListProperty<TOther> t);
+            bool result = weakReferenceToOther.TryGetTarget(out IListProperty<TOther>? t);
             target = t;
             return result;
         }
@@ -196,13 +203,13 @@ public sealed class EditableListProperty<T> : IListProperty<T>, IList<T>
         {
             (_, RefCheckingMethod refCheckingMethod, Delegate lambda) = tuple;
             refCheckingMethod(out var target);
-            return target == lambda || target == null;
+            return ReferenceEquals(target, lambda) || target == null;
         });
         _meListeningToOthersRemoving.RemoveAll(tuple =>
         {
             (_, RefCheckingMethod refCheckingMethod, Delegate lambda) = tuple;
             refCheckingMethod(out var target);
-            return target == lambda || target == null;
+            return ReferenceEquals(target, lambda) || target == null;
         });
     }
 
@@ -291,8 +298,8 @@ public sealed class ListProperty<T> : IListProperty<T>
     {
         _editableListProperty = editableListProperty;
     }
-    
-    internal EditableListProperty<T> _editableListProperty;
+
+    private readonly EditableListProperty<T> _editableListProperty;
     public IReadOnlyList<T> List => _editableListProperty.List;
 
     public void ConnectAddedElement(IListProperty<T>.ElementAddedHandler callback) 
@@ -331,74 +338,74 @@ public sealed class ListProperty<T> : IListProperty<T>
 
 public static class ListPropertyExtensions{
 public static void BindTo<TOther, T>(
-        this IListProperty<T> This,
+        this IListProperty<T> @this,
         IListProperty<TOther> other,
         Func<T, TOther> transformation)
-        => other.BindFrom(This, transformation);
+        => other.BindFrom(@this, transformation);
     public static void UnbindTo<TOther, T>(
-        this IListProperty<T> This,
+        this IListProperty<T> @this,
         IListProperty<TOther> other,
         Func<T, TOther> transformation)
-        => other.UnbindFrom(This, transformation);
+        => other.UnbindFrom(@this, transformation);
 
     public static void BindFrom<T>(
-        this IListProperty<T> This,IListProperty<T> other) 
-        => This.BindFrom(other, IdentityFunction);
+        this IListProperty<T> @this,IListProperty<T> other) 
+        => @this.BindFrom(other, IdentityFunction);
 
     public static void UnbindFrom<T>(
-        this IListProperty<T> This, IListProperty<T> other)
-        => This.UnbindFrom(other, IdentityFunction);
+        this IListProperty<T> @this, IListProperty<T> other)
+        => @this.UnbindFrom(other, IdentityFunction);
 
     public static void BindTo<T>(
-        this IListProperty<T> This,IListProperty<T> other)
-        => This.BindTo(other, IdentityFunction);
+        this IListProperty<T> @this,IListProperty<T> other)
+        => @this.BindTo(other, IdentityFunction);
     public static void UnbindTo<T>(
-        this IListProperty<T> This,IListProperty<T> other)
-        => This.UnbindTo(other, IdentityFunction);
+        this IListProperty<T> @this,IListProperty<T> other)
+        => @this.UnbindTo(other, IdentityFunction);
 
     public static void Bind2WayFrom<T>(
-        this IListProperty<T> This,IListProperty<T> other)
-        => This.Bind2WayFrom(other, IdentityFunction, IdentityFunction);
+        this IListProperty<T> @this,IListProperty<T> other)
+        => @this.Bind2WayFrom(other, IdentityFunction, IdentityFunction);
     public static void Unbind2WayFrom<T>(
-        this IListProperty<T> This,IListProperty<T> other)
-        => This.Unbind2WayFrom(other, IdentityFunction, IdentityFunction);
+        this IListProperty<T> @this,IListProperty<T> other)
+        => @this.Unbind2WayFrom(other, IdentityFunction, IdentityFunction);
 
     public static void Bind2WayTo<T>(
-        this IListProperty<T> This,IListProperty<T> other)
-        => other.Bind2WayFrom(This);
+        this IListProperty<T> @this,IListProperty<T> other)
+        => other.Bind2WayFrom(@this);
     public static void Unbind2WayTo<T>(
-        this IListProperty<T> This,IListProperty<T> other)
-        => other.Unbind2WayFrom(This);
+        this IListProperty<T> @this,IListProperty<T> other)
+        => other.Unbind2WayFrom(@this);
     
     public static void Bind2WayFrom<TOther, T>(
-        this IListProperty<T> This,
+        this IListProperty<T> @this,
         IListProperty<TOther> other,
         Func<TOther, T> transformationFrom,
         Func<T, TOther> transformationTo)
     {
-        This.BindFrom(other, transformationFrom);
-        other.BindFrom(This, transformationTo);
+        @this.BindFrom(other, transformationFrom);
+        other.BindFrom(@this, transformationTo);
     }
     public static void Unbind2WayFrom<TOther, T>(
-        this IListProperty<T> This,
+        this IListProperty<T> @this,
         IListProperty<TOther> other,
         Func<TOther, T> transformationFrom,
         Func<T, TOther> transformationTo)
     {
-        other.UnbindFrom(This, transformationTo);
-        This.UnbindFrom(other, transformationFrom);
+        other.UnbindFrom(@this, transformationTo);
+        @this.UnbindFrom(other, transformationFrom);
     }
 
     public static void Bind2WayTo<TOther, T>(
-        this IListProperty<T> This,
+        this IListProperty<T> @this,
         IListProperty<TOther> other,
         Func<TOther, T> transformationFrom,
         Func<T, TOther> transformationTo) 
-        => other.Bind2WayFrom(This, transformationTo, transformationFrom);
+        => other.Bind2WayFrom(@this, transformationTo, transformationFrom);
     public static void Unbind2WayTo<TOther, T>(
-        this IListProperty<T> This,
+        this IListProperty<T> @this,
         IListProperty<TOther> other,
         Func<TOther, T> transformationFrom,
         Func<T, TOther> transformationTo)
-        => other.Unbind2WayFrom(This, transformationTo, transformationFrom);
+        => other.Unbind2WayFrom(@this, transformationTo, transformationFrom);
 }

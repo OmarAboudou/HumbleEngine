@@ -6,21 +6,17 @@ public class Window : Node
     public Window(PlatformWindow platformWindow)
     {
         Title = CreateProperty("Humble Platform Window");
-        PlatformWindow = platformWindow;
-        Title.Bind2WayTo(PlatformWindow.Title);
+        _platformWindow = platformWindow;
+        Title.Bind2WayTo(_platformWindow.Title);
     }
-    
-    internal PlatformWindow PlatformWindow
-    {
-        get;
-        private init;
-    }
+
+    private readonly PlatformWindow _platformWindow;
 
     public EditableProperty<string> Title { get; }
     
     public override void Dispose()
     {
         base.Dispose();
-        PlatformWindow.Dispose();
+        _platformWindow.Dispose();
     }
 }
