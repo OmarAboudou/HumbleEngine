@@ -2,13 +2,20 @@ namespace HumbleEngine.Core;
 
 public abstract class Application
 {
+    public Application()
+    {
+        PlatformWindowFactory = CreatePlatformWindow;
+    }
+    
     protected abstract PlatformWindow CreatePlatformWindow();
+    
+    internal static Func<PlatformWindow> PlatformWindowFactory;
 
     public void Run(ApplicationConfig config)
     {
-        using PlatformWindow platformWindow = CreatePlatformWindow();
-        using Window window = new(platformWindow);
+        using Window window = new();
         window.Add(config.Scene);
+        PlatformWindow platformWindow = window.PlatformWindow;
         platformWindow.Loaded.Connect(() =>
         {
             platformWindow.FixUpdated.Connect(delta =>

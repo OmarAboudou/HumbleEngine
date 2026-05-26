@@ -2,24 +2,20 @@ namespace HumbleEngine.Core;
 
 public class Window : Node
 {
-    private readonly PlatformWindow _platformWindow;
+    internal PlatformWindow PlatformWindow;
 
     public readonly Property<string> Title;
 
-    public Window() : this(null)
-    {
-    }
-
-    public Window(PlatformWindow platformWindow)
+    public Window()
     {
         Title = CreatePublicProperty("Humble Platform Window");
-        _platformWindow = platformWindow;
-        Title.Bind2WayTo(_platformWindow.Title);
+        PlatformWindow = Application.PlatformWindowFactory();
+        Title.Bind2WayTo(PlatformWindow.Title);
     }
 
     public override void Dispose()
     {
         base.Dispose();
-        _platformWindow.Dispose();
+        PlatformWindow.Dispose();
     }
 }

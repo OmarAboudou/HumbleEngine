@@ -1,3 +1,4 @@
+using System;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Generic;
@@ -54,6 +55,18 @@ public sealed class WidgetPropertyGenerator : IIncrementalGenerator
                 propertySymbol.ContainingType.Name));
         }
 
+        string propertyAccessibilityModifier = propertySymbol.DeclaredAccessibility switch
+        {
+            Accessibility.NotApplicable => "public",
+            Accessibility.Private => "private",
+            Accessibility.ProtectedAndInternal => "public",
+            Accessibility.Protected => "protected",
+            Accessibility.Internal => "internal",
+            Accessibility.ProtectedOrInternal => "public",
+            Accessibility.Public => "public",
+            _ => throw new ArgumentOutOfRangeException()
+        };
+        
         var returnType = propertySymbol.Type as INamedTypeSymbol;
         if (returnType is null || returnType.TypeArguments.Length == 0) return GeneratorResult.Empty;
 
@@ -80,6 +93,7 @@ public sealed class WidgetPropertyGenerator : IIncrementalGenerator
             PropertyName: propertySymbol.Name,
             PropertyType: propertyType,
             InnerType: innerType,
+            PropertyAccessibilityModifier: propertyAccessibilityModifier,
             IsList: isList,
             FlagValue: flagValue);
 
@@ -88,7 +102,7 @@ public sealed class WidgetPropertyGenerator : IIncrementalGenerator
 
     private static bool InheritsFromWidget(INamedTypeSymbol type)
     {
-        var current = type.BaseType;
+        var current = type;
         while (current is not null)
         {
             if (current.Name == "Widget" &&
@@ -167,7 +181,7 @@ public sealed class WidgetPropertyGenerator : IIncrementalGenerator
 
             {{info.TypeDeclaration}}
             {
-                public partial {{info.PropertyType}} {{info.PropertyName}}
+                {{info.PropertyAccessibilityModifier}} partial {{info.PropertyType}} {{info.PropertyName}}
                 {
                     get => {{getter}};
                     init => field = ConnectFlag({{flag}}, value);
@@ -192,6 +206,7 @@ public sealed class WidgetPropertyGenerator : IIncrementalGenerator
         string PropertyName,
         string PropertyType,
         string InnerType,
+        string PropertyAccessibilityModifier,
         bool IsList,
         int FlagValue);
 }

@@ -1,6 +1,6 @@
 namespace HumbleEngine.Core;
 
-public readonly record struct LengthConstraints(float MaxLength);
+public readonly record struct LengthConstraints(float MinLength, float MaxLength);
 
 public abstract record Length
 {
@@ -28,7 +28,7 @@ public record Percent(float Percentage) : Length
 {
     public override float Compute(LengthConstraints constraints)
     {
-        return (Percentage/100f) * constraints.MaxLength;
+        return Percentage/100f * constraints.MaxLength;
     }
     
     public static implicit operator Percent(float percentage)
