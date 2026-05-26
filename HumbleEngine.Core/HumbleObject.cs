@@ -32,10 +32,10 @@ public abstract class HumbleObject : IDisposable
         return property;
     }
 
-    protected IPropertyListener<T> CreateProtectedProperty<T>(T initialValue, out Action<T> setter)
+    protected IPropertyListener<T> CreateProtectedProperty<T>(T initialValue, out Property<T> publicProperty)
     {
         Property<T> property = CreatePublicProperty(initialValue);
-        setter = (v) => property.Value = v;
+        publicProperty = property;
         return property.Listener;
     }
 
@@ -45,12 +45,12 @@ public abstract class HumbleObject : IDisposable
         _disposables.Add(listProperty);
         return listProperty;
     }
-    protected IListPropertyListener<T> CreateProtectedListProperty<T>(IReadOnlyList<T> initialElements, out IList<T> list)
+    protected IListPropertyListener<T> CreateProtectedListProperty<T>(IReadOnlyList<T> initialElements, out ListProperty<T> publicListProperty)
     {
         ListProperty<T> listProperty = CreatePublicListProperty(initialElements);
         _disposables.Add(listProperty);
-        list = listProperty;
-        return listProperty;
+        publicListProperty = listProperty;
+        return listProperty.Listener;
     }
 
 

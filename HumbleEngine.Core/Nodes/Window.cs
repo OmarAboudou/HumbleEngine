@@ -12,7 +12,7 @@ public class Window : Node
 
     private readonly PlatformWindow _platformWindow;
 
-    public Property<string> Title { get; }
+    public readonly Property<string> Title;
     
     public override void Dispose()
     {

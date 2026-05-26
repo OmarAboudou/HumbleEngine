@@ -6,22 +6,23 @@ public class Node : HumbleObject, IEnumerable<Node>
 {
     public Node()
     {
-        Children = _children.AsReadOnly();
+        Parent = CreateProtectedProperty(null, out _parent);
+        Children = CreateProtectedListProperty([], out _children);
     }
 
     #region Tree Structure
 
-    public Node? Parent { get; private set; }
-    
-    private readonly List<Node> _children = [];
-    
-    public readonly IReadOnlyList<Node> Children;
+    public readonly IPropertyListener<Node?> Parent;
+    private readonly Property<Node?> _parent;
+
+    public readonly IListPropertyListener<Node> Children;
+    private readonly ListProperty<Node> _children;
 
     public void Add(Node node)
     {
-        if (node.Parent == null)
+        if (node._parent.Value == null)
         {
-            node.Parent = this;
+            node._parent.Value = this;
             _children.Add(node);
             return;
         }
@@ -30,11 +31,11 @@ public class Node : HumbleObject, IEnumerable<Node>
         {
             throw new Exception($"A {nameof(Node)} cannot be its own child.");
         }
-        else if (node.Parent == this)
+        else if (node._parent.Value == this)
         {
             Console.WriteLine($"{nameof(Node)}( {node} ) is already a child of {nameof(Node)}( {this} )");
         }
-        else if (node.Parent != null)
+        else if (node._parent.Value != null)
         {
             throw new Exception($"{nameof(Node)}( {node} ) must have no parent when being added as a child of {nameof(Node)}( {this} )");
         }
@@ -47,14 +48,14 @@ public class Node : HumbleObject, IEnumerable<Node>
 
     public void Remove(Node node)
     {
-        if (node.Parent == this)
+        if (node._parent.Value == this)
         {
             _children.Remove(node);
-            node.Parent = null;
+            node._parent.Value = null;
             return;
         }
 
-        if (node.Parent != this)
+        if (node._parent.Value != this)
         {
             Console.WriteLine($"{nameof(Node)}( {node} ) cannot be removed from the children of  {nameof(Node)}( {this} ) because it is not a child of {nameof(Node)}( {this} ).");
         }
@@ -80,11 +81,11 @@ public class Node : HumbleObject, IEnumerable<Node>
 
     public IEnumerable<Node> GetAncestorsClosestToFarthest()
     {
-        Node? Ancestor = this.Parent;
+        Node? Ancestor = this._parent.Value;
         while (Ancestor != null)
         {
             yield return Ancestor;
-            Ancestor = Ancestor.Parent;
+            Ancestor = Ancestor._parent.Value;
         }
     }
     
@@ -99,7 +100,7 @@ public class Node : HumbleObject, IEnumerable<Node>
     public override void Dispose()
     {
         base.Dispose();
-        _children.ForEach(x => x.Dispose());
+        _children.ToList().ForEach(x => x.Dispose());
         _children.Clear();
     }
 }
