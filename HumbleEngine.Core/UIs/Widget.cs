@@ -59,13 +59,13 @@ public abstract partial record Widget : HumbleRecord
     
     public void Layout(BoxConstraints boxConstraints)
     {
-        (Size desiredSize, Size minContentSize) = PerformLayoutAndClamp(boxConstraints);
+        (Size desiredSize, Size minContentSize) = PerformLayoutClamped(boxConstraints);
         
         Size.Value = desiredSize;
         MinContentSize.Value = minContentSize;
     }
 
-    public LayoutResult PerformLayoutAndClamp(BoxConstraints boxConstraints)
+    public LayoutResult PerformLayoutClamped(BoxConstraints boxConstraints)
     {
         ((float width, float height), (float minContentWidth, float minContentHeight)) = PerformLayout(boxConstraints);
         
@@ -88,7 +88,9 @@ public abstract partial record Widget : HumbleRecord
     
     /// <summary>
     /// Takes some constraints to respect and returns the desired size
-    /// and the minimum content size which is the smallest size that can fit its content
+    /// and the minimum content size which is the smallest size that can fit its content.
+    /// Inside this method, you should also set the <see cref="Size"/> and <see cref="Offset"/>
+    /// properties of any child widget.
     /// </summary>
     /// <param name="boxConstraints">The constraints enforced onto me.</param>
     /// <returns>This <see cref="Widget"/>'s desired size and minimum content size</returns>

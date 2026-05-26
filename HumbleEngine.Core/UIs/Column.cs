@@ -44,8 +44,8 @@ public partial record  Column : LinearLayout<Widget>
         
         Size GetChildSize(Widget child)
         {
-            ((float width, _), (_, _)) = child.PerformLayoutAndClamp(boxConstraints.LoosenWidth());
-            ((_, float height), (_, _)) = child.PerformLayoutAndClamp(boxConstraints with
+            ((float width, _), (_, _)) = child.PerformLayoutClamped(boxConstraints.LoosenWidth());
+            ((_, float height), (_, _)) = child.PerformLayoutClamped(boxConstraints with
             {
                 HeightConstraints = new(0, float.PositiveInfinity)
             });

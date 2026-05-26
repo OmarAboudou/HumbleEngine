@@ -169,7 +169,7 @@ public sealed class WidgetPropertyGenerator : IIncrementalGenerator
 
     private static void Generate(SourceProductionContext ctx, PropertyInfo info)
     {
-        string flag = $"(global::HumbleEngine.Core.DirtyFlag){info.FlagValue}";
+        string flag = $"(global::HumbleEngine.Core.WidgetRefreshFlag){info.FlagValue}";
 
         string getter = info.IsList
             ? $"field ??= CreatePublicListProperty<{info.InnerType}>(flag: {flag})"
