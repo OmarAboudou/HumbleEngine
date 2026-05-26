@@ -55,25 +55,19 @@ public abstract partial record Widget : HumbleRecord
     internal partial Property<Size> MinContentSize { get; init; }
      
     [WidgetProperty]
-    internal partial Property<(float offsetX, float offsetY)> Offset { get; init; }
-    
-    [WidgetProperty(WidgetRefreshFlag.LAYOUT)]
-    public partial Property<Length> Width { get; init; }
-    
-    [WidgetProperty(WidgetRefreshFlag.LAYOUT)]
-    public partial Property<Length> Height { get; init; }
+    internal partial Property<Offset> Offset { get; init; }
     
     public void Layout(BoxConstraints boxConstraints)
     {
-        var (width, height, minContentWidth, minContentHeight) = PerformLayoutAndClamp(boxConstraints);
+        (Size desiredSize, Size minContentSize) = PerformLayoutAndClamp(boxConstraints);
         
-        Size.Value = new(width, height);
-        MinContentSize.Value = new(minContentWidth, minContentHeight);
+        Size.Value = desiredSize;
+        MinContentSize.Value = minContentSize;
     }
 
     public LayoutResult PerformLayoutAndClamp(BoxConstraints boxConstraints)
     {
-        (float width, float height, float minContentWidth, float minContentHeight) = PerformLayout(boxConstraints);
+        ((float width, float height), (float minContentWidth, float minContentHeight)) = PerformLayout(boxConstraints);
         
         if (width > boxConstraints.MinWidth || height > boxConstraints.MinHeight)
         {
@@ -89,7 +83,7 @@ public abstract partial record Widget : HumbleRecord
         minContentWidth = Math.Clamp(minContentWidth, 0, width);
         minContentHeight = Math.Clamp(minContentHeight, 0, height);
 
-        return new(width, height, minContentWidth, minContentHeight);
+        return new(new(width, height), new(minContentWidth, minContentHeight));
     }
     
     /// <summary>
