@@ -1,6 +1,6 @@
 namespace HumbleEngine.Core;
 
-public abstract class HumbleObject : IDisposable
+public abstract record HumbleRecord : IDisposable
 {
     private readonly List<IDisposable> _disposables = [];
 
@@ -45,7 +45,7 @@ public abstract class HumbleObject : IDisposable
         return property.Listener;
     }
 
-    protected ListProperty<T> CreatePublicListProperty<T>(IReadOnlyList<T> initialElements)
+    protected ListProperty<T> CreatePublicListProperty<T>(IReadOnlyList<T>? initialElements = null)
     {
         ListProperty<T> listProperty = new(initialElements);
         _disposables.Add(listProperty);

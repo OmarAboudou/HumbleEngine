@@ -2,6 +2,20 @@ namespace HumbleEngine.Core;
 
 public abstract class PlatformWindow : HumbleObject
 {
+    public readonly Signal Closing;
+
+    public readonly Signal<double> FixUpdated;
+
+    public readonly Signal Loaded;
+
+    public readonly Signal<double> Rendering;
+
+    public readonly Property<string> Title;
+    protected Action EmitClosing;
+    protected Action<double> EmitFixUpdated;
+    protected Action EmitLoaded;
+    protected Action<double> EmitRendering;
+
     public PlatformWindow()
     {
         Title = CreatePublicProperty("DEFAULT_WINDOW_TITLE");
@@ -11,20 +25,6 @@ public abstract class PlatformWindow : HumbleObject
         Rendering = CreateSignal("delta", out EmitRendering);
         Closing = CreateSignal(out EmitClosing);
     }
-
-    public readonly Property<string> Title;
-    
-    public readonly Signal Loaded;
-    protected Action EmitLoaded;
-    
-    public readonly Signal<double> FixUpdated;
-    protected Action<double> EmitFixUpdated;
-    
-    public readonly Signal<double> Rendering;
-    protected Action<double> EmitRendering;
-    
-    public readonly Signal Closing;
-    protected Action EmitClosing;
 
     public abstract void Run();
 

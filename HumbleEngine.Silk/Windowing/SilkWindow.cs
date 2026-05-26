@@ -6,10 +6,13 @@ namespace HumbleEngine.Silk;
 
 public class SilkWindow : PlatformWindow
 {
+    private readonly IWindow window;
+
     public SilkWindow()
     {
         window = SlkWindow.Create(
-            WindowOptions.Default with {
+            WindowOptions.Default with
+            {
                 Title = Title.Value,
                 UpdatesPerSecond = 60
             }
@@ -19,17 +22,21 @@ public class SilkWindow : PlatformWindow
         window.Render += EmitRendering;
         window.Closing += EmitClosing;
     }
-    
-    private IWindow window;
-    
-    public override void Run() 
-        => window.Run();
 
-    public override void Reset() 
-        => window.Reset();
+    public override void Run()
+    {
+        window.Run();
+    }
 
-    protected override void SetTitle(string title) 
-        => window.Title = title;
+    public override void Reset()
+    {
+        window.Reset();
+    }
+
+    protected override void SetTitle(string title)
+    {
+        window.Title = title;
+    }
 
     public override void Dispose()
     {

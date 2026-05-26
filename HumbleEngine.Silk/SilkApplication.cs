@@ -4,6 +4,8 @@ namespace HumbleEngine.Silk;
 
 public class SilkApplication : Application
 {
-    protected override PlatformWindow CreatePlatformWindow() 
-        => new SilkWindow();
+    protected override PlatformWindow CreatePlatformWindow()
+    {
+        return new SilkWindow();
+    }
 }
