@@ -5,14 +5,14 @@ public class Window : Node
     public Window() : this(null) { }
     public Window(PlatformWindow platformWindow)
     {
-        Title = CreateProperty("Humble Platform Window");
+        Title = CreatePublicProperty("Humble Platform Window");
         _platformWindow = platformWindow;
         Title.Bind2WayTo(_platformWindow.Title);
     }
 
     private readonly PlatformWindow _platformWindow;
 
-    public EditableProperty<string> Title { get; }
+    public Property<string> Title { get; }
     
     public override void Dispose()
     {

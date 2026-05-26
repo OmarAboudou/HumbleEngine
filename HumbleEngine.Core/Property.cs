@@ -1,6 +1,6 @@
 namespace HumbleEngine.Core;
 
-public interface IProperty<T> : IDisposable
+public interface IPropertyListener<T> : IDisposable
 {
     public T Value { get; }
     
@@ -8,81 +8,24 @@ public interface IProperty<T> : IDisposable
     public void Disconnect(Action<T> callback);
 
     public void BindFrom<TOther>(
-        IProperty<TOther> other,
+        IPropertyListener<TOther> other,
         Func<TOther, T> transformation);
     public void UnbindFrom<TOther>(
-        IProperty<TOther> other,
+        IPropertyListener<TOther> other,
         Func<TOther, T> transformation);
-    
-    public void BindTo<TOther>(
-        IProperty<TOther> other,
-        Func<T, TOther> transformation)
-        => other.BindFrom(this, transformation);
-    public void UnbindTo<TOther>(
-        IProperty<TOther> other,
-        Func<T, TOther> transformation)
-        => other.UnbindFrom(this, transformation);
-
-    public void BindFrom(IProperty<T> other) 
-        => BindFrom(other, IdentityFunction);
-    public void UnbindFrom(IProperty<T> other)
-        =>  UnbindFrom(other, IdentityFunction);
-
-    public void BindTo(IProperty<T> other)
-        => BindTo(other, IdentityFunction);
-    public void UnbindTo(IProperty<T> other)
-        => UnbindTo(other, IdentityFunction);
-
-    public void Bind2WayFrom(IProperty<T> other)
-        => Bind2WayFrom(other, IdentityFunction, IdentityFunction);
-    public void Unbind2WayFrom(IProperty<T> other)
-        => Unbind2WayFrom(other, IdentityFunction, IdentityFunction);
-
-    public void Bind2WayTo(IProperty<T> other)
-        => other.Bind2WayFrom(this);
-    public void Unbind2WayTo(IProperty<T> other)
-        => other.Unbind2WayFrom(this);
-    
-    public void Bind2WayFrom<TOther>(
-        IProperty<TOther> other,
-        Func<TOther, T> transformationFrom,
-        Func<T, TOther> transformationTo)
-    {
-        this.BindFrom(other, transformationFrom);
-        other.BindFrom(this, transformationTo);
-    }
-    public void Unbind2WayFrom<TOther>(
-        IProperty<TOther> other,
-        Func<TOther, T> transformationFrom,
-        Func<T, TOther> transformationTo)
-    {
-        other.UnbindFrom(this, transformationTo);
-        this.UnbindFrom(other, transformationFrom);
-    }
-
-    public void Bind2WayTo<TOther>(
-        IProperty<TOther> other,
-        Func<TOther, T> transformationFrom,
-        Func<T, TOther> transformationTo) 
-        => other.Bind2WayFrom(this, transformationTo, transformationFrom);
-    public void Unbind2WayTo<TOther>(
-        IProperty<TOther> other,
-        Func<TOther, T> transformationFrom,
-        Func<T, TOther> transformationTo)
-        => other.Unbind2WayFrom(this, transformationTo, transformationFrom);
     
 }
 
-public sealed class EditableProperty<T> : IProperty<T>
+public sealed class Property<T> : IPropertyListener<T>
 {
-    internal EditableProperty(T initialValue)
+    internal Property(T initialValue)
     {
         _value = initialValue;
     }
     
-    public static implicit operator T(EditableProperty<T> editableProperty) => editableProperty.Value;
+    public static implicit operator T(Property<T> property) => property.Value;
     
-    public IProperty<T> Getter => field ??= new Property<T>(this);
+    public IPropertyListener<T> Listener => field ??= new PropertyListener<T>(this);
     private T _value;
     public T Value
     {
@@ -147,15 +90,17 @@ public sealed class EditableProperty<T> : IProperty<T>
         });
     }
     
-    public void BindFrom<TOther>(IProperty<TOther> other, Func<TOther, T> transformation)
+    public void BindFrom<TOther>(
+        IPropertyListener<TOther> other,
+        Func<TOther, T> transformation)
     {
         Action<TOther> lambda = otherValue => Value = transformation(otherValue); 
         other.Connect(lambda);
-        WeakReference<IProperty<TOther>> weakReferenceToOther = new(other);
+        WeakReference<IPropertyListener<TOther>> weakReferenceToOther = new(other);
         RefCheckingMethod refCheckingMethod = 
             (out target) =>
             {
-                bool result = weakReferenceToOther.TryGetTarget(out IProperty<TOther> t);
+                bool result = weakReferenceToOther.TryGetTarget(out IPropertyListener<TOther> t);
                 target = t;
                 return result;
             };
@@ -163,7 +108,9 @@ public sealed class EditableProperty<T> : IProperty<T>
         this._meListeningToOthers.Add( (  weakReferenceToOther, refCheckingMethod, lambda )  );
         this.Value = transformation(other.Value);
     }
-    public void UnbindFrom<TOther>(IProperty<TOther> other, Func<TOther, T> transformation)
+    public void UnbindFrom<TOther>(
+        IPropertyListener<TOther> other,
+        Func<TOther, T> transformation)
     {
         _meListeningToOthers.RemoveAll(tuple =>
         {
@@ -173,6 +120,62 @@ public sealed class EditableProperty<T> : IProperty<T>
         });
     }
 
+    public void BindTo<TOther>(
+        Property<TOther> other,
+        Func<T, TOther> transformation)
+        => other.BindFrom(this, transformation);
+    public void UnbindTo<TOther>(
+        Property<TOther> other,
+        Func<T, TOther> transformation)
+        => other.UnbindFrom(this, transformation);
+
+    public void BindFrom(IPropertyListener<T> other) 
+        => BindFrom(other, IdentityFunction);
+    public void UnbindFrom(IPropertyListener<T> other)
+        =>  UnbindFrom(other, IdentityFunction);
+
+    public void BindTo(Property<T> other)
+        => BindTo(other, IdentityFunction);
+    public void UnbindTo(Property<T> other)
+        => UnbindTo(other, IdentityFunction);
+
+    public void Bind2WayFrom(Property<T> other)
+        => Bind2WayFrom(other, IdentityFunction, IdentityFunction);
+    public void Unbind2WayFrom(Property<T> other)
+        => Unbind2WayFrom(other, IdentityFunction, IdentityFunction);
+
+    public void Bind2WayTo(Property<T> other)
+        => other.Bind2WayFrom(this);
+    public void Unbind2WayTo(Property<T> other)
+        => other.Unbind2WayFrom(this);
+    
+    public void Bind2WayFrom<TOther>(
+        Property<TOther> other,
+        Func<TOther, T> transformationFrom,
+        Func<T, TOther> transformationTo)
+    {
+        this.BindFrom(other, transformationFrom);
+        other.BindFrom(this, transformationTo);
+    }
+    public void Unbind2WayFrom<TOther>(
+        Property<TOther> other,
+        Func<TOther, T> transformationFrom,
+        Func<T, TOther> transformationTo)
+    {
+        other.UnbindFrom(this, transformationTo);
+        this.UnbindFrom(other, transformationFrom);
+    }
+
+    public void Bind2WayTo<TOther>(
+        Property<TOther> other,
+        Func<TOther, T> transformationFrom,
+        Func<T, TOther> transformationTo) 
+        => other.Bind2WayFrom(this, transformationTo, transformationFrom);
+    public void Unbind2WayTo<TOther>(
+        Property<TOther> other,
+        Func<TOther, T> transformationFrom,
+        Func<T, TOther> transformationTo)
+        => other.Unbind2WayFrom(this, transformationTo, transformationFrom);
 
     public void Dispose()
     {
@@ -181,30 +184,30 @@ public sealed class EditableProperty<T> : IProperty<T>
     }
 }
 
-public sealed class Property<T> : IProperty<T>
+public sealed class PropertyListener<T> : IPropertyListener<T>
 {
-    internal Property(EditableProperty<T> editableProperty)
+    internal PropertyListener(Property<T> property)
     {
-        _editableProperty = editableProperty;
+        _property = property;
     }
 
-    public static implicit operator T(Property<T> property) => property.Value;
+    public static implicit operator T(PropertyListener<T> propertyListener) => propertyListener.Value;
     
-    private readonly EditableProperty<T> _editableProperty;
+    private readonly Property<T> _property;
 
-    public T Value => _editableProperty.Value;
+    public T Value => _property.Value;
 
     public void Connect(Action<T> callback) 
-        => _editableProperty.Connect(callback);
+        => _property.Connect(callback);
 
     public void Disconnect(Action<T> callback) 
-        => _editableProperty.Disconnect(callback);
+        => _property.Disconnect(callback);
 
-    public void BindFrom<TDest>(IProperty<TDest> other, Func<TDest, T> transformation) 
-        => _editableProperty.BindFrom(other, transformation);
+    public void BindFrom<TDest>(IPropertyListener<TDest> other, Func<TDest, T> transformation) 
+        => _property.BindFrom(other, transformation);
 
-    public void UnbindFrom<TOther>(IProperty<TOther> other, Func<TOther, T> transformation) 
-        => _editableProperty.UnbindFrom(other, transformation);
+    public void UnbindFrom<TOther>(IPropertyListener<TOther> other, Func<TOther, T> transformation) 
+        => _property.UnbindFrom(other, transformation);
 
     public void Dispose()
     {
@@ -215,7 +218,7 @@ public sealed class Property<T> : IProperty<T>
 public static class PropertyExtensions
 {
     
-    public static void BindTo<TOther, T>(
+    /*public static void BindTo<TOther, T>(
         this IProperty<T> This,
         IProperty<TOther> other,
         Func<T, TOther> transformation)
@@ -285,5 +288,5 @@ public static class PropertyExtensions
         IProperty<TOther> other,
         Func<TOther, T> transformationFrom,
         Func<T, TOther> transformationTo)
-        => other.Unbind2WayFrom(This, transformationTo, transformationFrom);
+        => other.Unbind2WayFrom(This, transformationTo, transformationFrom);*/
 }

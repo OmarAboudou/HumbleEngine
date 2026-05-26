@@ -25,11 +25,18 @@ public abstract class HumbleObject : IDisposable
         return s;
     }
 
-    protected EditableProperty<T> CreateProperty<T>(T initialValue)
+    protected Property<T> CreatePublicProperty<T>(T initialValue)
     {
-        EditableProperty<T> property = new(initialValue);
+        Property<T> property = new(initialValue);
         _disposables.Add(property);
         return property;
+    }
+
+    protected IPropertyListener<T> CreateProtectedProperty<T>(T initialValue, out Action<T> setter)
+    {
+        Property<T> property = CreatePublicProperty(initialValue);
+        setter = (v) => property.Value = v;
+        return property.Listener;
     }
 
     protected EditableListProperty<T> CreateListProperty<T>(IReadOnlyList<T>? initialElements = null)

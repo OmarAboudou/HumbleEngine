@@ -4,7 +4,7 @@ public abstract class PlatformWindow : HumbleObject
 {
     public PlatformWindow()
     {
-        Title = CreateProperty("DEFAULT_WINDOW_TITLE");
+        Title = CreatePublicProperty("DEFAULT_WINDOW_TITLE");
         Title.Connect(SetTitle);
         Loaded = CreateSignal(out EmitLoaded);
         FixUpdated = CreateSignal("delta", out EmitFixUpdated);
@@ -12,7 +12,7 @@ public abstract class PlatformWindow : HumbleObject
         Closing = CreateSignal(out EmitClosing);
     }
 
-    public readonly EditableProperty<string> Title;
+    public readonly Property<string> Title;
     
     public readonly Signal Loaded;
     protected Action EmitLoaded;
