@@ -1,6 +1,6 @@
 namespace HumbleEngine.Core;
 
-public class HumbleObject : IDisposable
+public abstract class HumbleObject : IDisposable
 {
     private readonly List<IDisposable> _disposables = [];
 
