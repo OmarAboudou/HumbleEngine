@@ -1,7 +1,7 @@
 namespace HumbleEngine.Core;
 
 [AttributeUsage(AttributeTargets.Property)]
-public sealed class WidgetPropertyAttribute(DirtyFlag flag = DirtyFlag.NONE) : Attribute
+public sealed class WidgetPropertyAttribute(WidgetRefreshFlag flag = WidgetRefreshFlag.NONE) : Attribute
 {
-    public DirtyFlag Flag { get; } = flag;
+    public WidgetRefreshFlag Flag { get; } = flag;
 }

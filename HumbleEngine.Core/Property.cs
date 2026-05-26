@@ -23,10 +23,8 @@ public sealed class Property<T> : IPropertyListener<T>
         _value = initialValue;
     }
 
-    public static implicit operator T(Property<T> property)
-    {
-        return property.Value;
-    }
+    public static implicit operator T(Property<T> property) 
+        => property.Value;
 
     public IPropertyListener<T> Listener => field ??= new PropertyListener<T>(this);
     private T _value;

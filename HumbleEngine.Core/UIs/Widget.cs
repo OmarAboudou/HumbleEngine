@@ -2,42 +2,42 @@ namespace HumbleEngine.Core;
 
 public abstract partial record Widget : HumbleRecord
 {
-    protected Property<T> CreatePublicProperty<T>(T initialValue, DirtyFlag flag = DirtyFlag.NONE)
+    protected Property<T> CreatePublicProperty<T>(T initialValue, WidgetRefreshFlag flag = WidgetRefreshFlag.NONE)
     {
         Property<T> property = base.CreatePublicProperty(initialValue);
         return ConnectFlag(flag, property);
     }
 
-    protected Property<T> ConnectFlag<T>(DirtyFlag flag, Property<T> property)
+    protected Property<T> ConnectFlag<T>(WidgetRefreshFlag flag, Property<T> property)
     {
-        if (flag.HasFlag(DirtyFlag.PAINT))
+        if (flag.HasFlag(WidgetRefreshFlag.PAINT))
         {
-            property.Connect( _ => Flag.Value &= DirtyFlag.PAINT );
+            property.Connect( _ => Flag.Value &= WidgetRefreshFlag.PAINT );
         }
-        if (flag.HasFlag(DirtyFlag.LAYOUT))
+        if (flag.HasFlag(WidgetRefreshFlag.LAYOUT))
         {
-            property.Connect( _ => Flag.Value &= DirtyFlag.LAYOUT );
+            property.Connect( _ => Flag.Value &= WidgetRefreshFlag.LAYOUT );
         }
         return property;
     }
     
-    protected ListProperty<T> CreatePublicListProperty<T>(IReadOnlyList<T>? initialElements = null, DirtyFlag flag = DirtyFlag.NONE)
+    protected ListProperty<T> CreatePublicListProperty<T>(IReadOnlyList<T>? initialElements = null, WidgetRefreshFlag flag = WidgetRefreshFlag.NONE)
     {
         ListProperty<T> property = base.CreatePublicListProperty(initialElements);
         return ConnectFlag(flag, property);
     }
 
-    protected ListProperty<T> ConnectFlag<T>(DirtyFlag flag, ListProperty<T> property)
+    protected ListProperty<T> ConnectFlag<T>(WidgetRefreshFlag flag, ListProperty<T> property)
     {
-        if (flag.HasFlag(DirtyFlag.PAINT))
+        if (flag.HasFlag(WidgetRefreshFlag.PAINT))
         {
-            property.ConnectAddedElement( (_,_) => Flag.Value &= DirtyFlag.PAINT );
-            property.ConnectRemovedElement( (_,_) => Flag.Value &= DirtyFlag.PAINT );
+            property.ConnectAddedElement( (_,_) => Flag.Value &= WidgetRefreshFlag.PAINT );
+            property.ConnectRemovedElement( (_,_) => Flag.Value &= WidgetRefreshFlag.PAINT );
         }
-        if (flag.HasFlag(DirtyFlag.LAYOUT))
+        if (flag.HasFlag(WidgetRefreshFlag.LAYOUT))
         {
-            property.ConnectAddedElement( (_,_) => Flag.Value &= DirtyFlag.LAYOUT );
-            property.ConnectRemovedElement( (_,_) => Flag.Value &= DirtyFlag.LAYOUT );
+            property.ConnectAddedElement( (_,_) => Flag.Value &= WidgetRefreshFlag.LAYOUT );
+            property.ConnectRemovedElement( (_,_) => Flag.Value &= WidgetRefreshFlag.LAYOUT );
         }
         return property;
     }
@@ -46,32 +46,61 @@ public abstract partial record Widget : HumbleRecord
     public object? Key { get ; init; }
     
     [WidgetProperty]
-    internal partial Property<DirtyFlag> Flag { get; init; }
+    internal partial Property<WidgetRefreshFlag> Flag { get; init; }
+
+    [WidgetProperty]
+    internal partial Property<Size> Size { get; init; }
     
-    [WidgetProperty(DirtyFlag.LAYOUT)]
+    [WidgetProperty]
+    internal partial Property<Size> MinContentSize { get; init; }
+     
+    [WidgetProperty]
+    internal partial Property<(float offsetX, float offsetY)> Offset { get; init; }
+    
+    [WidgetProperty(WidgetRefreshFlag.LAYOUT)]
     public partial Property<Length> Width { get; init; }
     
-    [WidgetProperty(DirtyFlag.LAYOUT)]
+    [WidgetProperty(WidgetRefreshFlag.LAYOUT)]
     public partial Property<Length> Height { get; init; }
-
+    
     public void Layout(BoxConstraints boxConstraints)
     {
+        var (width, height, minContentWidth, minContentHeight) = PerformLayoutAndClamp(boxConstraints);
         
+        Size.Value = new(width, height);
+        MinContentSize.Value = new(minContentWidth, minContentHeight);
     }
 
-    public abstract void PerformLayout();
+    public LayoutResult PerformLayoutAndClamp(BoxConstraints boxConstraints)
+    {
+        (float width, float height, float minContentWidth, float minContentHeight) = PerformLayout(boxConstraints);
+        
+        if (width > boxConstraints.MinWidth || height > boxConstraints.MinHeight)
+        {
+            Console.WriteLine($"Size {(width, height)} returned by {this} is beyond constraints {boxConstraints} and will be clamped");
+        }
+        width = Math.Clamp(width, boxConstraints.MinWidth, boxConstraints.MaxWidth);
+        height = Math.Clamp(height, boxConstraints.MinHeight, boxConstraints.MaxHeight);
+
+        if (minContentWidth > width || minContentHeight > height)
+        {
+            Console.WriteLine($"Min content size {(minContentWidth, minContentHeight)} returned by {this} exceeded size {(width, height)} and will be clamped");
+        }
+        minContentWidth = Math.Clamp(minContentWidth, 0, width);
+        minContentHeight = Math.Clamp(minContentHeight, 0, height);
+
+        return new(width, height, minContentWidth, minContentHeight);
+    }
+    
+    /// <summary>
+    /// Takes some constraints to respect and returns the desired size
+    /// and the minimum content size which is the smallest size that can fit its content
+    /// </summary>
+    /// <param name="boxConstraints">The constraints enforced onto me.</param>
+    /// <returns>This <see cref="Widget"/>'s desired size and minimum content size</returns>
+    protected abstract LayoutResult PerformLayout(BoxConstraints boxConstraints);
 }
 
-public readonly record struct BoxConstraints(
-    float MinWidth,
-    float? MaxWidth,
-    float MinHeight,
-    float? MaxHeight);
 
-[Flags]
-public enum DirtyFlag
-{
-    NONE = 0,
-    LAYOUT = 1 << 0,
-    PAINT = 1 << 1,
-}
+
+    

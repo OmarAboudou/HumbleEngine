@@ -15,7 +15,7 @@ public abstract partial record MultipleChildrenWidget<TChildren> : Widget, IEnum
             Add(child);
     }
     
-    [WidgetProperty(DirtyFlag.LAYOUT | DirtyFlag.PAINT)]
+    [WidgetProperty(WidgetRefreshFlag.LAYOUT | WidgetRefreshFlag.PAINT)]
     public partial ListProperty<TChildren> Children { get; init; }
     
     public IEnumerator<TChildren> GetEnumerator()
