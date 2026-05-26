@@ -1,6 +1,7 @@
 namespace HumbleEngine.Core;
 
-public class UI : Node
+public abstract class UI : Node
 {
+    public abstract Widget Build();
     
 }
