@@ -39,6 +39,11 @@ public class Node : HumbleObject, IEnumerable<Node>
             throw new Exception($"{nameof(Node)}( {node} ) must have no parent when being added as a child of {nameof(Node)}( {this} )");
         }
     }
+    public void Add(IEnumerable<Node> nodes)
+    {
+        foreach (Node node in nodes) 
+            Add(node);
+    }
 
     public void Remove(Node node)
     {
