@@ -4,8 +4,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.Core", "Humble
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.Silk", "HumbleEngine.Silk\HumbleEngine.Silk.csproj", "{6EE2796A-DC2A-4134-82F5-49B1837AE665}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.SourceGenerators", "HumbleEngine.SourceGenerators\HumbleEngine.SourceGenerators.csproj", "{D99538F0-EC1C-4F9B-9C42-A909208E944F}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -40,18 +38,6 @@ Global
 		{6EE2796A-DC2A-4134-82F5-49B1837AE665}.Release|x64.Build.0 = Release|Any CPU
 		{6EE2796A-DC2A-4134-82F5-49B1837AE665}.Release|x86.ActiveCfg = Release|Any CPU
 		{6EE2796A-DC2A-4134-82F5-49B1837AE665}.Release|x86.Build.0 = Release|Any CPU
-		{D99538F0-EC1C-4F9B-9C42-A909208E944F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{D99538F0-EC1C-4F9B-9C42-A909208E944F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{D99538F0-EC1C-4F9B-9C42-A909208E944F}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{D99538F0-EC1C-4F9B-9C42-A909208E944F}.Debug|x64.Build.0 = Debug|Any CPU
-		{D99538F0-EC1C-4F9B-9C42-A909208E944F}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{D99538F0-EC1C-4F9B-9C42-A909208E944F}.Debug|x86.Build.0 = Debug|Any CPU
-		{D99538F0-EC1C-4F9B-9C42-A909208E944F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{D99538F0-EC1C-4F9B-9C42-A909208E944F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{D99538F0-EC1C-4F9B-9C42-A909208E944F}.Release|x64.ActiveCfg = Release|Any CPU
-		{D99538F0-EC1C-4F9B-9C42-A909208E944F}.Release|x64.Build.0 = Release|Any CPU
-		{D99538F0-EC1C-4F9B-9C42-A909208E944F}.Release|x86.ActiveCfg = Release|Any CPU
-		{D99538F0-EC1C-4F9B-9C42-A909208E944F}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

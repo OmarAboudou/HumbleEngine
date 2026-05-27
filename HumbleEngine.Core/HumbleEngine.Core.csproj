@@ -7,11 +7,4 @@
         <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     </PropertyGroup>
 
-
-    <ItemGroup>
-        <ProjectReference Include="..\HumbleEngine.SourceGenerators\HumbleEngine.SourceGenerators.csproj"
-                          OutputItemType="Analyzer"
-                          ReferenceOutputAssembly="false" />
-    </ItemGroup>
-
 </Project>
