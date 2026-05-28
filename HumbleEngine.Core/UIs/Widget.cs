@@ -55,4 +55,6 @@ public abstract partial record Widget : HumbleRecord
     
     [WidgetProperty]
     public partial Property<Offset> Offset { get; internal init; }
+    
+    public abstract Size PerformLayout(BoxConstraints constraints);
 }
