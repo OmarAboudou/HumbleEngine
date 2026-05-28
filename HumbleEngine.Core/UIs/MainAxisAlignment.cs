@@ -1,6 +1,6 @@
 namespace HumbleEngine.Core;
 
-public enum MainAxisAlignement
+public enum MainAxisAlignment
 {
     START,
     END,
