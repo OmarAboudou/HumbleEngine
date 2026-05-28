@@ -1,4 +1,4 @@
-namespace HumbleEngine.Core.UIs;
+namespace HumbleEngine.Core;
 
 [Flags]
 public enum WidgetRefreshFlag
