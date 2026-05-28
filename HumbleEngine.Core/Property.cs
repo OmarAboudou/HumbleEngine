@@ -121,7 +121,7 @@ public sealed class Property<T> : IPropertyListener<T>
         _meListeningToOthers.RemoveAll(tuple =>
         {
             (_, RefCheckingMethod refCheckingMethod, Delegate lambda) = tuple;
-            refCheckingMethod(out var target);
+            refCheckingMethod(out object? target);
             return target == lambda || target == null;
         });
     }

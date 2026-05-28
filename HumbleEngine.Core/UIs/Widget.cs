@@ -47,19 +47,7 @@ public abstract partial record Widget : HumbleRecord
     
     public object? Key { get; init; }
 
-    internal Property<WidgetRefreshFlag> RefreshFlag
-    {
-        get => field ??= CreateWidgetProperty(WidgetRefreshFlag.NONE);
-        init
-        {
-            if(EqualityComparer<Property<WidgetRefreshFlag>>.Default.Equals(RefreshFlag, value))
-                return;
-            
-            field = value;
-            ConnectWidgetProperty(field);
-            
-        }
-    }
-    
+    [WidgetProperty] 
+    internal partial Property<WidgetRefreshFlag> RefreshFlag { get; init; }
     
 }
