@@ -111,11 +111,12 @@ public class WidgetPropertyAttributeGenerator : IIncrementalGenerator
         string namespaceName = symbol.ContainingType.ContainingNamespace.ToDisplayString();
         string recordMods    = recordSyntax.Modifiers.ToString();     // "public partial"
         string recordName    = recordSyntax.Identifier.Text;
+        string? recordAttributes = recordSyntax.TypeParameterList?.ToString();
 
         return $$"""
                  namespace {{namespaceName}};
 
-                 {{recordMods}} record {{recordName}}
+                 {{recordMods}} record {{recordName}}{{recordAttributes}}
                  {
                      {{propModifiers}} {{propType}} {{propName}}
                      {
