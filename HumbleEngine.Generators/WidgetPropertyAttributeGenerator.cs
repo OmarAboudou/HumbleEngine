@@ -71,6 +71,20 @@ public class WidgetPropertyAttributeGenerator : IIncrementalGenerator
                 ));
                 return;
             }
+
+            // Validation : doit avoir un getter et un setter init
+            IMethodSymbol? getMethod = source.symbol.GetMethod;
+            IMethodSymbol? setMethod = source.symbol.SetMethod;
+            if (getMethod is null || setMethod is null || !setMethod.IsInitOnly)
+            {
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    WidgetPropertyMustHaveBothAGetterAndAnInitSetter,
+                    source.syntax.GetLocation(),
+                    source.symbol.ToDisplayString())
+                );
+                return;
+            }
+            
             // Récupérer l'expression du flag directement depuis le Syntax Tree
             // pour conserver "WidgetRefreshFlag.LAYOUT | WidgetRefreshFlag.PAINT" tel quel
             AttributeSyntax? attributeSyntax = source.syntax.AttributeLists
@@ -107,7 +121,17 @@ public class WidgetPropertyAttributeGenerator : IIncrementalGenerator
         string propModifiers = syntax.Modifiers.ToString();           // "internal"
         string propType      = symbol.Type.ToDisplayString();         // "Property<int>"
         string propName      = symbol.Name;                           // "ExampleProperty"
+        
+        SyntaxList<AccessorDeclarationSyntax>? accessors = syntax.AccessorList?.Accessors;
 
+        string getModifiers  = accessors?
+            .FirstOrDefault(a => a.IsKind(SyntaxKind.GetAccessorDeclaration))
+            ?.Modifiers.ToString() ?? "";
+
+        string initModifiers = accessors?
+            .FirstOrDefault(a => a.IsKind(SyntaxKind.InitAccessorDeclaration))
+            ?.Modifiers.ToString() ?? "";
+            
         string namespaceName = symbol.ContainingType.ContainingNamespace.ToDisplayString();
         string recordMods    = recordSyntax.Modifiers.ToString();     // "public partial"
         string recordName    = recordSyntax.Identifier.Text;
@@ -120,8 +144,8 @@ public class WidgetPropertyAttributeGenerator : IIncrementalGenerator
                  {
                      {{propModifiers}} {{propType}} {{propName}}
                      {
-                         get => field ??= {{createMethod}}<{{typeArg}}>(default, {{flagExpression}});
-                         init
+                         {{(getModifiers.Length > 0 ? getModifiers + " " : "")}}get => field ??= {{createMethod}}<{{typeArg}}>(default, {{flagExpression}});
+                         {{(initModifiers.Length > 0 ? initModifiers + " " : "")}}init
                          {
                              if (field == value)
                                  return;

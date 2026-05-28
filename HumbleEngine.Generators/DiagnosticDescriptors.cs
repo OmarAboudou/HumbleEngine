@@ -34,5 +34,14 @@ public static class DiagnosticDescriptors
             isEnabledByDefault: true
         );
 
-    
+    public static readonly DiagnosticDescriptor WidgetPropertyMustHaveBothAGetterAndAnInitSetter =
+        new(
+            id: "HE004",
+            title: "Widget property must have both a getter and an init setter",
+            messageFormat: "The property '{0}' must have both a getter and an init setter",
+            category: "HumbleEngine",
+            defaultSeverity: DiagnosticSeverity.Error,
+            isEnabledByDefault: true
+        );
+
 }

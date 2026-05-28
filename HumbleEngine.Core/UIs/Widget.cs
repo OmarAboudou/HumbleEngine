@@ -48,6 +48,11 @@ public abstract partial record Widget : HumbleRecord
     public object? Key { get; init; }
 
     [WidgetProperty] 
-    internal partial Property<WidgetRefreshFlag> RefreshFlag { get; init; }
+    public partial Property<WidgetRefreshFlag> RefreshFlag { get; internal init; }
     
+    [WidgetProperty]
+    public partial Property<Size> Size { get; internal init; }
+    
+    [WidgetProperty]
+    public partial Property<Offset> Offset { get; internal init; }
 }
