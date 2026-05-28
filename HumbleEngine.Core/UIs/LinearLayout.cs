@@ -61,7 +61,7 @@ public abstract partial record LinearLayout : MultipleChildrenWidget<Widget>
             for (int j = 0; j < i; j++)
                 mainAxisSize += childNaturalSizes[j].mainAxisSize;
             
-            child.Offset.Value 
+            child.LocalPosition.Value 
                 = ComputeOffsetFromMainCrossAxisCoordinates(
                     mainAxisSize + spacingsSize,
                     childNaturalSizes[i].crossAxisSize);
@@ -75,7 +75,7 @@ public abstract partial record LinearLayout : MultipleChildrenWidget<Widget>
         float mainAxisSize,
         float crossAxisSize);
 
-    protected abstract Offset ComputeOffsetFromMainCrossAxisCoordinates(
+    protected abstract Position ComputeOffsetFromMainCrossAxisCoordinates(
         float mainAxisCoord,
         float crossAxisCoord);
 

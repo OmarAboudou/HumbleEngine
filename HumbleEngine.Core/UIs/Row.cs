@@ -11,6 +11,6 @@ public partial record Row : LinearLayout
     protected override Size ComputeDesiredSizeFromAxisSizes(float mainAxisSize, float crossAxisSize)
         => new(mainAxisSize, crossAxisSize);
 
-    protected override Offset ComputeOffsetFromMainCrossAxisCoordinates(float mainAxisCoord, float crossAxisCoord)
+    protected override Position ComputeOffsetFromMainCrossAxisCoordinates(float mainAxisCoord, float crossAxisCoord)
         => new(mainAxisCoord, crossAxisCoord);
 }

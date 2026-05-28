@@ -57,8 +57,11 @@ public abstract partial record Widget : HumbleRecord
     internal partial Property<Size> Size { get; init; }
     
     [WidgetProperty]
-    public partial Property<Offset> Offset { get; internal init; }
-
+    public partial Property<Position> LocalPosition { get; internal init; }
+    
+    [WidgetProperty]
+    public partial Property<Position> ViewportPosition { get; internal init; }
+    
     public void ComputeDesiredSizeApplySizeCorrectionAndSetSize(BoxConstraints constraints)
     {
         ComputeAndSetDesiredSize(constraints);
@@ -80,7 +83,7 @@ public abstract partial record Widget : HumbleRecord
     /// Uses constraints to compute and set this <see cref="Widget"/>'s <see cref="DesiredSize"/>.
     /// If this <see cref="Widget"/> has children,
     /// their <see cref="Size"/>'s need to be set by using <see cref="ComputeDesiredSizeApplySizeCorrectionAndSetSize"/>,
-    /// and their <see cref="Offset"/> needs to be set as well.
+    /// and their <see cref="LocalPosition"/> needs to be set as well.
     /// </summary>
     /// <param name="constraints">Constraints to consider when calculating its <see cref="DesiredSize"/>.</param>
     public abstract void ComputeAndSetDesiredSize(BoxConstraints constraints);
