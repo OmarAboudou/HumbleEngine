@@ -6,7 +6,7 @@ new SilkApplication()
         new ApplicationConfig(
             new Node
             {
-                // new LoggingNode()
+                
             },
             [new FixedUpdatePass()],
             [new UpdatePass()]

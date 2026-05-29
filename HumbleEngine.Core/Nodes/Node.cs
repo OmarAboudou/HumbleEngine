@@ -10,15 +10,11 @@ public class Node : HumbleObject, IEnumerable<Node>
         Children = CreateProtectedListProperty([], out _children);
     }
 
-    public IEnumerator<Node> GetEnumerator()
-    {
-        return Children.GetEnumerator();
-    }
+    public IEnumerator<Node> GetEnumerator() 
+        => Children.GetEnumerator();
 
-    IEnumerator IEnumerable.GetEnumerator()
-    {
-        return GetEnumerator();
-    }
+    IEnumerator IEnumerable.GetEnumerator() 
+        => GetEnumerator();
 
     public override void Dispose()
     {
@@ -53,7 +49,7 @@ public class Node : HumbleObject, IEnumerable<Node>
                 $"{nameof(Node)}( {node} ) must have no parent when being added as a child of {nameof(Node)}( {this} )");
     }
 
-    public void Add(IEnumerable<Node> nodes)
+    public void Add(IReadOnlyList<Node> nodes)
     {
         foreach (Node node in nodes)
             Add(node);
@@ -84,10 +80,8 @@ public class Node : HumbleObject, IEnumerable<Node>
         }
     }
 
-    public IEnumerable<Node> GetSubtreeInReverseDepthFirstOrder()
-    {
-        return GetSubtreeInDepthFirstOrder().Reverse();
-    }
+    public IEnumerable<Node> GetSubtreeInReverseDepthFirstOrder() 
+        => GetSubtreeInDepthFirstOrder().Reverse();
 
     public IEnumerable<Node> GetAncestorsClosestToFarthest()
     {
