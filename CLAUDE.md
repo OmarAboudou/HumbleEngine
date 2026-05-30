@@ -18,9 +18,10 @@ dotnet run --project HumbleEngine.Silk
 
 ## Structure des projets
 
-- **HumbleEngine** — bibliothèque core (net10.0). Contient le moteur, le Node Tree, les Widgets, les Property/Signal.
+- **HumbleEngine** — bibliothèque core (net10.0). Contient le moteur, le Node Tree, les Widgets, les Property/Signal, les abstractions de rendu.
 - **HumbleEngine.Generators** — source generator Roslyn. Référencé comme `Analyzer` (pas de dépendance binaire). Génère le code des `[PrimitiveWidgetProperty]` et `[CompositeWidgetProperty]`.
 - **HumbleEngine.Silk** — implémentation de la fenêtre et point d'entrée. Dépend de Silk.NET.
+- **HumbleEngine.Skia** — renderer SkiaSharp. Implémente `IRenderer`. Dépend de SkiaSharp 3.x. Ne dépend pas de Silk.
 
 ## Architecture globale
 
@@ -31,7 +32,7 @@ Application (Silk)
   └── Window (Node racine)
         └── Scene (Node Tree)
               └── UI (Node → Build() → Widget Tree)
-                    └── Widget Tree (Reconciler → Layout → Paint)
+                    └── Widget Tree (Mount → Layout → Paint)
 ```
 
 ### Node Tree
@@ -39,8 +40,6 @@ Application (Silk)
 `HumbleObject` est la base de tout. `Node` hérite de `HumbleObject` et forme un arbre. Un `Node` a un `Parent` (Property) et des `Children` (ListProperty).
 
 `UI` est un `Node` spécial qui expose un `Build()` retournant un `Widget`. C'est le pont entre le Node Tree et le Widget Tree.
-
-`Application.Run()` boucle sur des `IFixedUpdatePass` et `IUpdatePass` enregistrés dans `ApplicationConfig`. Ces passes parcourent le Node Tree et déclenchent layout, reconciliation et paint.
 
 ### Widget Tree
 
@@ -59,6 +58,16 @@ Widget (HumbleRecord abstrait)
 
 La distinction fondamentale : un `PrimitiveWidget` est géré nativement par le moteur (layout/paint). Un `CompositeWidget` se décompose en primitives via `Build()`. Un composite finit **toujours** par se décomposer entièrement en primitives.
 
+### Contrat Widget (méthodes publiques)
+
+Toutes les méthodes suivantes sont définies sur `Widget` (base) et implémentées à chaque niveau :
+
+- **`Layout(BoxConstraints)`** — abstrait sur `Widget`. `PrimitiveWidget` le laisse abstrait (chaque primitive l'implémente). `CompositeWidget` délègue à `MountedChildren[0].Layout()`.
+- **`GetSize() → Size`** — public. `PrimitiveWidget` retourne `Size.Value`. `CompositeWidget` délègue à `MountedChildren[0].GetSize()` ou `Size(0,0)` si vide.
+- **`SetLocalPosition(Position)`** — public. `PrimitiveWidget` écrit `LocalPosition.Value`. `CompositeWidget` délègue à `MountedChildren[0].SetLocalPosition()`.
+
+**Règle** : dans `Layout()`, utiliser `MountedChildren` (arbre réconcilié) et non `Child.Value` (configuration brute). `MountedChildren` est peuplé par le reconcilier avant que layout tourne.
+
 ### Système de flags
 
 `WidgetRefreshFlag` n'existe que sur les `PrimitiveWidget` via `RefreshFlags` :
@@ -67,11 +76,58 @@ La distinction fondamentale : un `PrimitiveWidget` est géré nativement par le 
 
 Un `CompositeWidget` utilise `IsDirty` (booléen) à la place, qui déclenche un rappel de `Build()`.
 
-### Layout
+### Paint
 
-`PrimitiveWidget.Layout(BoxConstraints)` est la méthode abstraite à implémenter sur chaque primitive. Elle reçoit les contraintes du parent, calcule la taille et l'écrit dans `Size.Value`. Le parent lit `child.Size.Value` après l'appel et assigne `child.LocalPosition.Value`.
+Le paint est piloté par une **PaintPass externe** — les widgets ne s'appellent pas entre eux. La pass traverse l'arbre récursivement :
 
-Il n'y a pas de `DesiredSize` séparé — `Size` est la seule source de vérité pour la taille d'un widget.
+```
+Pour chaque PrimitiveWidget :
+  1. primitive.PaintBefore(buffer, worldOffset)
+  2. Traverser MountedChildren récursivement
+  3. primitive.PaintAfter(buffer, worldOffset)
+Pour chaque CompositeWidget :
+  Traverser MountedChildren (transparent, aucune commande propre)
+```
+
+`PrimitiveWidget` expose deux hooks virtuels (vides par défaut) :
+- **`PaintBefore(PaintCommandBuffer, Position)`** — avant les enfants (ex: fond, clip)
+- **`PaintAfter(PaintCommandBuffer, Position)`** — après les enfants (ex: décoration foreground, restore clip)
+
+Le `worldOffset` est la position absolue accumulée depuis la racine :
+`worldOffset = parentWorldOffset + primitive.LocalPosition.Value`
+
+### Système de rendu (PaintCommandBuffer)
+
+Les widgets émettent des `PaintCommand` (records immuables) dans un `PaintCommandBuffer`. Le renderer (`IRenderer`) lit ce buffer et l'exécute.
+
+Commandes disponibles :
+- `FillRect`, `FillRRect`, `FillOval` — formes pleines
+- `StrokeRRect` — contour
+- `DrawShadow` — ombre portée (avec BlurRadius, SpreadRadius, OffsetX, OffsetY)
+- `PushClipRect`, `PushClipRRect`, `PushClipOval` — clip avec save implicite (refermer avec `Pop`)
+- `PushOpacity(byte)` — calque alpha (refermer avec `Pop`)
+- `PushTransform(Matrix3x2)` — transformation (refermer avec `Pop`)
+- `Pop` — restaure le dernier état sauvegardé
+
+### IRenderer / SkiaRenderer
+
+```csharp
+public interface IRenderer : IDisposable
+{
+    bool Supports(GPUBackend backend);
+    void Initialize(GPUBackend backend);  // appelé après création du contexte GPU
+    void Render(PaintCommandBuffer buffer);
+    void Resize(Size size);
+}
+```
+
+`SkiaRenderer` (dans `HumbleEngine.Skia`) implémente `IRenderer` avec SkiaSharp 3.x. Il supporte OpenGL, Vulkan, Metal, Software. Pour OpenGL, il charge `libGL` via `NativeLibrary` et crée un `GRGlInterface`.
+
+`Application` expose `protected virtual IRenderer? CreateRenderer() => null`. La sous-classe (ou le code généré à l'export) override pour retourner `new SkiaRenderer()`.
+
+### ApplicationConfig
+
+Sérialisable uniquement. Contient : `Title`, `Width`, `Height`, `PreferredBackend` (enum `GPUBackend`), `Scene` (Node?). Pas de lambdas, pas de passes, pas d'objets code.
 
 ### Source Generator
 
@@ -111,9 +167,33 @@ Algorithme en deux phases : Phase 1 détermine le sort de chaque widget (réutil
 - `Key` : scoped à l'ancêtre avec `Key` le plus proche (sinon global à l'arbre)
 - `GlobalKey` : identité absolue dans tout l'arbre
 
+## Widgets implémentés
+
+| Widget | Type | Statut |
+|---|---|---|
+| SizedBox | PrimitiveSingleChildWidget | ✅ |
+| Padding | PrimitiveSingleChildWidget | ✅ |
+| Align / Center | PrimitiveSingleChildWidget | ✅ |
+| ConstrainedBox | PrimitiveSingleChildWidget | ✅ |
+| DecoratedBox | PrimitiveSingleChildWidget | ✅ |
+| ClipRect / ClipRRect / ClipOval | PrimitiveSingleChildWidget | ✅ |
+| Opacity | PrimitiveSingleChildWidget | à faire |
+| Transform | PrimitiveSingleChildWidget | à faire |
+| FittedBox | PrimitiveSingleChildWidget | à faire |
+| AspectRatio | PrimitiveSingleChildWidget | à faire |
+| OverflowBox | PrimitiveSingleChildWidget | à faire |
+| Column / Row | PrimitiveMultiChildWidget | à faire |
+| Stack | PrimitiveMultiChildWidget | à faire |
+| Container | CompositeWidget | à faire |
+| Visibility | CompositeWidget | à faire |
+| GestureDetector | PrimitiveSingleChildWidget | à faire |
+| Expanded / Flexible | Pas un widget autonome | à faire |
+| Positioned | Pas un widget autonome | à faire |
+
 ## Conventions importantes
 
 - Les interfaces `ISingleChildWidget` / `IMultiChildWidget` sont `internal`. Les développeurs héritent des classes abstraites, pas de ces interfaces.
 - `HumbleObject` (pour les classes) et `HumbleRecord` (pour les records) sont les bases symétriques — ils exposent les mêmes méthodes `CreatePublicProperty`, `CreateSignal`, etc.
 - Le namespace UI est `HumbleEngine` (pas `HumbleEngine.UI` pour l'instant).
-- L'architecture détaillée des Widgets est dans `docs/UI_Architecture.md`.
+- Dans `Layout()`, toujours utiliser `MountedChildren` et non `Child.Value` directement.
+- Les commandes `Push*` (clip, opacity, transform) doivent toujours être refermées par `Pop`.
