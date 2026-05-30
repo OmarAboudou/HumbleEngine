@@ -2,11 +2,36 @@ namespace HumbleEngine;
 
 public abstract record CompositeWidget : Widget
 {
-    public bool IsDirty { get; internal set; }
-    
+    internal bool IsDirty { get; set; } = true;
+
     internal Widget? BuiltSubTree { get; set; }
-    
+
     internal override IReadOnlyList<Widget> GetChildren() => BuiltSubTree is not null ? [BuiltSubTree] : [];
-    
+
     public abstract Widget Build();
+
+    protected Property<T> CreateCompositeProperty<T>(T initialValue)
+    {
+        Property<T> property = CreatePublicProperty(initialValue);
+        property.Connect(_ => IsDirty = true);
+        return property;
+    }
+
+    protected void ConnectCompositeProperty<T>(Property<T> property)
+    {
+        property.Connect(_ => IsDirty = true);
+    }
+
+    protected ListProperty<T> CreateCompositeListProperty<T>()
+    {
+        ListProperty<T> listProperty = CreatePublicListProperty<T>();
+        ConnectCompositeListProperty(listProperty);
+        return listProperty;
+    }
+
+    protected void ConnectCompositeListProperty<T>(ListProperty<T> listProperty)
+    {
+        listProperty.ConnectAddedElement((_, _) => IsDirty = true);
+        listProperty.ConnectRemovedElement((_, _) => IsDirty = true);
+    }
 }

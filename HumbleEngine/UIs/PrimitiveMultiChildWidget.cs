@@ -4,7 +4,7 @@ public abstract partial record PrimitiveMultiChildWidget<TChildren> : PrimitiveW
     where TChildren : Widget
 {
     internal override IReadOnlyList<Widget> GetChildren() => Children.Listener;
-    
-    [WidgetProperty(WidgetRefreshFlag.LAYOUT | WidgetRefreshFlag.PAINT)]
+
+    [PrimitiveWidgetProperty(WidgetRefreshFlag.LAYOUT | WidgetRefreshFlag.PAINT)]
     public partial ListProperty<TChildren> Children { get; init; }
 }

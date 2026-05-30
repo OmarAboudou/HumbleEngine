@@ -5,6 +5,6 @@ public abstract partial record PrimitiveSingleChildWidget<TChild> : PrimitiveWid
 {
     internal override IReadOnlyList<Widget> GetChildren() => Child.Value is not null ? [Child.Value] : [];
 
-    [WidgetProperty(WidgetRefreshFlag.LAYOUT | WidgetRefreshFlag.PAINT)]
+    [PrimitiveWidgetProperty(WidgetRefreshFlag.LAYOUT | WidgetRefreshFlag.PAINT)]
     public partial Property<TChild?> Child { get; init; }
 }
