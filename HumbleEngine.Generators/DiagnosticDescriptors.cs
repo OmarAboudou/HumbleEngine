@@ -8,7 +8,7 @@ public static class DiagnosticDescriptors
         new(
             id: "HE001",
             title: "Widget property must be declared in a partial Widget",
-            messageFormat: "The property '{0}' must be declared inside a 'HumbleEngine.Core.Widget' derived partial record",
+            messageFormat: "The property '{0}' must be declared inside a 'HumbleEngine.Widget' derived partial record",
             category: "HumbleEngine",
             defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true

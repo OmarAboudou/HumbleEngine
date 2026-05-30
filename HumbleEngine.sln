@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.Core", "HumbleEngine.Core\HumbleEngine.Core.csproj", "{D17723A8-D182-4D4E-B1A1-F66F5B3016A1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine", "HumbleEngine\HumbleEngine.csproj", "{D17723A8-D182-4D4E-B1A1-F66F5B3016A1}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.Silk", "HumbleEngine.Silk\HumbleEngine.Silk.csproj", "{6EE2796A-DC2A-4134-82F5-49B1837AE665}"
 EndProject

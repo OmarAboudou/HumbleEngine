@@ -1,4 +1,4 @@
-using HumbleEngine.Core;
+using HumbleEngine;
 
 namespace HumbleEngine.Silk;
 

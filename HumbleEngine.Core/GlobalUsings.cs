@@ -1,1 +1,0 @@
-global using static HumbleEngine.Core.Utils;

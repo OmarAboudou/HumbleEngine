@@ -1,4 +1,4 @@
-using HumbleEngine.Core;
+using HumbleEngine;
 using Silk.NET.Windowing;
 using SlkWindow = Silk.NET.Windowing.Window;
 

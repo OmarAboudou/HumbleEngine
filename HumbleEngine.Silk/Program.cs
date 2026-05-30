@@ -1,4 +1,4 @@
-﻿using HumbleEngine.Core;
+﻿using HumbleEngine;
 using HumbleEngine.Silk;
 
 new SilkApplication()

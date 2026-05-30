@@ -15,7 +15,7 @@ public class WidgetPropertyAttributeGenerator : IIncrementalGenerator
         {
             ctx.AddSource("WidgetPropertyAttribute.g.cs",
                 """
-                    namespace HumbleEngine.Core;
+                    namespace HumbleEngine;
                     
                     [AttributeUsage(AttributeTargets.Property)]
                     public class WidgetPropertyAttribute(WidgetRefreshFlag flag = WidgetRefreshFlag.NONE) : Attribute
@@ -29,7 +29,7 @@ public class WidgetPropertyAttributeGenerator : IIncrementalGenerator
         IncrementalValuesProvider<(PropertyDeclarationSyntax syntax, IPropertySymbol symbol)> propertyProvider 
             = context.SyntaxProvider
             .ForAttributeWithMetadataName(
-                "HumbleEngine.Core.WidgetPropertyAttribute",
+                "HumbleEngine.WidgetPropertyAttribute",
                 static (node, _) => node is PropertyDeclarationSyntax,
                 static (ctx, _) 
                     => (ctx.TargetNode as PropertyDeclarationSyntax, ctx.TargetSymbol as IPropertySymbol));
@@ -144,8 +144,8 @@ public class WidgetPropertyAttributeGenerator : IIncrementalGenerator
                  {
                      {{propModifiers}} {{propType}} {{propName}}
                      {
-                         {{(getModifiers.Length > 0 ? getModifiers : "")}}get => field ??= {{createMethod}}<{{typeArg}}>(default, {{flagExpression}});
-                         {{(initModifiers.Length > 0 ? initModifiers : "")}}init
+                         {{(getModifiers.Length > 0 ? getModifiers + " " : "")}}get => field ??= {{createMethod}}<{{typeArg}}>(default, {{flagExpression}});
+                         {{(initModifiers.Length > 0 ? initModifiers + " " : "")}}init
                          {
                              if (field == value)
                                  return;
