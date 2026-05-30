@@ -9,10 +9,11 @@ public partial record ConstrainedBox : PrimitiveSingleChildWidget<Widget>
     {
         BoxConstraints childConstraints = constraints.Enforce(AdditionalConstraints.Value);
 
-        if (Child.Value is PrimitiveWidget child)
+        if (MountedChildren.Count > 0)
         {
+            Widget child = MountedChildren[0];
             child.Layout(childConstraints);
-            Size.Value = child.Size.Value;
+            Size.Value = child.GetSize();
         }
         else
         {

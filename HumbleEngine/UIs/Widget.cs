@@ -9,15 +9,15 @@ public abstract partial record Widget : HumbleRecord
     internal List<Widget> MountedChildren { get; } = [];
     internal virtual IReadOnlyList<Widget> GetChildren() => [];
 
+    public abstract void Layout(BoxConstraints constraints);
+    internal abstract Size GetSize();
+
+    internal virtual void SetLocalPosition(Position position)
+    {
+        if (MountedChildren.Count > 0)
+            MountedChildren[0].SetLocalPosition(position);
+    }
+
     protected virtual void OnMount() { }
     protected virtual void OnUnmount() { }
-
-    internal virtual void Paint(PaintCommandBuffer buffer, Position offset)
-    {
-        foreach (Widget child in MountedChildren)
-            if (child is PrimitiveWidget primitive)
-                primitive.Paint(buffer, offset + primitive.LocalPosition.Value);
-            else
-                child.Paint(buffer, offset);
-    }
 }

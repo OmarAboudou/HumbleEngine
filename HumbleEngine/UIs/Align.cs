@@ -14,11 +14,12 @@ public partial record Align : PrimitiveSingleChildWidget<Widget>
 
     public override void Layout(BoxConstraints constraints)
     {
-        if (Child.Value is PrimitiveWidget child)
+        if (MountedChildren.Count > 0)
         {
+            Widget child = MountedChildren[0];
             child.Layout(constraints.Loosen());
 
-            Size childSize = child.Size.Value;
+            Size childSize = child.GetSize();
 
             float myWidth  = ResolveAxis(constraints.MaxWidth,  childSize.Width,  WidthFactor.Value);
             float myHeight = ResolveAxis(constraints.MaxHeight, childSize.Height, HeightFactor.Value);
@@ -27,10 +28,10 @@ public partial record Align : PrimitiveSingleChildWidget<Widget>
             myHeight = constraints.HeightConstraints.Constrain(myHeight);
 
             Alignment align = Alignment.Value;
-            child.LocalPosition.Value = new Position(
+            child.SetLocalPosition(new Position(
                 (align.X + 1f) / 2f * (myWidth  - childSize.Width),
                 (align.Y + 1f) / 2f * (myHeight - childSize.Height)
-            );
+            ));
 
             Size.Value = new Size(myWidth, myHeight);
         }
@@ -42,9 +43,6 @@ public partial record Align : PrimitiveSingleChildWidget<Widget>
         }
     }
 
-    // Axe borné sans factor → prend le max disponible.
-    // Axe non borné sans factor → s'adapte à l'enfant.
-    // Avec factor → child * factor (quelle que soit la contrainte).
     private static float ResolveAxis(float maxConstraint, float childSize, float? factor) =>
         factor is { } f ? childSize * f
             : float.IsPositiveInfinity(maxConstraint) ? childSize

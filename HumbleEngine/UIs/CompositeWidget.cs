@@ -8,6 +8,15 @@ public abstract record CompositeWidget : Widget
 
     internal override IReadOnlyList<Widget> GetChildren() => BuiltSubTree is not null ? [BuiltSubTree] : [];
 
+    public override void Layout(BoxConstraints constraints)
+    {
+        if (MountedChildren.Count > 0)
+            MountedChildren[0].Layout(constraints);
+    }
+
+    internal override Size GetSize() =>
+        MountedChildren.Count > 0 ? MountedChildren[0].GetSize() : new Size(0f, 0f);
+
     public abstract Widget Build();
 
     protected Property<T> CreateCompositeProperty<T>(T initialValue)

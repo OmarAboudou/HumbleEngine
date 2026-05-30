@@ -14,15 +14,13 @@ public abstract partial record PrimitiveWidget : Widget
     [PrimitiveWidgetProperty]
     public partial Property<Position> ViewportPosition { get; internal init; }
 
-    public abstract void Layout(BoxConstraints constraints);
+    public abstract override void Layout(BoxConstraints constraints);
+    internal override Size GetSize() => Size.Value;
+    internal override void SetLocalPosition(Position position) => LocalPosition.Value = position;
 
-    internal override void Paint(PaintCommandBuffer buffer, Position offset)
-    {
-        PaintSelf(buffer, offset);
-        base.Paint(buffer, offset);
-    }
-
-    protected virtual void PaintSelf(PaintCommandBuffer buffer, Position offset) { }
+    // Appelés par la PaintPass — avant et après les enfants
+    internal virtual void PaintBefore(PaintCommandBuffer buffer, Position offset) { }
+    internal virtual void PaintAfter(PaintCommandBuffer buffer, Position offset)  { }
 
     protected Property<T> CreateWidgetProperty<T>(T initialValue, WidgetRefreshFlag flag)
     {
