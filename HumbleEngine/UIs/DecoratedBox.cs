@@ -21,18 +21,19 @@ public partial record DecoratedBox : PrimitiveSingleChildWidget<Widget>
         }
     }
 
-    public override void Paint(PaintCommandBuffer buffer, Position offset)
+    // Override Paint directement pour contrôler l'ordre décoration / enfants.
+    internal override void Paint(PaintCommandBuffer buffer, Position offset)
     {
-        Rect           bounds = Rect.FromPositionAndSize(offset, Size.Value);
-        BoxDecoration  deco   = Decoration.Value;
-        bool           isFore = Position.Value == DecorationPosition.Foreground;
+        Rect          bounds = Rect.FromPositionAndSize(offset, Size.Value);
+        BoxDecoration deco   = Decoration.Value;
 
-        if (!isFore) PaintDecoration(buffer, bounds, deco);
+        if (Position.Value == DecorationPosition.Background)
+            PaintDecoration(buffer, bounds, deco);
 
-        if (Child.Value is PrimitiveWidget child)
-            child.Paint(buffer, offset + child.LocalPosition.Value);
+        base.Paint(buffer, offset);  // Widget.Paint() → peint MountedChildren
 
-        if (isFore) PaintDecoration(buffer, bounds, deco);
+        if (Position.Value == DecorationPosition.Foreground)
+            PaintDecoration(buffer, bounds, deco);
     }
 
     private static void PaintDecoration(PaintCommandBuffer buffer, Rect bounds, BoxDecoration deco)

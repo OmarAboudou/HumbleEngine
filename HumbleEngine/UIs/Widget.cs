@@ -11,4 +11,13 @@ public abstract partial record Widget : HumbleRecord
 
     protected virtual void OnMount() { }
     protected virtual void OnUnmount() { }
+
+    internal virtual void Paint(PaintCommandBuffer buffer, Position offset)
+    {
+        foreach (Widget child in MountedChildren)
+            if (child is PrimitiveWidget primitive)
+                primitive.Paint(buffer, offset + primitive.LocalPosition.Value);
+            else
+                child.Paint(buffer, offset);
+    }
 }

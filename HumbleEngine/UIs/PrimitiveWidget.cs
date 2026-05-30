@@ -15,7 +15,14 @@ public abstract partial record PrimitiveWidget : Widget
     public partial Property<Position> ViewportPosition { get; internal init; }
 
     public abstract void Layout(BoxConstraints constraints);
-    public virtual void Paint(PaintCommandBuffer buffer, Position offset) { }
+
+    internal override void Paint(PaintCommandBuffer buffer, Position offset)
+    {
+        PaintSelf(buffer, offset);
+        base.Paint(buffer, offset);
+    }
+
+    protected virtual void PaintSelf(PaintCommandBuffer buffer, Position offset) { }
 
     protected Property<T> CreateWidgetProperty<T>(T initialValue, WidgetRefreshFlag flag)
     {
