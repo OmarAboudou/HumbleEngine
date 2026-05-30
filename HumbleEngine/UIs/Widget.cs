@@ -15,9 +15,6 @@ public abstract partial record Widget : HumbleRecord
         Property<T> property,
         WidgetRefreshFlag refreshFlag)
     {
-        if (refreshFlag.HasFlag(WidgetRefreshFlag.BUILD)) 
-            property.Connect(_ => MarkBuildDirty());
-        
         if (refreshFlag.HasFlag(WidgetRefreshFlag.LAYOUT)) 
             property.Connect(_ => MarkLayoutDirty());
 
@@ -38,11 +35,6 @@ public abstract partial record Widget : HumbleRecord
         ListProperty<T> listProperty,
         WidgetRefreshFlag flag)
     {
-        if (flag.HasFlag(WidgetRefreshFlag.BUILD))
-        {
-            listProperty.ConnectAddedElement((_,_) => MarkBuildDirty());
-            listProperty.ConnectRemovedElement((_,_) => MarkBuildDirty());
-        }
         if (flag.HasFlag(WidgetRefreshFlag.LAYOUT))
         {
             listProperty.ConnectAddedElement((_,_) => MarkLayoutDirty());
@@ -55,9 +47,6 @@ public abstract partial record Widget : HumbleRecord
         }
 
     }
-
-    private void MarkBuildDirty()
-        => MarkDirty(WidgetRefreshFlag.BUILD);
     
     private void MarkLayoutDirty()
         => MarkDirty(WidgetRefreshFlag.LAYOUT);
@@ -75,17 +64,7 @@ public abstract partial record Widget : HumbleRecord
     [WidgetProperty]
     public partial Property<WidgetRefreshFlag> RefreshFlags { get; internal init; }
     
-    // Layout
-    [WidgetProperty]
-    public partial Property<Size> DesiredSize { get; internal init; }
-
-    [WidgetProperty]
-    internal partial Property<Size> Size { get; init; }
-
-    [WidgetProperty]
-    public partial Property<Position> LocalPosition { get; internal init; }
-
-    [WidgetProperty]
-    public partial Property<Position> ViewportPosition { get; internal init; }
+    protected virtual void OnMount(){}
+    protected virtual void OnUnmount(){}
     
 }

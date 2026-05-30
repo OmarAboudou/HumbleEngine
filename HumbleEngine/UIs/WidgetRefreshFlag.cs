@@ -4,7 +4,6 @@ namespace HumbleEngine;
 public enum WidgetRefreshFlag
 {
     NONE = 0,
-    BUILD = 1 << 0,
     LAYOUT = 1 << 1,
     PAINT = 1 << 2,
 }
