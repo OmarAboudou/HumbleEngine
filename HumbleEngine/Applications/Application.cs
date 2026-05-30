@@ -1,5 +1,3 @@
-using System.Reflection;
-
 namespace HumbleEngine;
 
 public abstract class Application
@@ -12,6 +10,10 @@ public abstract class Application
     protected abstract PlatformWindow CreatePlatformWindow();
     protected virtual IRenderer? CreateRenderer() => null;
 
+    // TODO: source generator — injecter les passes custom [UpdatePass]/[FixedUpdatePass] ici
+    protected virtual IEnumerable<IUpdatePass>      GetCustomUpdatePasses()      => [];
+    protected virtual IEnumerable<IFixedUpdatePass> GetCustomFixedUpdatePasses() => [];
+
     internal static Func<PlatformWindow> PlatformWindowFactory;
 
     public void Run(ApplicationConfig config)
@@ -21,10 +23,10 @@ public abstract class Application
             window.Add(config.Scene);
 
         PlatformWindow platformWindow = window.PlatformWindow;
-        IRenderer? renderer = CreateRenderer();
+        IRenderer?     renderer       = CreateRenderer();
 
-        List<IUpdatePass>      updatePasses      = BuildUpdatePasses(config);
-        List<IFixedUpdatePass> fixedUpdatePasses = BuildFixedUpdatePasses(config);
+        List<IUpdatePass>      updatePasses      = [new UpdatePass(), ..GetCustomUpdatePasses()];
+        List<IFixedUpdatePass> fixedUpdatePasses = [new FixedUpdatePass(), ..GetCustomFixedUpdatePasses()];
 
         platformWindow.Loaded.Connect(() =>
         {
@@ -59,44 +61,5 @@ public abstract class Application
         });
 
         platformWindow.Run();
-    }
-
-    private static List<IUpdatePass> BuildUpdatePasses(ApplicationConfig config)
-    {
-        var passes = new List<IUpdatePass>();
-
-        passes.Add(new UpdatePass());
-
-        // TODO: EnableReconciler, EnableLayout, EnablePaint — passes non encore implémentées
-
-        // Passes custom découvertes par réflexion (remplacé par source generator à terme)
-        foreach (IUpdatePass custom in DiscoverCustomPasses<IUpdatePass, UpdatePassAttribute>())
-            passes.Add(custom);
-
-        return passes;
-    }
-
-    private static List<IFixedUpdatePass> BuildFixedUpdatePasses(ApplicationConfig config)
-    {
-        var passes = new List<IFixedUpdatePass>();
-
-        passes.Add(new FixedUpdatePass());
-
-        foreach (IFixedUpdatePass custom in DiscoverCustomPasses<IFixedUpdatePass, FixedUpdatePassAttribute>())
-            passes.Add(custom);
-
-        return passes;
-    }
-
-    private static IEnumerable<TPass> DiscoverCustomPasses<TPass, TAttr>()
-        where TAttr : Attribute
-    {
-        return AppDomain.CurrentDomain.GetAssemblies()
-            .SelectMany(a => a.GetTypes())
-            .Where(t => !t.IsAbstract
-                     && typeof(TPass).IsAssignableFrom(t)
-                     && t.GetCustomAttribute<TAttr>() is not null)
-            .OrderBy(t => (t.GetCustomAttribute<TAttr>() as dynamic)?.Order ?? 0)
-            .Select(t => (TPass)Activator.CreateInstance(t)!);
     }
 }
