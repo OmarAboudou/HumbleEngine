@@ -56,12 +56,13 @@ public readonly record struct BoxConstraints(
 
     // Intersection avec un autre set de contraintes (utilisé par ConstrainedBox).
     public BoxConstraints Enforce(BoxConstraints other) =>
-        new(
-            new LengthConstraints(
-                Math.Max(MinWidth,  other.MinWidth),
-                Math.Min(MaxWidth,  other.MaxWidth)),
-            new LengthConstraints(
-                Math.Max(MinHeight, other.MinHeight),
-                Math.Min(MaxHeight, other.MaxHeight))
-        );
+        new(EnforceAxis(WidthConstraints,  other.WidthConstraints),
+            EnforceAxis(HeightConstraints, other.HeightConstraints));
+
+    private static LengthConstraints EnforceAxis(LengthConstraints a, LengthConstraints b)
+    {
+        float min = Math.Max(a.Min, b.Min);
+        float max = Math.Max(Math.Min(a.Max, b.Max), min);
+        return new LengthConstraints(min, max);
+    }
 }
