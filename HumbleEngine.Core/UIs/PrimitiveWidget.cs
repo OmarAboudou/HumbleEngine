@@ -2,5 +2,8 @@ namespace HumbleEngine.Core;
 
 public abstract record PrimitiveWidget : Widget
 {
-    // Layout and Paint
+    protected virtual void OnMount(){}
+    protected virtual void OnUnmount(){}
+    
+    public abstract Size ComputeAndSetDesiredSize(BoxConstraints constraints);
 }

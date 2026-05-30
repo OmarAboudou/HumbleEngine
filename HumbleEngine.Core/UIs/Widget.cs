@@ -71,7 +71,21 @@ public abstract partial record Widget : HumbleRecord
     public object? Key { get; init; }
     public object? GlobalKey { get; init; }
 
+    // Flags
     [WidgetProperty]
     public partial Property<WidgetRefreshFlag> RefreshFlags { get; internal init; }
+    
+    // Layout
+    [WidgetProperty]
+    public partial Property<Size> DesiredSize { get; internal init; }
+
+    [WidgetProperty]
+    internal partial Property<Size> Size { get; init; }
+
+    [WidgetProperty]
+    public partial Property<Position> LocalPosition { get; internal init; }
+
+    [WidgetProperty]
+    public partial Property<Position> ViewportPosition { get; internal init; }
     
 }
