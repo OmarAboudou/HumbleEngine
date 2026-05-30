@@ -18,7 +18,7 @@ public sealed class SkiaRenderer : IRenderer
     {
         _grContext = backend switch
         {
-            GPUBackend.OpenGL  => GRContext.CreateGl(CreateGlInterface()),
+            GPUBackend.OpenGL   => GRContext.CreateGl(CreateGlInterface()),
             GPUBackend.Software => null,
             _ => throw new NotSupportedException($"Backend {backend} not yet implemented.")
         };
@@ -28,8 +28,8 @@ public sealed class SkiaRenderer : IRenderer
     private static GRGlInterface CreateGlInterface()
     {
         IntPtr lib = IntPtr.Zero;
-        NativeLibrary.TryLoad("libGL.so.1", out lib);
-        if (lib == IntPtr.Zero) NativeLibrary.TryLoad("libGL.so",    out lib);
+        NativeLibrary.TryLoad("libGL.so.1",   out lib);
+        if (lib == IntPtr.Zero) NativeLibrary.TryLoad("libGL.so",     out lib);
         if (lib == IntPtr.Zero) NativeLibrary.TryLoad("opengl32.dll", out lib);
         if (lib == IntPtr.Zero) NativeLibrary.TryLoad("libGL.dylib",  out lib);
 
@@ -71,7 +71,7 @@ public sealed class SkiaRenderer : IRenderer
 
             case FillRRect(var bounds, var radius, var color):
                 using (var paint = new SKPaint { Color = ToSkColor(color), IsAntialias = true })
-                    canvas.DrawRoundRect(ToSkRect(bounds), radius, radius, paint);
+                    canvas.DrawRoundRect(ToSkRoundRect(bounds, radius), paint);
                 break;
 
             case FillOval(var bounds, var color):
@@ -81,16 +81,18 @@ public sealed class SkiaRenderer : IRenderer
 
             case StrokeRRect(var bounds, var radius, var color, var thickness):
                 using (var paint = new SKPaint { Color = ToSkColor(color), IsStroke = true, StrokeWidth = thickness, IsAntialias = true })
-                    canvas.DrawRoundRect(ToSkRect(bounds), radius, radius, paint);
+                    canvas.DrawRoundRect(ToSkRoundRect(bounds, radius), paint);
                 break;
 
-            case DrawShadow(var bounds, var radius, var color, var blurRadius, var spreadRadius):
-                var inflated = bounds.Inflate(spreadRadius * 2f, spreadRadius * 2f);
-                using (var paint = new SKPaint { IsAntialias = true })
+            case DrawShadow(var bounds, var radius, var color, var blurRadius, var spreadRadius, var dx, var dy):
+                var shadowBounds = bounds.Inflate(spreadRadius * 2f, spreadRadius * 2f).Translate(dx, dy);
+                using (var paint = new SKPaint
                 {
-                    paint.ImageFilter = SKImageFilter.CreateDropShadow(0, 0, blurRadius, blurRadius, ToSkColor(color));
-                    canvas.DrawRoundRect(ToSkRect(inflated), radius, radius, paint);
-                }
+                    Color       = ToSkColor(color),
+                    MaskFilter  = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, blurRadius / 3f),
+                    IsAntialias = true
+                })
+                    canvas.DrawRoundRect(ToSkRoundRect(shadowBounds, radius), paint);
                 break;
 
             case ClipRect(var bounds):
@@ -98,7 +100,7 @@ public sealed class SkiaRenderer : IRenderer
                 break;
 
             case ClipRRect(var bounds, var radius):
-                canvas.ClipRoundRect(new SKRoundRect(ToSkRect(bounds), radius, radius), SKClipOperation.Intersect, true);
+                canvas.ClipRoundRect(ToSkRoundRect(bounds, radius), SKClipOperation.Intersect, true);
                 break;
 
             case ClipOval(var bounds):
@@ -134,7 +136,7 @@ public sealed class SkiaRenderer : IRenderer
 
         if (_grContext is not null)
         {
-            var fbInfo      = new GRGlFramebufferInfo(0, 0x8058); // GL_RGBA8
+            var fbInfo       = new GRGlFramebufferInfo(0, 0x8058); // GL_RGBA8
             var renderTarget = new GRBackendRenderTarget((int)_size.Width, (int)_size.Height, 0, 8, fbInfo);
             _surface = SKSurface.Create(_grContext, renderTarget, GRSurfaceOrigin.BottomLeft, SKColorType.Rgba8888);
         }
@@ -150,9 +152,21 @@ public sealed class SkiaRenderer : IRenderer
         _grContext?.Dispose();
     }
 
-    private static SKColor  ToSkColor(Color c)   => new(c.R, c.G, c.B, c.A);
-    private static SKRect   ToSkRect(Rect r)      => new(r.X, r.Y, r.Right, r.Bottom);
-    private static SKMatrix ToSkMatrix(Matrix3x2 m) =>
+    private static SKColor     ToSkColor(Color c)          => new(c.R, c.G, c.B, c.A);
+    private static SKRect      ToSkRect(Rect r)             => new(r.X, r.Y, r.Right, r.Bottom);
+    private static SKRoundRect ToSkRoundRect(Rect r, BorderRadius br)
+    {
+        var rr = new SKRoundRect();
+        rr.SetRectRadii(ToSkRect(r),
+        [
+            new SKPoint(br.TopLeft,     br.TopLeft),
+            new SKPoint(br.TopRight,    br.TopRight),
+            new SKPoint(br.BottomRight, br.BottomRight),
+            new SKPoint(br.BottomLeft,  br.BottomLeft),
+        ]);
+        return rr;
+    }
+    private static SKMatrix    ToSkMatrix(Matrix3x2 m)      =>
         new(m.M11, m.M21, m.M31,
             m.M12, m.M22, m.M32,
             0,     0,     1);
