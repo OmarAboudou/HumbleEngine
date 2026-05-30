@@ -62,6 +62,7 @@ public abstract partial record Widget : HumbleRecord
 
     internal Widget? Parent { get; init; }
     internal List<Widget>? MountedChildren { get; } = [];
+    internal virtual IReadOnlyList<Widget> GetChildren() => [];
     
     [WidgetProperty]
     public partial Property<WidgetRefreshFlag> RefreshFlags { get; internal init; }

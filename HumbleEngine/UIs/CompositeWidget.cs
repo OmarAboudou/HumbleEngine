@@ -6,5 +6,7 @@ public abstract record CompositeWidget : Widget
     
     internal Widget? BuiltSubTree { get; set; }
     
+    internal override IReadOnlyList<Widget> GetChildren() => BuiltSubTree is not null ? [BuiltSubTree] : [];
+    
     public abstract Widget Build();
 }

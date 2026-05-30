@@ -1,6 +1,6 @@
 namespace HumbleEngine;
 
-public abstract partial record CompositeMultipleChildrenWidget<TChildren> : CompositeWidget, IMultipleChildrenWidget<TChildren>
+public abstract partial record CompositeMultiChildWidget<TChildren> : CompositeWidget, IMultiChildWidget<TChildren>
     where TChildren : Widget
 {
     [WidgetProperty(WidgetRefreshFlag.LAYOUT | WidgetRefreshFlag.PAINT)]
