@@ -17,10 +17,10 @@ public record DrawShadow(Rect Bounds, BorderRadius Radius, Color Color,
                          float BlurRadius, float SpreadRadius,
                          float OffsetX = 0f, float OffsetY = 0f)                             : PaintCommand;
 
-// --- Clip ---
-public record ClipRect(Rect Bounds)                                                           : PaintCommand;
-public record ClipRRect(Rect Bounds, BorderRadius Radius)                                     : PaintCommand;
-public record ClipOval(Rect Bounds)                                                           : PaintCommand;
+// --- Clip (save implicite — refermer avec Pop) ---
+public record PushClipRect(Rect Bounds)                                                       : PaintCommand;
+public record PushClipRRect(Rect Bounds, BorderRadius Radius)                                 : PaintCommand;
+public record PushClipOval(Rect Bounds)                                                       : PaintCommand;
 
 // --- Calques (doivent être refermés par Pop) ---
 public record PushOpacity(byte Alpha)                                                         : PaintCommand;

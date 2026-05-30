@@ -95,15 +95,18 @@ public sealed class SkiaRenderer : IRenderer
                     canvas.DrawRoundRect(ToSkRoundRect(shadowBounds, radius), paint);
                 break;
 
-            case ClipRect(var bounds):
+            case PushClipRect(var bounds):
+                canvas.Save();
                 canvas.ClipRect(ToSkRect(bounds), SKClipOperation.Intersect, true);
                 break;
 
-            case ClipRRect(var bounds, var radius):
+            case PushClipRRect(var bounds, var radius):
+                canvas.Save();
                 canvas.ClipRoundRect(ToSkRoundRect(bounds, radius), SKClipOperation.Intersect, true);
                 break;
 
-            case ClipOval(var bounds):
+            case PushClipOval(var bounds):
+                canvas.Save();
                 using (var path = new SKPath())
                 {
                     path.AddOval(ToSkRect(bounds));
