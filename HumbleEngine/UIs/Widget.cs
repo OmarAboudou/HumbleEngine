@@ -60,7 +60,8 @@ public abstract partial record Widget : HumbleRecord
     public object? Key { get; init; }
     public object? GlobalKey { get; init; }
 
-    // Flags
+    internal Widget? Parent { get; init; }
+    
     [WidgetProperty]
     public partial Property<WidgetRefreshFlag> RefreshFlags { get; internal init; }
     
