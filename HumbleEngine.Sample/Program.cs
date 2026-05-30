@@ -2,7 +2,7 @@ using HumbleEngine;
 using HumbleEngine.Silk;
 using HumbleEngine.Skia;
 
-new TestApplication().Run(new ApplicationConfig
+new SampleApp().Run(new ApplicationConfig
 {
     Title            = "HumbleEngine — Layout Test",
     Width            = 800,
@@ -10,7 +10,7 @@ new TestApplication().Run(new ApplicationConfig
     PreferredBackend = GPUBackend.OpenGL,
 });
 
-class TestApplication : SilkApplication
+class SampleApp : SilkApplication
 {
     protected override IRenderer? CreateRenderer() => new SkiaRenderer();
 

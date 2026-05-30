@@ -2,12 +2,7 @@ namespace HumbleEngine;
 
 public abstract class Application
 {
-    public Application()
-    {
-        PlatformWindowFactory = CreatePlatformWindow;
-    }
-
-    protected abstract PlatformWindow CreatePlatformWindow();
+    protected abstract PlatformWindow CreatePlatformWindow(ApplicationConfig config);
     protected virtual IRenderer? CreateRenderer() => null;
     protected virtual Widget?    BuildRootWidget() => null;
 
@@ -15,10 +10,12 @@ public abstract class Application
     protected virtual IEnumerable<IUpdatePass>      GetCustomUpdatePasses()      => [];
     protected virtual IEnumerable<IFixedUpdatePass> GetCustomFixedUpdatePasses() => [];
 
-    internal static Func<PlatformWindow> PlatformWindowFactory;
+    internal static Func<PlatformWindow> PlatformWindowFactory = null!;
 
     public void Run(ApplicationConfig config)
     {
+        PlatformWindowFactory = () => CreatePlatformWindow(config);
+
         using Window window = new();
         if (config.Scene is not null)
             window.Add(config.Scene);
