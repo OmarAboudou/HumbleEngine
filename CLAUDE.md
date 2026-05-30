@@ -8,8 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Compiler la solution
 dotnet build HumbleEngine.sln
 
-# Lancer l'application (point d'entrée Silk)
-dotnet run --project HumbleEngine.Silk
+# Lancer le sample (point d'entrée utilisateur)
+dotnet run --project HumbleEngine.Sample
 
 # Compiler avec les fichiers générés visibles
 # (EmitCompilerGeneratedFiles=true est déjà activé dans le .csproj)
@@ -18,10 +18,11 @@ dotnet run --project HumbleEngine.Silk
 
 ## Structure des projets
 
-- **HumbleEngine** — bibliothèque core (net10.0). Contient le moteur, le Node Tree, les Widgets, les Property/Signal, les abstractions de rendu.
+- **HumbleEngine** — bibliothèque core (net10.0). Contient le moteur, le Node Tree, les Widgets, les Property/Signal, les abstractions de rendu, les passes (MountPass, LayoutPass, PaintPass).
 - **HumbleEngine.Generators** — source generator Roslyn. Référencé comme `Analyzer` (pas de dépendance binaire). Génère le code des `[PrimitiveWidgetProperty]` et `[CompositeWidgetProperty]`.
-- **HumbleEngine.Silk** — implémentation de la fenêtre et point d'entrée. Dépend de Silk.NET.
+- **HumbleEngine.Silk** — bibliothèque de fenêtrage (Dll, pas d'Exe). Fournit `SilkApplication` et `SilkWindow`. Dépend de Silk.NET. Ne dépend pas de Skia.
 - **HumbleEngine.Skia** — renderer SkiaSharp. Implémente `IRenderer`. Dépend de SkiaSharp 3.x. Ne dépend pas de Silk.
+- **HumbleEngine.Sample** — projet Exe d'exemple. Simule un projet utilisateur du moteur. Référence HumbleEngine + Silk + Skia. Contient `SampleApp : SilkApplication`.
 
 ## Architecture globale
 
@@ -76,6 +77,22 @@ Toutes les méthodes suivantes sont définies sur `Widget` (base) et implément�
 
 Un `CompositeWidget` utilise `IsDirty` (booléen) à la place, qui déclenche un rappel de `Build()`.
 
+### Passes internes (Mount → Layout → Paint)
+
+Déclenchées chaque frame dans `Application.Run()` → `Rendering` callback, si `BuildRootWidget()` retourne un widget.
+
+**`MountPass.Mount(widget)`** — naive (pas de diffing). Pour chaque widget :
+- Si `CompositeWidget && IsDirty` : appelle `Build()`, stocke dans `BuiltSubTree`, remet `IsDirty = false`.
+- Vide `MountedChildren`, repeuple depuis `GetChildren()`, fixe `Parent`, récurse.
+
+**`LayoutPass.Layout(root, constraints)`** — appelle `root.Layout(constraints)`. Layout est récursif ; chaque widget appelle `Layout` sur ses `MountedChildren`.
+
+**`PaintPass.Paint(root, buffer, parentOffset)`** — traverse l'arbre monté :
+- `PrimitiveWidget` : `worldOffset = parentOffset + LocalPosition.Value` → `PaintBefore` → enfants → `PaintAfter`.
+- `CompositeWidget` : transparent, parcourt `MountedChildren` en propageant `parentOffset`.
+
+`PaintPass.DebugFill` (bool, `public static`) — si `true`, émet un `FillRect` coloré (palette par type) avant `PaintBefore` sur chaque primitive. Utile pour visualiser le layout.
+
 ### Paint
 
 Le paint est piloté par une **PaintPass externe** — les widgets ne s'appellent pas entre eux. La pass traverse l'arbre récursivement :
@@ -123,11 +140,30 @@ public interface IRenderer : IDisposable
 
 `SkiaRenderer` (dans `HumbleEngine.Skia`) implémente `IRenderer` avec SkiaSharp 3.x. Il supporte OpenGL, Vulkan, Metal, Software. Pour OpenGL, il charge `libGL` via `NativeLibrary` et crée un `GRGlInterface`.
 
-`Application` expose `protected virtual IRenderer? CreateRenderer() => null`. La sous-classe (ou le code généré à l'export) override pour retourner `new SkiaRenderer()`.
+`Application` expose `protected virtual IRenderer? CreateRenderer() => null`. La sous-classe override pour retourner `new SkiaRenderer()`.
 
 ### ApplicationConfig
 
 Sérialisable uniquement. Contient : `Title`, `Width`, `Height`, `PreferredBackend` (enum `GPUBackend`), `Scene` (Node?). Pas de lambdas, pas de passes, pas d'objets code.
+
+### Application
+
+```csharp
+public abstract class Application
+{
+    protected abstract PlatformWindow CreatePlatformWindow(ApplicationConfig config);
+    protected virtual IRenderer?  CreateRenderer()    => null;
+    protected virtual Widget?     BuildRootWidget()   => null;   // temporaire — sera remplacé par le Node UI
+    protected virtual IEnumerable<IUpdatePass>      GetCustomUpdatePasses()      => [];
+    protected virtual IEnumerable<IFixedUpdatePass> GetCustomFixedUpdatePasses() => [];
+
+    public void Run(ApplicationConfig config) { ... }
+}
+```
+
+`CreatePlatformWindow(config)` est appelé via une factory dans `Run()`, après que la config est disponible. `SilkApplication` retourne `new SilkWindow(config.Width, config.Height)`.
+
+`BuildRootWidget()` est provisoire : retourne la racine du widget tree à rendre. À terme, ce sera le système UI/Node qui fournira les racines.
 
 ### Source Generator
 
@@ -197,3 +233,4 @@ Algorithme en deux phases : Phase 1 détermine le sort de chaque widget (réutil
 - Le namespace UI est `HumbleEngine` (pas `HumbleEngine.UI` pour l'instant).
 - Dans `Layout()`, toujours utiliser `MountedChildren` et non `Child.Value` directement.
 - Les commandes `Push*` (clip, opacity, transform) doivent toujours être refermées par `Pop`.
+- `Padding.Layout()` appelle `child.SetLocalPosition(new Position(insets.Left, insets.Top))` après le layout de l'enfant.
