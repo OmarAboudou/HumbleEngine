@@ -19,7 +19,7 @@ dotnet run --project HumbleEngine.Silk
 ## Structure des projets
 
 - **HumbleEngine** — bibliothèque core (net10.0). Contient le moteur, le Node Tree, les Widgets, les Property/Signal.
-- **HumbleEngine.Generators** — source generator Roslyn. Référencé comme `Analyzer` (pas de dépendance binaire). Génère le code des `[WidgetProperty]`.
+- **HumbleEngine.Generators** — source generator Roslyn. Référencé comme `Analyzer` (pas de dépendance binaire). Génère le code des `[PrimitiveWidgetProperty]` et `[CompositeWidgetProperty]`.
 - **HumbleEngine.Silk** — implémentation de la fenêtre et point d'entrée. Dépend de Silk.NET.
 
 ## Architecture globale
@@ -62,20 +62,33 @@ La distinction fondamentale : un `PrimitiveWidget` est géré nativement par le 
 ### Système de flags
 
 `WidgetRefreshFlag` n'existe que sur les `PrimitiveWidget` via `RefreshFlags` :
-- `LAYOUT` — recalcule `ComputeAndSetDesiredSize()`
+- `LAYOUT` — déclenche `Layout(BoxConstraints)` sur le widget
 - `PAINT` — redessine
 
 Un `CompositeWidget` utilise `IsDirty` (booléen) à la place, qui déclenche un rappel de `Build()`.
 
-### Source Generator `[WidgetProperty]`
+### Layout
 
-Annoter une `partial Property<T>` (ou `ListProperty<T>`) avec `[WidgetProperty(flag)]` dans un `partial record` génère automatiquement le getter lazy-init et connecte la property au flag correspondant.
+`PrimitiveWidget.Layout(BoxConstraints)` est la méthode abstraite à implémenter sur chaque primitive. Elle reçoit les contraintes du parent, calcule la taille et l'écrit dans `Size.Value`. Le parent lit `child.Size.Value` après l'appel et assigne `child.LocalPosition.Value`.
+
+Il n'y a pas de `DesiredSize` séparé — `Size` est la seule source de vérité pour la taille d'un widget.
+
+### Source Generator
+
+Deux attributs, deux comportements générés :
+
+**`[PrimitiveWidgetProperty(flag)]`** — sur `PrimitiveWidget`. Connecte la property aux `RefreshFlags` via `CreateWidgetProperty`/`ConnectWidgetProperty`.
+
+**`[CompositeWidgetProperty]`** — sur `CompositeWidget`. Connecte la property à `IsDirty = true` via `CreateCompositeProperty`/`ConnectCompositeProperty`.
 
 ```csharp
-[WidgetProperty(WidgetRefreshFlag.LAYOUT | WidgetRefreshFlag.PAINT)]
+// Primitive : lève LAYOUT quand Child change
+[PrimitiveWidgetProperty(WidgetRefreshFlag.LAYOUT | WidgetRefreshFlag.PAINT)]
 public partial Property<Widget?> Child { get; init; }
-// → génère le getter : field ??= CreateWidgetProperty<Widget?>(default, flag)
-// → init connecte automatiquement la property au flag
+
+// Composite : marque IsDirty quand Child change
+[CompositeWidgetProperty]
+public partial Property<Widget?> Child { get; init; }
 ```
 
 ### Reconciler

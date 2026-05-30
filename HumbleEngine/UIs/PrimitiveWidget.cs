@@ -6,10 +6,7 @@ public abstract partial record PrimitiveWidget : Widget
     public partial Property<WidgetRefreshFlag> RefreshFlags { get; internal init; }
 
     [PrimitiveWidgetProperty]
-    public partial Property<Size> DesiredSize { get; internal init; }
-
-    [PrimitiveWidgetProperty]
-    internal partial Property<Size> Size { get; init; }
+    public partial Property<Size> Size { get; internal init; }
 
     [PrimitiveWidgetProperty]
     public partial Property<Position> LocalPosition { get; internal init; }
@@ -17,7 +14,7 @@ public abstract partial record PrimitiveWidget : Widget
     [PrimitiveWidgetProperty]
     public partial Property<Position> ViewportPosition { get; internal init; }
 
-    public abstract void ComputeAndSetDesiredSize(BoxConstraints constraints);
+    public abstract void Layout(BoxConstraints constraints);
 
     protected Property<T> CreateWidgetProperty<T>(T initialValue, WidgetRefreshFlag flag)
     {
