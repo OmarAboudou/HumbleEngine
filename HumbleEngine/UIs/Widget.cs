@@ -10,9 +10,9 @@ public abstract partial record Widget : HumbleRecord
     internal virtual IReadOnlyList<Widget> GetChildren() => [];
 
     public abstract void Layout(BoxConstraints constraints);
-    internal abstract Size GetSize();
+    public abstract Size GetSize();
 
-    internal virtual void SetLocalPosition(Position position)
+    public virtual void SetLocalPosition(Position position)
     {
         if (MountedChildren.Count > 0)
             MountedChildren[0].SetLocalPosition(position);

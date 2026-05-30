@@ -15,8 +15,8 @@ public abstract partial record PrimitiveWidget : Widget
     public partial Property<Position> ViewportPosition { get; internal init; }
 
     public abstract override void Layout(BoxConstraints constraints);
-    internal override Size GetSize() => Size.Value;
-    internal override void SetLocalPosition(Position position) => LocalPosition.Value = position;
+    public override Size GetSize() => Size.Value;
+    public override void SetLocalPosition(Position position) => LocalPosition.Value = position;
 
     // Appelés par la PaintPass — avant et après les enfants
     internal virtual void PaintBefore(PaintCommandBuffer buffer, Position offset) { }

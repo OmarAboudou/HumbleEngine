@@ -14,7 +14,7 @@ public abstract record CompositeWidget : Widget
             MountedChildren[0].Layout(constraints);
     }
 
-    internal override Size GetSize() =>
+    public override Size GetSize() =>
         MountedChildren.Count > 0 ? MountedChildren[0].GetSize() : new Size(0f, 0f);
 
     public abstract Widget Build();
