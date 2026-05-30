@@ -61,6 +61,7 @@ public abstract partial record Widget : HumbleRecord
     public object? GlobalKey { get; init; }
 
     internal Widget? Parent { get; init; }
+    internal List<Widget>? MountedChildren { get; } = [];
     
     [WidgetProperty]
     public partial Property<WidgetRefreshFlag> RefreshFlags { get; internal init; }
