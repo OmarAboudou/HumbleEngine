@@ -65,8 +65,7 @@ public abstract class Application
     {
         var passes = new List<IUpdatePass>();
 
-        if (config.EnableUpdate)
-            passes.Add(new UpdatePass());
+        passes.Add(new UpdatePass());
 
         // TODO: EnableReconciler, EnableLayout, EnablePaint — passes non encore implémentées
 
@@ -81,8 +80,7 @@ public abstract class Application
     {
         var passes = new List<IFixedUpdatePass>();
 
-        if (config.EnableFixedUpdate)
-            passes.Add(new FixedUpdatePass());
+        passes.Add(new FixedUpdatePass());
 
         foreach (IFixedUpdatePass custom in DiscoverCustomPasses<IFixedUpdatePass, FixedUpdatePassAttribute>())
             passes.Add(custom);
