@@ -17,10 +17,11 @@ public class SilkWindow : PlatformWindow
                 UpdatesPerSecond = 60
             }
         );
-        window.Load += EmitLoaded;
-        window.Update += EmitFixUpdated;
-        window.Render += EmitRendering;
+        window.Load    += EmitLoaded;
+        window.Update  += EmitFixUpdated;
+        window.Render  += EmitRendering;
         window.Closing += EmitClosing;
+        window.FramebufferResize += size => EmitResized(new Size(size.X, size.Y));
     }
 
     public override void Run()

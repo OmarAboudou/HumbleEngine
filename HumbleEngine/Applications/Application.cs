@@ -16,8 +16,18 @@ public abstract class Application
         using Window window = new();
         window.Add(config.Scene);
         PlatformWindow platformWindow = window.PlatformWindow;
+
+        IRenderer? renderer = config.RendererFactory?.Invoke();
+
         platformWindow.Loaded.Connect(() =>
         {
+            if (renderer is not null)
+            {
+                if (!renderer.Supports(config.PreferredBackend))
+                    throw new InvalidOperationException($"Renderer does not support {config.PreferredBackend}.");
+                renderer.Initialize(config.PreferredBackend);
+            }
+
             platformWindow.FixUpdated.Connect(delta =>
             {
                 foreach (IFixedUpdatePass fixedUpdatePass in config.FixedUpdatePasses)
@@ -25,10 +35,20 @@ public abstract class Application
             });
             platformWindow.Rendering.Connect(delta =>
             {
-                foreach (IUpdatePass updatePass in config.UnderPasses) updatePass.Execute(window, delta);
+                foreach (IUpdatePass updatePass in config.UnderPasses)
+                    updatePass.Execute(window, delta);
+                // TODO: déclencher le paint pass ici, puis renderer.Render(buffer)
             });
         });
-        platformWindow.Closing.Connect(() => Console.WriteLine("CLOSING !"));
+
+        if (renderer is not null)
+            platformWindow.Resized.Connect(renderer.Resize);
+
+        platformWindow.Closing.Connect(() =>
+        {
+            renderer?.Dispose();
+            Console.WriteLine("CLOSING !");
+        });
         platformWindow.Run();
     }
 }
