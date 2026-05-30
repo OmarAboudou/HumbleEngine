@@ -15,6 +15,7 @@ public partial record Padding : PrimitiveSingleChildWidget<Widget>
         {
             Widget child = MountedChildren[0];
             child.Layout(constraints.Deflate(horizontal, vertical));
+            child.SetLocalPosition(new Position(insets.Left, insets.Top));
             Size childSize = child.GetSize();
             Size.Value = new Size(childSize.Width + horizontal, childSize.Height + vertical);
         }

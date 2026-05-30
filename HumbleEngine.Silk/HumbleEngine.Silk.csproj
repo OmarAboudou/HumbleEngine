@@ -9,6 +9,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\HumbleEngine\HumbleEngine.csproj" />
+        <ProjectReference Include="..\HumbleEngine.Skia\HumbleEngine.Skia.csproj" />
     </ItemGroup>
 
     <ItemGroup>

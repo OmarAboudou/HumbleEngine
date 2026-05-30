@@ -9,6 +9,7 @@ public abstract class Application
 
     protected abstract PlatformWindow CreatePlatformWindow();
     protected virtual IRenderer? CreateRenderer() => null;
+    protected virtual Widget?    BuildRootWidget() => null;
 
     // TODO: source generator — injecter les passes custom [UpdatePass]/[FixedUpdatePass] ici
     protected virtual IEnumerable<IUpdatePass>      GetCustomUpdatePasses()      => [];
@@ -22,8 +23,11 @@ public abstract class Application
         if (config.Scene is not null)
             window.Add(config.Scene);
 
-        PlatformWindow platformWindow = window.PlatformWindow;
-        IRenderer?     renderer       = CreateRenderer();
+        PlatformWindow     platformWindow = window.PlatformWindow;
+        IRenderer?         renderer       = CreateRenderer();
+        Widget?            rootWidget     = BuildRootWidget();
+        PaintCommandBuffer paintBuffer    = new();
+        Size               windowSize     = new(config.Width, config.Height);
 
         List<IUpdatePass>      updatePasses      = [new UpdatePass(), ..GetCustomUpdatePasses()];
         List<IFixedUpdatePass> fixedUpdatePasses = [new FixedUpdatePass(), ..GetCustomFixedUpdatePasses()];
@@ -35,6 +39,7 @@ public abstract class Application
                 if (!renderer.Supports(config.PreferredBackend))
                     throw new InvalidOperationException($"Renderer does not support {config.PreferredBackend}.");
                 renderer.Initialize(config.PreferredBackend);
+                renderer.Resize(windowSize);
             }
 
             platformWindow.FixUpdated.Connect(delta =>
@@ -47,12 +52,23 @@ public abstract class Application
             {
                 foreach (IUpdatePass pass in updatePasses)
                     pass.Execute(window, delta);
-                // TODO: paint pass → renderer.Render(buffer)
+
+                if (rootWidget is not null)
+                {
+                    paintBuffer.Clear();
+                    MountPass.Mount(rootWidget);
+                    LayoutPass.Layout(rootWidget, BoxConstraints.Loose(windowSize));
+                    PaintPass.Paint(rootWidget, paintBuffer);
+                    renderer?.Render(paintBuffer);
+                }
             });
         });
 
-        if (renderer is not null)
-            platformWindow.Resized.Connect(renderer.Resize);
+        platformWindow.Resized.Connect(size =>
+        {
+            windowSize = size;
+            renderer?.Resize(size);
+        });
 
         platformWindow.Closing.Connect(() =>
         {
