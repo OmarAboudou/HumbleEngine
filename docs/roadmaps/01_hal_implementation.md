@@ -36,7 +36,7 @@ HumbleEngine.macOS     → Core + Cocoa + Metal           (pas encore créé)
 
 ## Tâches en cours
 
-- ✅ Extraction X11/Wayland terminée — voir `extraction_x11_wayland.md`
+- ✅ Extraction X11/Wayland terminée — voir `02_extraction_x11_wayland.md`
 
 ## Prochaines tâches (après extraction)
 
