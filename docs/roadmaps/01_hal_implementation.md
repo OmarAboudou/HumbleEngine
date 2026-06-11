@@ -21,31 +21,25 @@ HumbleEngine.macOS     → Core + Cocoa + Metal           (pas encore créé)
 
 ## État des projets
 
-| Projet                    | Statut          | Notes                                                              |
-|---------------------------|-----------------|--------------------------------------------------------------------|
-| HumbleEngine.Core         | ✅ Fait         | OS, DesktopOS, MobileOS, toutes les interfaces HAL, XML doc        |
-| HumbleEngine.X11          | ✅ Fait         | X11Native, X11Window, X11WindowBackend                             |
-| HumbleEngine.Wayland      | ✅ Fait         | WaylandWindowBackend (stub)                                        |
-| HumbleEngine.Vulkan       | ✅ Fait         | Stub — CompatibleWindowBackends déclaré, Initialize non implémenté |
-| HumbleEngine.OpenGL       | ✅ Fait         | GLX context, BeginFrame/EndFrame/Present via P/Invoke libGL        |
-| HumbleEngine.Linux        | ✅ Fait         | LinuxOS public, enregistrement explicite via OS.Register           |
-| HumbleEngine.Sandbox      | ✅ Fait         | Projet exécutable de test (X11 + OpenGL)                           |
-| HumbleEngine.Tests        | ✅ Fait         | Tests unitaires — FakeOS, aucune dépendance à un display           |
-| HumbleEngine.Tests.Linux  | ✅ Fait         | Tests d'intégration — X11, GLX, cycle frame complet                |
-| HumbleEngine.Windows      | 🔲 Pas commencé |                                                                    |
-| HumbleEngine.macOS        | 🔲 Pas commencé |                                                                    |
+| Projet                    | Statut          | Notes                                                                              |
+|---------------------------|-----------------|------------------------------------------------------------------------------------|
+| HumbleEngine.Core         | ✅ Fait         | OS, DesktopOS, MobileOS, toutes les interfaces HAL, XML doc                        |
+| HumbleEngine.X11          | ✅ Fait         | X11Native, X11Window (Motif hints pour borderless), X11WindowBackend               |
+| HumbleEngine.Wayland      | ✅ Fait         | libdecor intégré (CSD GNOME) ; fallback XDG brut pour borderless/sans libdecor      |
+| HumbleEngine.Vulkan       | ✅ Fait         | Stub — CompatibleWindowBackends déclaré, Initialize non implémenté                 |
+| HumbleEngine.OpenGL       | ✅ Fait         | GLX context, BeginFrame/EndFrame/Present via P/Invoke libGL                        |
+| HumbleEngine.Linux        | ✅ Fait         | LinuxOS public, Wayland en premier, X11 en fallback                                |
+| HumbleEngine.Sandbox      | ✅ Fait         | Sélection du backend par argument (`-- Wayland` ou `-- X11`)                       |
+| HumbleEngine.Tests        | ✅ Fait         | Tests unitaires — FakeOS, aucune dépendance à un display                           |
+| HumbleEngine.Tests.Linux  | ✅ Fait         | Tests d'intégration — X11, GLX, Wayland (libdecor + XDG brut), cycle frame complet |
+| HumbleEngine.Windows      | 🔲 Pas commencé |                                                                                    |
+| HumbleEngine.macOS        | 🔲 Pas commencé |                                                                                    |
 
 ---
 
-## Décisions d'architecture notables
-
-- `INativeWindowHandle` expose `GetConnectionHandle()` (Display* sur X11) — pas d'interface X11-spécifique séparée.
-- `OS.Register(new LinuxOS())` est la responsabilité explicite du `Program.cs` — pas de `[ModuleInitializer]` magique.
-- `IGraphicsBackend.Supports` est une méthode d'interface par défaut, overridable pour des vérifications runtime.
-- Les capacités optionnelles (`IRayTracingCapability`, `ITileShadingCapability`) sont détectées via le pattern `is`.
-
 ## Prochaines tâches
 
-- [ ] Implémenter VulkanGraphicsBackend réel
-- [ ] Créer HumbleEngine.Windows (Win32 + D3D12)
-- [ ] Créer HumbleEngine.macOS (Cocoa + Metal)
+- [x] Intégrer `libdecor` dans `WaylandWindow` pour les décorations sur GNOME Wayland
+- [ ] Implémenter `VulkanGraphicsBackend` réel
+- [ ] Créer `HumbleEngine.Windows` (Win32 + D3D12)
+- [ ] Créer `HumbleEngine.macOS` (Cocoa + Metal)
