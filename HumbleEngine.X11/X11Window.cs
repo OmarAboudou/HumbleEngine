@@ -32,6 +32,13 @@ internal sealed class X11Window : Window, INativeWindowHandle
         _wmDeleteWindow = X11Native.XInternAtom(display, "WM_DELETE_WINDOW", false);
         X11Native.XSetWMProtocols(display, _window, ref _wmDeleteWindow, 1);
 
+        if (desc.Borderless)
+        {
+            var hintsAtom = X11Native.XInternAtom(display, "_MOTIF_WM_HINTS", false);
+            var hints = new MotifWmHints { Flags = 2 /* MWM_HINTS_DECORATIONS */, Decorations = 0 };
+            X11Native.XChangeProperty(display, _window, hintsAtom, hintsAtom, 32, 0, ref hints, 5);
+        }
+
         X11Native.XStoreName(display, _window, desc.Title);
         X11Native.XMapWindow(display, _window);
     }

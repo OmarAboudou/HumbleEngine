@@ -9,12 +9,18 @@ public record SurfaceDescription;
 /// <param name="Height">Initial height in pixels.</param>
 /// <param name="Resizable">Whether the user can resize the window.</param>
 /// <param name="Fullscreen">Opens the window in fullscreen mode immediately.</param>
+/// <param name="Borderless">
+/// Removes window decorations (title bar, frame).
+/// On X11: uses <c>_MOTIF_WM_HINTS</c>. On Wayland: bypasses libdecor and uses the raw
+/// XDG Shell path without requesting decorations.
+/// </param>
 public record WindowDescription(
     string Title,
     int Width,
     int Height,
     bool Resizable  = true,
-    bool Fullscreen = false
+    bool Fullscreen = false,
+    bool Borderless = false
 ) : SurfaceDescription;
 
 /// <summary>Parameters for creating a mobile surface.</summary>

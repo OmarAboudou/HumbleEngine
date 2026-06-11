@@ -34,6 +34,24 @@ internal static class X11Native
 
     [DllImport(Lib)] internal static extern int XSetWMProtocols(
         IntPtr display, ulong window, ref ulong protocols, int count);
+
+    [DllImport(Lib)] internal static extern int XChangeProperty(
+        IntPtr display, ulong window, ulong property, ulong type,
+        int format, int mode, ref MotifWmHints data, int nelements);
+}
+
+/// <summary>
+/// Used with <c>_MOTIF_WM_HINTS</c> to strip window decorations.
+/// Each field maps to an X11 <c>long</c> (8 bytes on 64-bit; X reads only the lower 32 bits).
+/// </summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct MotifWmHints
+{
+    public long Flags;        // 2 = MWM_HINTS_DECORATIONS
+    public long Functions;
+    public long Decorations;  // 0 = none, 1 = all
+    public long InputMode;
+    public long Status;
 }
 
 [Flags]
