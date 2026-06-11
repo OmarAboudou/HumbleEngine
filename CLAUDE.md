@@ -8,7 +8,7 @@ HumbleEngine is a C# game engine built from scratch with the goal of understandi
 
 - Language: C# / .NET 10.0
 - IDE: Rider (`.idea/` present)
-- Current phase: **Phase 5 — HAL implementation** (Bloc 1 ✅ terminé — Bloc 2 : OpenGL)
+- Current phase: **Phase 5 — HAL implementation** — voir `docs/roadmaps/` pour l'avancement
 
 ## Build & run commands
 
@@ -60,7 +60,7 @@ macOS   (futur)     → Core + Cocoa + Metal
 
 L'assembly de plateforme (`Linux`, `Windows`, `macOS`) est le seul à connaître tous les backends. L'application ne référence que `Core` + l'assembly de plateforme cible.
 
-## HAL architecture (Phase 5 — Bloc 1 ✅)
+## HAL architecture
 
 ### Surface hierarchy
 
