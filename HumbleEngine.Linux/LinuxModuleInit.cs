@@ -2,8 +2,10 @@ using System.Runtime.CompilerServices;
 
 namespace HumbleEngine.Linux;
 
-// S'exécute automatiquement au chargement de l'assembly — enregistre LinuxOS
-// sans que l'application ait à appeler quoi que ce soit explicitement.
+/// <summary>
+/// Runs automatically when the assembly is loaded and registers <see cref="LinuxOS"/>
+/// so the application does not need to call anything explicitly.
+/// </summary>
 internal static class LinuxModuleInit
 {
     [ModuleInitializer]

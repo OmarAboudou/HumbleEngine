@@ -4,7 +4,10 @@ internal sealed class LinuxOS : DesktopOS
 {
     public override string Name => "Linux";
 
-    // Wayland en premier : backend préféré sur Linux moderne.
+    /// <summary>
+    /// Wayland is listed first as it is the preferred backend on modern Linux.
+    /// X11 is kept as a fallback.
+    /// </summary>
     public override IReadOnlyList<IWindowBackend> AvailableWindowBackends { get; } =
         [new WaylandWindowBackend(), new X11WindowBackend()];
 

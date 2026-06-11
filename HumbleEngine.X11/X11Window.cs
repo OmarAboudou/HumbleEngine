@@ -28,8 +28,7 @@ internal sealed class X11Window : Window, INativeWindowHandle
                    EventMask.ButtonPressMask      |
                    EventMask.ButtonReleaseMask));
 
-        // Enregistrement du protocole WM_DELETE_WINDOW pour intercepter le clic ✕.
-        // Sans ça, le gestionnaire de fenêtres tue la connexion brutalement.
+        // Without WM_DELETE_WINDOW the window manager kills the X connection abruptly on close.
         _wmDeleteWindow = X11Native.XInternAtom(display, "WM_DELETE_WINDOW", false);
         X11Native.XSetWMProtocols(display, _window, ref _wmDeleteWindow, 1);
 

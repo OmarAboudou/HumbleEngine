@@ -65,94 +65,24 @@ L'assembly de plateforme (`Linux`, `Windows`, `macOS`) est le seul à connaître
 ### Surface hierarchy
 
 ```
-IGraphicsSurface : IDisposable
-    bool ShouldClose
-    event Action OnClose
-    void Run(Action onFrame)
-
-IWindow : IGraphicsSurface
-    void Show() / Hide()
-    void SetTitle(string)
-    void Resize(int, int)
-    event Action<int, int> OnResize
-
-IMobileSurface : IGraphicsSurface
-    event Action OnPause / OnResume / OnLowMemory
+IGraphicsSurface (IDisposable)
+├── IWindow           — desktop: title, size, visibility
+└── IMobileSurface    — mobile: pause, resume, memory pressure
 ```
 
-`Window` (abstract class) applies the Template Method pattern over `Run`:
-```csharp
-public void Run(Action onFrame)
-{
-    while (!ShouldClose) { PollEvents(); onFrame(); }
-}
-protected abstract void PollEvents();
-```
-`PollEvents` is an implementation detail — not on `IWindow`. On mobile, `Run` registers a callback and yields to the OS.
+`Window` (abstract) implements `IGraphicsSurface` via the Template Method pattern on `Run`.
+`PollEvents` is a backend implementation detail — not exposed on `IWindow`.
 
-### Backend interfaces
+### Backend hierarchy
 
 ```
-ISurfaceBackend : IDisposable          — base commune
-    string Name
-    void Initialize()                  — idempotent
-
-IWindowBackend : ISurfaceBackend       — desktop
-    IWindow CreateWindow(WindowDescription)
-
-IMobileSurfaceBackend : ISurfaceBackend  — mobile
-    IMobileSurface GetSurface(MobileSurfaceDescription)
-
-IGraphicsBackend : IDisposable
-    string Name
-    IReadOnlyList<Type> CompatibleWindowBackends
-    bool Supports(IWindowBackend)          // default impl : Contains(backend.GetType())
-    void Initialize()                      // initialise l'API (VkInstance, device…)
-    IRenderer CreateRenderer(IGraphicsSurface surface)
-
-IRenderer : IDisposable
-    void BeginFrame() / EndFrame() / Present()
+ISurfaceBackend (IDisposable)
+├── IWindowBackend         — desktop (X11, Wayland, Win32…)
+└── IMobileSurfaceBackend  — mobile
+IGraphicsBackend (IDisposable)  — independent (Vulkan, OpenGL, D3D12…)
 ```
 
-Backend instances inside `OS` are **lightweight** — no system resources opened until `Initialize()` is called.
-
-### OS descriptor
-
-```csharp
-abstract class OS
-{
-    public static OS Current { get; }   // auto-enregistré via [ModuleInitializer] dans l'assembly de plateforme
-    public static void Register(OS os);
-    public abstract string Name { get; }
-    public abstract IReadOnlyList<IGraphicsBackend> AvailableGraphicsBackends { get; }
-    public abstract IGraphicsBackend DefaultGraphicsBackend { get; }
-    public IGraphicsBackend GetGraphicsBackend(string name);
-}
-
-abstract class DesktopOS : OS
-{
-    public abstract IReadOnlyList<IWindowBackend> AvailableWindowBackends { get; }
-    public abstract IWindowBackend DefaultWindowBackend { get; }
-    public IWindowBackend GetWindowBackend(string name);
-    public IWindow CreateWindow(WindowDescription description, IWindowBackend? backend = null);
-}
-
-abstract class MobileOS : OS
-{
-    public abstract IMobileSurfaceBackend SurfaceBackend { get; }
-}
-```
-
-### Surface descriptions
-
-```csharp
-record SurfaceDescription;
-record WindowDescription(string Title, int Width, int Height,
-    bool Resizable = true, bool Fullscreen = false) : SurfaceDescription;
-record MobileSurfaceDescription(bool LockOrientation = false) : SurfaceDescription;
-```
-
-Each backend casts to the concrete type it expects and throws `ArgumentException` if mismatched.
+Backend instances are **lightweight** — no system resources are opened until `Initialize()` is called.
 
 ### Lifecycle
 
@@ -180,15 +110,6 @@ Plusieurs fenêtres avec des backends différents sont parfaitement valides — 
 ```csharp
 if (renderer is IRayTracingCapability rt) rt.TraceRays(desc);
 if (renderer is ITileShadingCapability ts) ts.DispatchTileShader(desc);
-```
-
-### Internal native handle (hidden from application)
-
-```csharp
-internal interface INativeWindowHandle
-{
-    IntPtr GetNativeHandle();  // returns HWND, wl_surface*, NSWindow*, etc.
-}
 ```
 
 ## Key design rules

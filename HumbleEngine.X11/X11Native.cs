@@ -59,7 +59,9 @@ internal static class XEventType
     public const int ClientMessage   = 33;
 }
 
-// Union C — 192 octets sur 64-bit Linux.
+/// <summary>
+/// C union mapping the first 192 bytes of an X11 event (64-bit Linux layout).
+/// </summary>
 [StructLayout(LayoutKind.Explicit, Size = 192)]
 internal struct XEvent
 {
@@ -68,7 +70,10 @@ internal struct XEvent
     [FieldOffset(0)] public XConfigureEvent     xconfigure;
 }
 
-// Offsets calculés pour 64-bit Linux (long = 8 octets, Bool = int = 4 octets).
+/// <summary>
+/// XClientMessageEvent field offsets for 64-bit Linux
+/// (<c>long</c> = 8 bytes, <c>Bool</c> = <c>int</c> = 4 bytes).
+/// </summary>
 [StructLayout(LayoutKind.Explicit)]
 internal struct XClientMessageEvent
 {
@@ -79,7 +84,7 @@ internal struct XClientMessageEvent
     [FieldOffset(32)] public ulong  window;
     [FieldOffset(40)] public ulong  message_type;
     [FieldOffset(48)] public int    format;
-    // data.l[0..4] — union 40 octets, on n'expose que l[0] pour WM_DELETE_WINDOW
+    // data.l[0..4] — 40-byte union; only l[0] is needed for WM_DELETE_WINDOW
     [FieldOffset(56)] public long   l0;
     [FieldOffset(64)] public long   l1;
     [FieldOffset(72)] public long   l2;
