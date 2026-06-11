@@ -35,7 +35,7 @@ public sealed class X11WindowBackend : IWindowBackend
             throw new InvalidOperationException(
                 "X11WindowBackend is not initialised. Call Initialize() before CreateWindow().");
 
-        return new X11Window(_display, description);
+        return new X11Window(this, _display, description);
     }
 
     /// <summary>Closes the connection to the X11 server.</summary>

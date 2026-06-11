@@ -6,6 +6,18 @@ namespace HumbleEngine;
 /// </summary>
 public interface IWindow : IGraphicsSurface
 {
+    /// <summary>
+    /// The windowing backend that created this window. Graphics backends use it
+    /// to identify the window system (X11, Wayland…) and validate compatibility.
+    /// </summary>
+    IWindowBackend Backend { get; }
+
+    /// <summary>Current client-area width in pixels. Kept up to date by resize events.</summary>
+    int Width { get; }
+
+    /// <summary>Current client-area height in pixels. Kept up to date by resize events.</summary>
+    int Height { get; }
+
     /// <summary>Makes the window visible.</summary>
     void Show();
 

@@ -6,9 +6,12 @@ internal sealed class X11Window : Window, INativeWindowHandle
     private readonly ulong  _window;
     private readonly ulong  _wmDeleteWindow;
 
-    internal X11Window(IntPtr display, WindowDescription desc)
+    internal X11Window(IWindowBackend backend, IntPtr display, WindowDescription desc)
+        : base(backend)
     {
         _display = display;
+        Width    = desc.Width;
+        Height   = desc.Height;
         int screen = X11Native.XDefaultScreen(display);
 
         _window = X11Native.XCreateSimpleWindow(
@@ -85,7 +88,7 @@ internal sealed class X11Window : Window, INativeWindowHandle
         X11Native.XResizeWindow(_display, _window, (uint)width, (uint)height);
 
     public override IWindow CreateChildWindow(WindowDescription description) =>
-        new X11Window(_display, description);
+        new X11Window(Backend, _display, description);
 
     public IntPtr GetNativeHandle()     => new IntPtr((long)_window);
     public IntPtr GetConnectionHandle() => _display;

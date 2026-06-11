@@ -36,7 +36,7 @@ public sealed class WaylandWindowBackend : IWindowBackend
         if (!_initialized)
             throw new InvalidOperationException(
                 "WaylandWindowBackend is not initialised. Call Initialize() before CreateWindow().");
-        return new WaylandWindow(_display, description);
+        return new WaylandWindow(this, _display, description);
     }
 
     /// <summary>Disconnects from the Wayland compositor.</summary>

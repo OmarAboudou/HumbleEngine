@@ -76,6 +76,10 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
     private int  _pendingHeight;
     private bool _configureReceived;
 
+    // Once a renderer (Vulkan…) owns the surface content, the window must stop
+    // attaching its shm placeholder buffer — two buffer sources would fight.
+    private bool _rendererOwnsSurface;
+
     // =========================================================================
     // libdecor path fields
     // =========================================================================
@@ -104,7 +108,8 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
     // Constructor
     // =========================================================================
 
-    internal WaylandWindow(IntPtr display, WindowDescription desc)
+    internal WaylandWindow(IWindowBackend backend, IntPtr display, WindowDescription desc)
+        : base(backend)
     {
         _display       = display;
         _defaultWidth  = desc.Width;
@@ -153,6 +158,10 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
             InitWithLibdecor(desc);
         else
             InitWithXdg(desc);
+
+        // The initial configure may have imposed a size; later resizes go through RaiseResize.
+        Width  = _pendingWidth  > 0 ? _pendingWidth  : desc.Width;
+        Height = _pendingHeight > 0 ? _pendingHeight : desc.Height;
     }
 
     // =========================================================================
@@ -355,7 +364,7 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
     public override void Resize(int width, int height) { }
 
     public override IWindow CreateChildWindow(WindowDescription description) =>
-        new WaylandWindow(_display, description);
+        new WaylandWindow(Backend, _display, description);
 
     // =========================================================================
     // INativeWindowHandle
@@ -366,6 +375,17 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
 
     /// <summary>Returns the <c>wl_display*</c>.</summary>
     public IntPtr GetConnectionHandle() => _display;
+
+    /// <summary>
+    /// Hands the surface content over to the renderer: destroys the shm
+    /// placeholder buffer and stops re-attaching it on configure/commit.
+    /// The renderer's swapchain attaches its own buffers from now on.
+    /// </summary>
+    public void NotifyRendererAttached()
+    {
+        _rendererOwnsSurface = true;
+        DestroyShmBuffer();
+    }
 
     // =========================================================================
     // Registry callbacks
@@ -480,12 +500,15 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
         _pendingWidth  = w;
         _pendingHeight = h;
 
-        // Always recreate the buffer (initial call or resize).
-        DestroyShmBuffer();
-        CreateShmBuffer(w, h);
+        if (!_rendererOwnsSurface)
+        {
+            // Always recreate the buffer (initial call or resize).
+            DestroyShmBuffer();
+            CreateShmBuffer(w, h);
 
-        WaylandNative.SendArgs(_surface, Op.SurfaceAttach,
-            [WlArgument.Ptr(_buffer), WlArgument.Int(0), WlArgument.Int(0)]);
+            WaylandNative.SendArgs(_surface, Op.SurfaceAttach,
+                [WlArgument.Ptr(_buffer), WlArgument.Int(0), WlArgument.Int(0)]);
+        }
 
         // Acknowledge the configure by committing state back to libdecor.
         var state = LibDecorNative.libdecor_state_new(w, h);
@@ -509,7 +532,7 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
     // libdecor fires commit when decoration plugin changes need a redraw (e.g. focus change).
     private void OnLibdecorCommit(IntPtr frame, IntPtr userData)
     {
-        if (_buffer == IntPtr.Zero) return;
+        if (_rendererOwnsSurface || _buffer == IntPtr.Zero) return;
         WaylandNative.SendArgs(_surface, Op.SurfaceAttach,
             [WlArgument.Ptr(_buffer), WlArgument.Int(0), WlArgument.Int(0)]);
         WaylandNative.Send(_surface, Op.SurfaceCommit);

@@ -18,4 +18,12 @@ public interface INativeWindowHandle
     /// Display* on X11, wl_display* on Wayland, null on Win32/macOS.
     /// </summary>
     IntPtr GetConnectionHandle();
+
+    /// <summary>
+    /// Notifies the window that a renderer now owns the surface content.
+    /// Windows that attach a placeholder buffer of their own (e.g. the Wayland
+    /// shm buffer) must stop doing so to avoid fighting the renderer's
+    /// presentation. Default: no-op.
+    /// </summary>
+    void NotifyRendererAttached() { }
 }

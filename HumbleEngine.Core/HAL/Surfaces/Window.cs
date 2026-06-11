@@ -7,8 +7,20 @@ namespace HumbleEngine;
 /// </summary>
 public abstract class Window : IWindow
 {
+    /// <summary>Binds the window to the backend that creates it.</summary>
+    protected Window(IWindowBackend backend) => Backend = backend;
+
+    /// <inheritdoc/>
+    public IWindowBackend Backend { get; }
+
     /// <inheritdoc/>
     public bool ShouldClose { get; protected set; }
+
+    /// <inheritdoc/>
+    public int Width { get; protected set; }
+
+    /// <inheritdoc/>
+    public int Height { get; protected set; }
 
     /// <inheritdoc/>
     public event Action? OnClose;
@@ -53,6 +65,14 @@ public abstract class Window : IWindow
     /// <summary>Raises <see cref="OnClose"/>.</summary>
     protected void RaiseClose() => OnClose?.Invoke();
 
-    /// <summary>Raises <see cref="OnResize"/> with the new dimensions in pixels.</summary>
-    protected void RaiseResize(int width, int height) => OnResize?.Invoke(width, height);
+    /// <summary>
+    /// Updates <see cref="Width"/>/<see cref="Height"/> and raises <see cref="OnResize"/>
+    /// with the new dimensions in pixels.
+    /// </summary>
+    protected void RaiseResize(int width, int height)
+    {
+        Width  = width;
+        Height = height;
+        OnResize?.Invoke(width, height);
+    }
 }
