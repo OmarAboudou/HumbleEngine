@@ -58,7 +58,7 @@ Windows (futur)     → Core + Win32 + Vulkan + D3D12
 macOS   (futur)     → Core + Cocoa + Metal
 ```
 
-L'assembly de plateforme (`Linux`, `Windows`, `macOS`) est le seul à connaître tous les backends. L'application ne référence que `Core` + l'assembly de plateforme cible.
+L'assembly de plateforme (`Linux`, `Windows`, `macOS`) est le seul à connaître tous les backends. L'application ne référence que `Core` + l'assembly de plateforme cible, et enregistre explicitement l'OS via `OS.Register(new LinuxOS())` au démarrage.
 
 ## HAL architecture
 
@@ -87,6 +87,9 @@ Backend instances are **lightweight** — no system resources are opened until `
 ### Lifecycle
 
 ```csharp
+// The application is responsible for registering the target platform.
+OS.Register(new LinuxOS());
+
 var desktopOS       = (DesktopOS)OS.Current;
 var windowBackend   = desktopOS.DefaultWindowBackend;
 var graphicsBackend = desktopOS.DefaultGraphicsBackend;

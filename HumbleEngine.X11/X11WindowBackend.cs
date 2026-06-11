@@ -23,7 +23,7 @@ public sealed class X11WindowBackend : IWindowBackend
         _display = X11Native.XOpenDisplay(null);
         if (_display == IntPtr.Zero)
             throw new InvalidOperationException(
-                "Impossible d'ouvrir le display X11. La variable DISPLAY est-elle définie ?");
+                "Cannot open X11 display. Is the DISPLAY environment variable set?");
         _initialized = true;
     }
 
@@ -33,7 +33,7 @@ public sealed class X11WindowBackend : IWindowBackend
     {
         if (!_initialized)
             throw new InvalidOperationException(
-                "X11WindowBackend non initialisé. Appelez Initialize() avant CreateWindow().");
+                "X11WindowBackend is not initialised. Call Initialize() before CreateWindow().");
 
         return new X11Window(_display, description);
     }

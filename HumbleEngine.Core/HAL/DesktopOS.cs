@@ -15,7 +15,7 @@ public abstract class DesktopOS : OS
     /// <exception cref="KeyNotFoundException">No backend with that name exists.</exception>
     public IWindowBackend GetWindowBackend(string name) =>
         AvailableWindowBackends.FirstOrDefault(b => b.Name == name)
-        ?? throw new KeyNotFoundException($"Backend de fenêtrage '{name}' introuvable.");
+        ?? throw new KeyNotFoundException($"No window backend named '{name}'.");
 
     /// <summary>
     /// Creates a window, initialising the backend first if needed.

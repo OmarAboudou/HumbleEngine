@@ -12,11 +12,11 @@ public sealed class VulkanGraphicsBackend : IGraphicsBackend
 
     /// <inheritdoc/>
     public void Initialize() =>
-        throw new NotImplementedException("Backend Vulkan pas encore implémenté.");
+        throw new NotImplementedException("Vulkan backend not yet implemented.");
 
     /// <inheritdoc/>
     public IRenderer CreateRenderer(IGraphicsSurface surface) =>
-        throw new NotImplementedException("Backend Vulkan pas encore implémenté.");
+        throw new NotImplementedException("Vulkan backend not yet implemented.");
 
     /// <inheritdoc/>
     public void Dispose() { }

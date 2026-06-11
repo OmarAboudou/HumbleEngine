@@ -13,11 +13,11 @@ public sealed class WaylandWindowBackend : IWindowBackend
     /// <inheritdoc/>
     public void Initialize() =>
         throw new NotImplementedException(
-            "Backend Wayland pas encore implémenté. Utilisez X11WindowBackend.");
+            "Wayland backend not yet implemented. Use X11WindowBackend instead.");
 
     /// <inheritdoc/>
     public IWindow CreateWindow(WindowDescription description) =>
-        throw new NotImplementedException("Backend Wayland pas encore implémenté.");
+        throw new NotImplementedException("Wayland backend not yet implemented.");
 
     /// <inheritdoc/>
     public void Dispose() { }

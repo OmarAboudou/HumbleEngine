@@ -2,29 +2,31 @@ namespace HumbleEngine;
 
 /// <summary>
 /// Platform descriptor — entry point for accessing available backends.
-/// Registered automatically via <c>[ModuleInitializer]</c> in the platform assembly.
+/// The application entry point is responsible for calling <see cref="Register"/>
+/// with the appropriate platform instance before accessing <see cref="Current"/>.
 /// </summary>
 public abstract class OS
 {
     private static OS? _current;
 
     /// <summary>
-    /// The current platform instance, set by the platform assembly on load.
+    /// The current platform instance. Available after the application entry point
+    /// has called <see cref="Register"/>.
     /// </summary>
-    /// <exception cref="InvalidOperationException">No platform assembly has been loaded.</exception>
+    /// <exception cref="InvalidOperationException"><see cref="Register"/> has not been called.</exception>
     public static OS Current => _current
         ?? throw new InvalidOperationException(
-            "OS non initialisé. Référencez un assembly de plateforme (ex: HumbleEngine.Linux).");
+            "No OS registered. Call OS.Register(new LinuxOS()) at application startup.");
 
     /// <summary>
-    /// Registers the platform instance. Called exactly once by the platform assembly's
-    /// <c>[ModuleInitializer]</c>.
+    /// Registers the platform instance. Call this once at application startup,
+    /// before accessing <see cref="Current"/>.
     /// </summary>
     /// <exception cref="InvalidOperationException">An OS instance is already registered.</exception>
     public static void Register(OS os)
     {
         if (_current is not null)
-            throw new InvalidOperationException("Un OS est déjà enregistré.");
+            throw new InvalidOperationException("An OS instance is already registered.");
         _current = os;
     }
 
@@ -41,5 +43,5 @@ public abstract class OS
     /// <exception cref="KeyNotFoundException">No backend with that name exists.</exception>
     public IGraphicsBackend GetGraphicsBackend(string name) =>
         AvailableGraphicsBackends.FirstOrDefault(b => b.Name == name)
-        ?? throw new KeyNotFoundException($"Backend graphique '{name}' introuvable.");
+        ?? throw new KeyNotFoundException($"No graphics backend named '{name}'.");
 }

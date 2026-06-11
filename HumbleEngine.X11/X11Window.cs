@@ -80,7 +80,8 @@ internal sealed class X11Window : Window, INativeWindowHandle
     public override IWindow CreateChildWindow(WindowDescription description) =>
         new X11Window(_display, description);
 
-    public IntPtr GetNativeHandle() => new IntPtr((long)_window);
+    public IntPtr GetNativeHandle()     => new IntPtr((long)_window);
+    public IntPtr GetConnectionHandle() => _display;
 
     public override void Dispose()
     {

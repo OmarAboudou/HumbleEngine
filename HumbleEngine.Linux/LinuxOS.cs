@@ -1,6 +1,7 @@
 namespace HumbleEngine.Linux;
 
-internal sealed class LinuxOS : DesktopOS
+/// <summary>Linux platform descriptor. Pass an instance to <see cref="OS.Register"/> at startup.</summary>
+public sealed class LinuxOS : DesktopOS
 {
     public override string Name => "Linux";
 
