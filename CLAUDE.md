@@ -22,8 +22,14 @@ dotnet build HumbleEngine.Core/HumbleEngine.Core.csproj
 # Run a project
 dotnet run --project HumbleEngine.SomeProject/HumbleEngine.SomeProject.csproj
 
-# Run tests (when they exist)
+# Run all tests
 dotnet test
+
+# Run only unit tests (no display required)
+dotnet test HumbleEngine.Tests/HumbleEngine.Tests.csproj
+
+# Run Linux integration tests (requires DISPLAY)
+dotnet test HumbleEngine.Tests.Linux/HumbleEngine.Tests.Linux.csproj
 
 # Run a single test
 dotnet test --filter "FullyQualifiedName~TestMethodName"
@@ -32,12 +38,15 @@ dotnet test --filter "FullyQualifiedName~TestMethodName"
 ## Repository structure
 
 ```
-HumbleEngine.Core/      — Abstractions uniquement (interfaces, classes abstraites). Aucune dépendance.
-HumbleEngine.X11/       — Backend fenêtrage X11 (P/Invoke libX11)
-HumbleEngine.Wayland/   — Backend fenêtrage Wayland (stub)
-HumbleEngine.Vulkan/    — Backend graphique Vulkan (stub)
-HumbleEngine.OpenGL/    — Backend graphique OpenGL (stub — Bloc 2 en cours)
-HumbleEngine.Linux/     — Assembly de plateforme Linux (agrège X11, Wayland, Vulkan, OpenGL)
+HumbleEngine.Core/           — Abstractions uniquement (interfaces, classes abstraites). Aucune dépendance.
+HumbleEngine.X11/            — Backend fenêtrage X11 (P/Invoke libX11)
+HumbleEngine.Wayland/        — Backend fenêtrage Wayland (stub)
+HumbleEngine.Vulkan/         — Backend graphique Vulkan (stub)
+HumbleEngine.OpenGL/         — Backend graphique OpenGL — GLX context, BeginFrame/EndFrame/Present
+HumbleEngine.Linux/          — Assembly de plateforme Linux (agrège X11, Wayland, Vulkan, OpenGL)
+HumbleEngine.Sandbox/        — Projet exécutable de test (X11 + OpenGL)
+HumbleEngine.Tests/          — Tests unitaires — FakeOS, aucune dépendance à un display
+HumbleEngine.Tests.Linux/    — Tests d'intégration — X11, GLX, cycle frame complet
 docs/
   roadmap_general.md              — Progression d'apprentissage par phase
   roadmaps/01_hal_implementation.md   — Vue d'ensemble HAL (statuts projets)

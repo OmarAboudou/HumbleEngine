@@ -21,30 +21,31 @@ HumbleEngine.macOS     → Core + Cocoa + Metal           (pas encore créé)
 
 ## État des projets
 
-| Projet               | Statut          | Notes                                                    |
-|----------------------|-----------------|----------------------------------------------------------|
-| HumbleEngine.Core    | ✅ Fait         | OS, DesktopOS, MobileOS, toutes les interfaces HAL       |
-| HumbleEngine.X11     | ✅ Fait         | X11Native, X11Window, X11WindowBackend                   |
-| HumbleEngine.Wayland | ✅ Fait         | WaylandWindowBackend (stub)                              |
-| HumbleEngine.Vulkan  | ✅ Fait         | CompatibleWindowBackends (types), Initialize             |
-| HumbleEngine.OpenGL  | ✅ Fait         | Idem Vulkan                                              |
-| HumbleEngine.Linux   | ✅ Fait         | LinuxOS hérite DesktopOS, Surfaces/ inline supprimé      |
-| HumbleEngine.Windows | 🔲 Pas commencé |                                                          |
-| HumbleEngine.macOS   | 🔲 Pas commencé |                                                          |
+| Projet                    | Statut          | Notes                                                              |
+|---------------------------|-----------------|--------------------------------------------------------------------|
+| HumbleEngine.Core         | ✅ Fait         | OS, DesktopOS, MobileOS, toutes les interfaces HAL, XML doc        |
+| HumbleEngine.X11          | ✅ Fait         | X11Native, X11Window, X11WindowBackend                             |
+| HumbleEngine.Wayland      | ✅ Fait         | WaylandWindowBackend (stub)                                        |
+| HumbleEngine.Vulkan       | ✅ Fait         | Stub — CompatibleWindowBackends déclaré, Initialize non implémenté |
+| HumbleEngine.OpenGL       | ✅ Fait         | GLX context, BeginFrame/EndFrame/Present via P/Invoke libGL        |
+| HumbleEngine.Linux        | ✅ Fait         | LinuxOS public, enregistrement explicite via OS.Register           |
+| HumbleEngine.Sandbox      | ✅ Fait         | Projet exécutable de test (X11 + OpenGL)                           |
+| HumbleEngine.Tests        | ✅ Fait         | Tests unitaires — FakeOS, aucune dépendance à un display           |
+| HumbleEngine.Tests.Linux  | ✅ Fait         | Tests d'intégration — X11, GLX, cycle frame complet                |
+| HumbleEngine.Windows      | 🔲 Pas commencé |                                                                    |
+| HumbleEngine.macOS        | 🔲 Pas commencé |                                                                    |
 
 ---
 
-## Tâches en cours
+## Décisions d'architecture notables
 
-- ✅ Extraction X11/Wayland terminée — voir `02_extraction_x11_wayland.md`
+- `INativeWindowHandle` expose `GetConnectionHandle()` (Display* sur X11) — pas d'interface X11-spécifique séparée.
+- `OS.Register(new LinuxOS())` est la responsabilité explicite du `Program.cs` — pas de `[ModuleInitializer]` magique.
+- `IGraphicsBackend.Supports` est une méthode d'interface par défaut, overridable pour des vérifications runtime.
+- Les capacités optionnelles (`IRayTracingCapability`, `ITileShadingCapability`) sont détectées via le pattern `is`.
 
-## Prochaines tâches (après extraction)
+## Prochaines tâches
 
 - [ ] Implémenter VulkanGraphicsBackend réel
-- [ ] Implémenter OpenGLGraphicsBackend réel
-- [ ] Créer HumbleEngine.Windows
-- [ ] Créer HumbleEngine.macOS
-
----
-
-*Dernière mise à jour : X11 et Wayland créés, Vulkan/OpenGL/Linux à corriger*
+- [ ] Créer HumbleEngine.Windows (Win32 + D3D12)
+- [ ] Créer HumbleEngine.macOS (Cocoa + Metal)
