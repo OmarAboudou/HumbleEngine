@@ -4,16 +4,13 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <RootNamespace>HumbleEngine.Linux</RootNamespace>
-        <NoWarn>$(NoWarn);CA2255</NoWarn>
+        <RootNamespace>HumbleEngine.Vulkan</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
         <ProjectReference Include="..\HumbleEngine.Core\HumbleEngine.Core.csproj" />
         <ProjectReference Include="..\HumbleEngine.X11\HumbleEngine.X11.csproj" />
         <ProjectReference Include="..\HumbleEngine.Wayland\HumbleEngine.Wayland.csproj" />
-        <ProjectReference Include="..\HumbleEngine.Vulkan\HumbleEngine.Vulkan.csproj" />
-        <ProjectReference Include="..\HumbleEngine.OpenGL\HumbleEngine.OpenGL.csproj" />
     </ItemGroup>
 
 </Project>
