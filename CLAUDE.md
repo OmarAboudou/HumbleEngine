@@ -8,7 +8,7 @@ HumbleEngine is a C# game engine built from scratch with the goal of understandi
 
 - Language: C# / .NET 10.0
 - IDE: Rider (`.idea/` present)
-- Current phase: **Phase 5 — HAL implementation** (Bloc 1 designed, not yet coded)
+- Current phase: **Phase 5 — HAL implementation** (Bloc 1 ✅ terminé — Bloc 2 : OpenGL)
 
 ## Build & run commands
 
@@ -31,36 +31,36 @@ dotnet test --filter "FullyQualifiedName~TestMethodName"
 
 ## Repository structure
 
-The solution currently has one project; more will be added as phases progress:
-
 ```
-HumbleEngine.Core/          — All abstractions (interfaces, abstract classes). No dependencies.
-HumbleEngine.Linux/         — Linux platform assembly (deleted — being rewritten)
+HumbleEngine.Core/      — Abstractions uniquement (interfaces, classes abstraites). Aucune dépendance.
+HumbleEngine.X11/       — Backend fenêtrage X11 (P/Invoke libX11)
+HumbleEngine.Wayland/   — Backend fenêtrage Wayland (stub)
+HumbleEngine.Vulkan/    — Backend graphique Vulkan (stub)
+HumbleEngine.OpenGL/    — Backend graphique OpenGL (stub — Bloc 2 en cours)
+HumbleEngine.Linux/     — Assembly de plateforme Linux (agrège X11, Wayland, Vulkan, OpenGL)
 docs/
-  roadmaps/roadmap_general.md     — 5-phase progression overview
-  revisions/phase{1-5}_fiche_revision.md  — Per-phase reference sheets (concepts + code samples)
+  roadmap_general.md              — Progression d'apprentissage par phase
+  roadmaps/01_hal_implementation.md   — Vue d'ensemble HAL (statuts projets)
+  roadmaps/02_extraction_x11_wayland.md — Historique : extraction X11/Wayland ✅
+  revisions/phase{1-5}_fiche_revision.md — Notes d'apprentissage (ne pas modifier)
 ```
 
-## Planned project structure (Phase 5 HAL)
+## Dépendances entre projets
 
 ```
-Core                → interfaces only, no deps
-HAL.Vulkan          → Core
-HAL.OpenGL          → Core
-HAL.Metal           → Core
-HAL.D3D12           → Core
-HAL.X11             → Core
-HAL.Wayland         → Core
-HAL.Win32           → Core
-HAL.Cocoa           → Core
-HAL.Linux           → Core + HAL.Vulkan + HAL.OpenGL + HAL.X11 + HAL.Wayland
-HAL.Windows         → Core + HAL.D3D12 + HAL.Vulkan + HAL.Win32
-HAL.macOS           → Core + HAL.Metal + HAL.Cocoa
+Core                → (aucune)
+X11                 → Core
+Wayland             → Core
+Vulkan              → Core + X11 + Wayland
+OpenGL              → Core + X11 + Wayland
+Linux               → Core + X11 + Wayland + Vulkan + OpenGL
+Windows (futur)     → Core + Win32 + Vulkan + D3D12
+macOS   (futur)     → Core + Cocoa + Metal
 ```
 
-The `Application` entry point references `Core` + the target platform assembly only.
+L'assembly de plateforme (`Linux`, `Windows`, `macOS`) est le seul à connaître tous les backends. L'application ne référence que `Core` + l'assembly de plateforme cible.
 
-## HAL architecture (active design — Phase 5 Bloc 1)
+## HAL architecture (Phase 5 — Bloc 1 ✅)
 
 ### Surface hierarchy
 
@@ -93,10 +93,15 @@ protected abstract void PollEvents();
 ### Backend interfaces
 
 ```
-ISurfaceBackend : IDisposable
+ISurfaceBackend : IDisposable          — base commune
     string Name
-    void Initialize()
-    IGraphicsSurface CreateSurface(SurfaceDescription)
+    void Initialize()                  — idempotent
+
+IWindowBackend : ISurfaceBackend       — desktop
+    IWindow CreateWindow(WindowDescription)
+
+IMobileSurfaceBackend : ISurfaceBackend  — mobile
+    IMobileSurface GetSurface(MobileSurfaceDescription)
 
 IGraphicsBackend : IDisposable
     string Name
