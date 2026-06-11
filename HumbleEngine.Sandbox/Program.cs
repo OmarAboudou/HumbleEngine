@@ -5,19 +5,34 @@ OS.Register(new LinuxOS());
 
 var desktop = (DesktopOS)OS.Current;
 
-// Select backend from args: dotnet run -- Wayland  |  dotnet run -- X11
-var backendName = args.Length > 0 ? args[0] : "Wayland";
+// Select backends from args: dotnet run -- [Wayland|X11] [Vulkan|OpenGL]
+var windowBackendName   = args.Length > 0 ? args[0] : "Wayland";
+var graphicsBackendName = args.Length > 1 ? args[1] : "Vulkan";
 
-var windowBackend = desktop.GetWindowBackend(backendName);
+var windowBackend   = desktop.GetWindowBackend(windowBackendName);
+var graphicsBackend = desktop.GetGraphicsBackend(graphicsBackendName);
 
 windowBackend.Initialize();
-var window = windowBackend.CreateWindow(new WindowDescription($"HumbleEngine — {backendName}", 800, 600));
+var window = windowBackend.CreateWindow(
+    new WindowDescription($"HumbleEngine — {windowBackendName} + {graphicsBackendName}", 800, 600));
 
-Console.WriteLine($"OS     : {OS.Current.Name}");
-Console.WriteLine($"Window : {windowBackend.Name}");
+graphicsBackend.Initialize();
+var renderer = graphicsBackend.CreateRenderer(window);
+
+Console.WriteLine($"OS       : {OS.Current.Name}");
+Console.WriteLine($"Window   : {windowBackend.Name}");
+Console.WriteLine($"Graphics : {graphicsBackend.Name}");
 Console.WriteLine("Running. Close the window to exit.");
 
-window.Run(() => { });
+window.Run(() =>
+{
+    renderer.BeginFrame();
+    renderer.EndFrame();
+    renderer.Present();
+});
 
+// Destruction in reverse creation order.
+renderer.Dispose();
+graphicsBackend.Dispose();
 window.Dispose();
 windowBackend.Dispose();

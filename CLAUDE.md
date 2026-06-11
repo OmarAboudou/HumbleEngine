@@ -40,17 +40,18 @@ dotnet test --filter "FullyQualifiedName~TestMethodName"
 ```
 HumbleEngine.Core/           — Abstractions uniquement (interfaces, classes abstraites). Aucune dépendance.
 HumbleEngine.X11/            — Backend fenêtrage X11 (P/Invoke libX11)
-HumbleEngine.Wayland/        — Backend fenêtrage Wayland (stub)
-HumbleEngine.Vulkan/         — Backend graphique Vulkan (stub)
+HumbleEngine.Wayland/        — Backend fenêtrage Wayland (libdecor + fallback XDG brut)
+HumbleEngine.Vulkan/         — Backend graphique Vulkan — instance, fallback multi-GPU, surface, device, swapchain, cycle de frame (clear)
 HumbleEngine.OpenGL/         — Backend graphique OpenGL — GLX context, BeginFrame/EndFrame/Present
 HumbleEngine.Linux/          — Assembly de plateforme Linux (agrège X11, Wayland, Vulkan, OpenGL)
-HumbleEngine.Sandbox/        — Projet exécutable de test (X11 + OpenGL)
+HumbleEngine.Sandbox/        — Projet exécutable de test — `dotnet run -- [Wayland|X11] [Vulkan|OpenGL]`
 HumbleEngine.Tests/          — Tests unitaires — FakeOS, aucune dépendance à un display
-HumbleEngine.Tests.Linux/    — Tests d'intégration — X11, GLX, cycle frame complet
+HumbleEngine.Tests.Linux/    — Tests d'intégration — X11, GLX, Wayland, Vulkan, cycle frame complet
 docs/
   roadmap_general.md              — Progression d'apprentissage par phase
   roadmaps/01_hal_implementation.md   — Vue d'ensemble HAL (statuts projets)
   roadmaps/02_extraction_x11_wayland.md — Historique : extraction X11/Wayland ✅
+  roadmaps/03_vulkan_implementation.md  — Historique : implémentation Vulkan en 3 blocs ✅
   revisions/phase{1-5}_fiche_revision.md — Notes d'apprentissage (ne pas modifier)
 ```
 
@@ -127,6 +128,7 @@ if (renderer is ITileShadingCapability ts) ts.DispatchTileShader(desc);
 ## Key design rules
 
 - `Core` never references any backend directly — receives interfaces via injection.
+- Un backend graphique identifie le système de fenêtrage via `IWindow.Backend` (jamais par cast du type concret de la fenêtre) et appelle `INativeWindowHandle.NotifyRendererAttached()` après avoir créé un renderer.
 - Only the platform assembly (`HAL.Linux`, `HAL.Windows`, `HAL.macOS`) and the application entry point know all backends.
 - `PollEvents` must run on the main thread (X11, Win32, Cocoa mandate it) — enforced by `Window.Run`, hidden from `IWindow`.
 - Backend compatibility (`CompatibleWindowBackends`) declared as `IReadOnlyList<Type>` sur `IGraphicsBackend` — `Supports(IWindowBackend)` a une implémentation par défaut dans l'interface, overridable si nécessaire.
