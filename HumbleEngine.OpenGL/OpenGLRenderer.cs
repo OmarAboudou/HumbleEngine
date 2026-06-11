@@ -9,6 +9,7 @@ internal sealed class OpenGLRenderer : IRenderer
     private readonly IntPtr _display;
     private readonly ulong  _window;
     private readonly IntPtr _context;
+    private bool _disposed;
 
     internal OpenGLRenderer(IntPtr display, ulong window, IntPtr context)
     {
@@ -33,9 +34,11 @@ internal sealed class OpenGLRenderer : IRenderer
     /// <summary>Swaps the front and back buffers, presenting the rendered frame.</summary>
     public void Present() => GLXNative.glXSwapBuffers(_display, _window);
 
-    /// <summary>Releases the GLX context and destroys it.</summary>
+    /// <summary>Releases the GLX context and destroys it. Idempotent.</summary>
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
         GLXNative.glXMakeCurrent(_display, 0, IntPtr.Zero);
         GLXNative.glXDestroyContext(_display, _context);
     }

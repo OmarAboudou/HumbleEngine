@@ -83,8 +83,12 @@ internal sealed class X11Window : Window, INativeWindowHandle
     public IntPtr GetNativeHandle()     => new IntPtr((long)_window);
     public IntPtr GetConnectionHandle() => _display;
 
+    private bool _disposed;
+
     public override void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
         X11Native.XDestroyWindow(_display, _window);
         X11Native.XFlush(_display);
     }
