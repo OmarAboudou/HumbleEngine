@@ -8,7 +8,7 @@ HumbleEngine is a C# game engine built from scratch with the goal of understandi
 
 - Language: C# / .NET 10.0
 - IDE: Rider (`.idea/` present)
-- Current phase: **bindings réactifs terminés** (`docs/roadmaps/05_bindings.md` ✅) — prochain chantier au choix : triangle Vulkan ou brique UI
+- Current phase: **Triangle Vulkan** — voir `docs/roadmaps/06_vulkan_triangle.md` pour l'avancement
 
 ## Build & run commands
 

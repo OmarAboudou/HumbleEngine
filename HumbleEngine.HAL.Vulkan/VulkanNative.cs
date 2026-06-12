@@ -35,6 +35,14 @@ internal static class VulkanNative
         string? layerName, ref uint propertyCount, [Out] VkExtensionProperties[]? properties);
 
     /// <summary>
+    /// Lists the layers installed on the system (validation, profiling…).
+    /// Two-call idiom, same as <see cref="vkEnumerateInstanceExtensionProperties"/>.
+    /// </summary>
+    [DllImport(LibVulkan)]
+    internal static extern VkResult vkEnumerateInstanceLayerProperties(
+        ref uint propertyCount, [Out] VkLayerProperties[]? properties);
+
+    /// <summary>
     /// Creates a Vulkan instance — the connection between the application and the driver.
     /// <paramref name="allocator"/> is an optional custom host allocator; always
     /// <see cref="IntPtr.Zero"/> here to use the driver's default.
@@ -244,6 +252,17 @@ internal static class VulkanNative
     internal static extern VkResult vkQueuePresentKHR(IntPtr queue, in VkPresentInfoKHR presentInfo);
 }
 
+/// <summary>Names of the instance layers used by the engine.</summary>
+internal static class VkLayerNames
+{
+    /// <summary>
+    /// The Khronos validation layer: intercepts every call and reports API misuse
+    /// in detail on stdout — the safety net of any Vulkan development. Enabled in
+    /// Debug builds only, and only when installed on the machine.
+    /// </summary>
+    public const string KhronosValidation = "VK_LAYER_KHRONOS_validation";
+}
+
 /// <summary>Names of the instance and device extensions used by the engine.</summary>
 internal static class VkExtensionNames
 {
@@ -351,6 +370,26 @@ internal struct VkInstanceCreateInfo
     public uint EnabledExtensionCount;
     /// <summary>Pointer to an array of <c>const char*</c> extension names.</summary>
     public IntPtr EnabledExtensionNames;
+}
+
+/// <summary>Mirror of <c>VkLayerProperties</c> — identity card of one installed layer.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal unsafe struct VkLayerProperties
+{
+    /// <summary>Layer name as a fixed null-terminated ANSI buffer (<c>VK_MAX_EXTENSION_NAME_SIZE</c> = 256).</summary>
+    public fixed byte LayerName[256];
+    public uint SpecVersion;
+    public uint ImplementationVersion;
+
+    /// <summary>Description as a fixed null-terminated ANSI buffer (<c>VK_MAX_DESCRIPTION_SIZE</c> = 256).</summary>
+    public fixed byte Description[256];
+
+    /// <summary>Decodes <see cref="LayerName"/> into a managed string.</summary>
+    public string GetName()
+    {
+        fixed (byte* name = LayerName)
+            return Marshal.PtrToStringAnsi((IntPtr)name) ?? string.Empty;
+    }
 }
 
 /// <summary>Mirror of <c>VkExtensionProperties</c> — one supported extension.</summary>

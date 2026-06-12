@@ -153,10 +153,17 @@ public sealed class VulkanGraphicsBackend : IGraphicsBackend
     /// <summary>
     /// Creates the VkInstance with VK_KHR_surface plus every window-system
     /// surface extension (Xlib, Wayland) the loader reports as available.
+    /// In Debug builds, the Khronos validation layer is enabled when installed.
     /// </summary>
     private unsafe IntPtr CreateInstance()
     {
         var available = QueryInstanceExtensions();
+
+        var layers = new List<string>();
+#if DEBUG
+        if (QueryInstanceLayers().Contains(VkLayerNames.KhronosValidation))
+            layers.Add(VkLayerNames.KhronosValidation);
+#endif
 
         if (!available.Contains(VkExtensionNames.Surface))
             throw new InvalidOperationException(
@@ -178,11 +185,14 @@ public sealed class VulkanGraphicsBackend : IGraphicsBackend
         // to unmanaged ANSI strings for the duration of the call.
         var engineName     = Marshal.StringToHGlobalAnsi("HumbleEngine");
         var extensionNames = new IntPtr[extensions.Count];
+        var layerNames     = new IntPtr[layers.Count];
 
         try
         {
             for (int i = 0; i < extensions.Count; i++)
                 extensionNames[i] = Marshal.StringToHGlobalAnsi(extensions[i]);
+            for (int i = 0; i < layers.Count; i++)
+                layerNames[i] = Marshal.StringToHGlobalAnsi(layers[i]);
 
             var appInfo = new VkApplicationInfo
             {
@@ -195,11 +205,14 @@ public sealed class VulkanGraphicsBackend : IGraphicsBackend
             };
 
             fixed (IntPtr* extensionNamesPtr = extensionNames)
+            fixed (IntPtr* layerNamesPtr = layerNames)
             {
                 var createInfo = new VkInstanceCreateInfo
                 {
                     SType                 = VkStructureType.InstanceCreateInfo,
                     ApplicationInfo       = (IntPtr)(&appInfo),
+                    EnabledLayerCount     = (uint)layers.Count,
+                    EnabledLayerNames     = layers.Count > 0 ? (IntPtr)layerNamesPtr : IntPtr.Zero,
                     EnabledExtensionCount = (uint)extensions.Count,
                     EnabledExtensionNames = (IntPtr)extensionNamesPtr,
                 };
@@ -213,7 +226,23 @@ public sealed class VulkanGraphicsBackend : IGraphicsBackend
         {
             Marshal.FreeHGlobal(engineName);
             foreach (var name in extensionNames) Marshal.FreeHGlobal(name);
+            foreach (var name in layerNames) Marshal.FreeHGlobal(name);
         }
+    }
+
+    /// <summary>Lists the instance layers installed on this machine.</summary>
+    private static HashSet<string> QueryInstanceLayers()
+    {
+        uint count = 0;
+        Check(VulkanNative.vkEnumerateInstanceLayerProperties(ref count, null),
+              "vkEnumerateInstanceLayerProperties (count)");
+
+        var properties = new VkLayerProperties[count];
+        if (count > 0)
+            Check(VulkanNative.vkEnumerateInstanceLayerProperties(ref count, properties),
+                  "vkEnumerateInstanceLayerProperties");
+
+        return properties.Select(p => p.GetName()).ToHashSet();
     }
 
     /// <summary>Lists the instance extensions available on this machine.</summary>
