@@ -128,12 +128,14 @@ le cap UI n'en a pas besoin ; le pattern d'invalidation (dirty flags) sera appri
   - Layout column-major vérifié par un test mémoire (`MemoryMarshal`) ; conventions du moteur
     (main droite, `Forward = −Z`, composition droite-à-gauche) encodées et testées
 
-- [ ] **Bloc 3 — HumbleEngine.SceneGraph : Node + hiérarchie**
-  - `Node` nu : parent/enfants, cycle de vie 4 hooks + `OnParentChanged`, `Dispose`/`QueueDispose`,
-    `Name` optionnel, `Reparent()` à sémantique exacte
-  - Tests unitaires
+- [x] **Bloc 3 — HumbleEngine.SceneGraph : Node + hiérarchie** ✅ (84 tests verts au total)
+  - `Node` nu : parent/enfants ordonnés, composition `protected` (fermé par défaut), `OnParentChanged`,
+    `Reparent()` exact (un seul événement, état conservé), `Dispose()` récursif enfants-d'abord,
+    `Name` optionnel, gardes d'invariants (anti-cycle, déjà-parenté, disposed)
+  - Les 4 hooks d'arbre et `QueueDispose` exigent la frontière du vivant → déplacés au bloc 4
 
 - [ ] **Bloc 4 — Scene + SceneTree**
-  - `Scene` (composition fermée, slots par instances), `SceneTree` (frontière du vivant,
-    file `QueueDispose`), parcours de l'arbre
+  - `SceneTree` : frontière du vivant — les 4 hooks d'arbre (`OnAttaching`/`OnAttached`/
+    `OnDetaching`/`OnDetached`) avec leurs ordres de parcours, et la file `QueueDispose`
+  - `Scene` (composition fermée, slots par instances), parcours de l'arbre
   - Tests unitaires
