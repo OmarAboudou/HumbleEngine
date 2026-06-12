@@ -201,7 +201,9 @@ public sealed class VulkanGraphicsBackend : IGraphicsBackend
                 ApplicationVersion = VulkanNative.MakeApiVersion(1, 0, 0),
                 EngineName         = engineName,
                 EngineVersion      = VulkanNative.MakeApiVersion(1, 0, 0),
-                ApiVersion         = VulkanNative.MakeApiVersion(1, 0, 0),
+                // 1.3: dynamic rendering is core — verified available on every
+                // target device (Bloc 0 of roadmap 06).
+                ApiVersion         = VulkanNative.MakeApiVersion(1, 3, 0),
             };
 
             fixed (IntPtr* extensionNamesPtr = extensionNames)
@@ -381,8 +383,9 @@ public sealed class VulkanGraphicsBackend : IGraphicsBackend
     }
 
     /// <summary>
-    /// Creates the logical device with a single queue from the given family
-    /// and the VK_KHR_swapchain extension enabled.
+    /// Creates the logical device with a single queue from the given family,
+    /// the VK_KHR_swapchain extension, and the dynamic rendering feature
+    /// (1.3 core, opt-in) enabled through the <c>pNext</c> chain.
     /// </summary>
     private static unsafe IntPtr CreateLogicalDevice(IntPtr physicalDevice, uint queueFamilyIndex)
     {
@@ -400,9 +403,16 @@ public sealed class VulkanGraphicsBackend : IGraphicsBackend
                 QueuePriorities  = (IntPtr)(&priority),
             };
 
+            var dynamicRendering = new VkPhysicalDeviceDynamicRenderingFeatures
+            {
+                SType            = VkStructureType.PhysicalDeviceDynamicRenderingFeatures,
+                DynamicRendering = 1,
+            };
+
             var createInfo = new VkDeviceCreateInfo
             {
                 SType                 = VkStructureType.DeviceCreateInfo,
+                Next                  = (IntPtr)(&dynamicRendering),
                 QueueCreateInfoCount  = 1,
                 QueueCreateInfos      = (IntPtr)(&queueCreateInfo),
                 EnabledExtensionCount = 1,
@@ -422,7 +432,7 @@ public sealed class VulkanGraphicsBackend : IGraphicsBackend
     /// <summary>
     /// Creates the swapchain: triple-buffered when allowed (min+1 images),
     /// preferred format B8G8R8A8 sRGB, FIFO present mode (vsync, always available),
-    /// images usable as colour attachment and clear target.
+    /// images usable as colour attachments.
     /// </summary>
     internal static (ulong Swapchain, ulong[] Images, VkFormat Format, VkExtent2D Extent) CreateSwapchain(
         IntPtr physicalDevice, IntPtr device, ulong vkSurface, IGraphicsSurface surface)
@@ -450,7 +460,7 @@ public sealed class VulkanGraphicsBackend : IGraphicsBackend
             ImageColorSpace  = format.ColorSpace,
             ImageExtent      = extent,
             ImageArrayLayers = 1,
-            ImageUsage       = VkImageUsageFlags.ColorAttachment | VkImageUsageFlags.TransferDst,
+            ImageUsage       = VkImageUsageFlags.ColorAttachment,
             ImageSharingMode = VkSharingMode.Exclusive,
             PreTransform     = capabilities.CurrentTransform,
             CompositeAlpha   = compositeAlpha,

@@ -140,6 +140,19 @@ internal static class VulkanNative
     [DllImport(LibVulkan)]
     internal static extern void vkDestroySwapchainKHR(IntPtr device, ulong swapchain, IntPtr allocator);
 
+    /// <summary>
+    /// Creates a view over an image — the declared interpretation (format, aspect,
+    /// mips, layers) through which the pipeline accesses it. Rendering never
+    /// touches a raw image, always a view.
+    /// </summary>
+    [DllImport(LibVulkan)]
+    internal static extern VkResult vkCreateImageView(
+        IntPtr device, in VkImageViewCreateInfo createInfo, IntPtr allocator, out ulong view);
+
+    /// <summary>Destroys an image view. The underlying image is not affected.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkDestroyImageView(IntPtr device, ulong view, IntPtr allocator);
+
     /// <summary>Retrieves the VkImage handles owned by the swapchain. Two-call idiom.</summary>
     [DllImport(LibVulkan)]
     internal static extern VkResult vkGetSwapchainImagesKHR(
@@ -192,14 +205,16 @@ internal static class VulkanNative
         uint imageMemoryBarrierCount, in VkImageMemoryBarrier imageMemoryBarrier);
 
     /// <summary>
-    /// Records a clear of a colour image. The image must be in
-    /// <see cref="VkImageLayout.TransferDstOptimal"/> (or GENERAL) layout.
-    /// Declared for a single subresource range.
+    /// Opens a dynamic rendering episode (Vulkan 1.3 core): attachments, render
+    /// area and load/store behaviour are declared inline — no render pass object.
+    /// Layout transitions around the episode are the application's responsibility.
     /// </summary>
     [DllImport(LibVulkan)]
-    internal static extern void vkCmdClearColorImage(
-        IntPtr commandBuffer, ulong image, VkImageLayout imageLayout,
-        in VkClearColorValue color, uint rangeCount, in VkImageSubresourceRange range);
+    internal static extern void vkCmdBeginRendering(IntPtr commandBuffer, in VkRenderingInfo renderingInfo);
+
+    /// <summary>Closes the current dynamic rendering episode.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkCmdEndRendering(IntPtr commandBuffer);
 
     // --- Synchronisation ---
 
@@ -315,11 +330,17 @@ internal enum VkStructureType
     SubmitInfo                   = 4,
     FenceCreateInfo              = 8,
     SemaphoreCreateInfo          = 9,
+    ImageViewCreateInfo          = 15,
     CommandPoolCreateInfo        = 39,
     CommandBufferAllocateInfo    = 40,
     CommandBufferBeginInfo       = 42,
     ImageMemoryBarrier           = 45,
-    /// <summary>Extension values are offset by 1000000000 + 1000 × extension number.</summary>
+    /// <summary>Extension values are offset by 1000000000 + 1000 × extension number.
+    /// Dynamic rendering (extension 45, promoted to 1.3 core) keeps its extension-range values.</summary>
+    RenderingInfo                          = 1000044000,
+    RenderingAttachmentInfo                = 1000044001,
+    PipelineRenderingCreateInfo            = 1000044002,
+    PhysicalDeviceDynamicRenderingFeatures = 1000044003,
     SwapchainCreateInfoKhr       = 1000001000,
     PresentInfoKhr               = 1000001001,
     XlibSurfaceCreateInfoKhr     = 1000004000,
@@ -659,28 +680,57 @@ internal enum VkFenceCreateFlags : uint
 internal enum VkImageLayout
 {
     /// <summary>Content undefined — valid source of a transition when the previous content is discarded.</summary>
-    Undefined          = 0,
+    Undefined                = 0,
+    /// <summary>Optimal for being written by the pipeline as a colour attachment.</summary>
+    ColorAttachmentOptimal   = 2,
     /// <summary>Optimal as the destination of transfer/clear commands.</summary>
-    TransferDstOptimal = 7,
+    TransferDstOptimal       = 7,
     /// <summary>Required layout for handing the image to the presentation engine.</summary>
-    PresentSrcKhr      = 1000001002,
+    PresentSrcKhr            = 1000001002,
 }
 
 /// <summary>Pipeline stages (<c>VkPipelineStageFlagBits</c>). Subset.</summary>
 [Flags]
 internal enum VkPipelineStageFlags : uint
 {
-    TopOfPipe    = 0x1,
-    Transfer     = 0x1000,
-    BottomOfPipe = 0x2000,
+    TopOfPipe             = 0x1,
+    /// <summary>The stage writing colour attachments — where rendering output lands.</summary>
+    ColorAttachmentOutput = 0x400,
+    Transfer              = 0x1000,
+    BottomOfPipe          = 0x2000,
 }
 
 /// <summary>Memory access types (<c>VkAccessFlagBits</c>). Subset.</summary>
 [Flags]
 internal enum VkAccessFlags : uint
 {
-    None          = 0,
-    TransferWrite = 0x1000,
+    None                 = 0,
+    ColorAttachmentWrite = 0x100,
+    TransferWrite        = 0x1000,
+}
+
+/// <summary>Image view dimensionality (<c>VkImageViewType</c>). Subset.</summary>
+internal enum VkImageViewType
+{
+    Type2D = 1,
+}
+
+/// <summary>What happens to an attachment's content when a rendering episode opens (<c>VkAttachmentLoadOp</c>).</summary>
+internal enum VkAttachmentLoadOp
+{
+    /// <summary>Preserve the existing content — forces tile preloading on tiled GPUs.</summary>
+    Load     = 0,
+    /// <summary>Fill with the clear value — free on tiled GPUs, replaces vkCmdClearColorImage here.</summary>
+    Clear    = 1,
+    DontCare = 2,
+}
+
+/// <summary>What happens to an attachment's content when a rendering episode closes (<c>VkAttachmentStoreOp</c>).</summary>
+internal enum VkAttachmentStoreOp
+{
+    /// <summary>Write the result out — required to present it.</summary>
+    Store    = 0,
+    DontCare = 1,
 }
 
 /// <summary>Mirror of <c>VkCommandPoolCreateInfo</c>.</summary>
@@ -796,6 +846,98 @@ internal struct VkSubmitInfo
     public uint SignalSemaphoreCount;
     /// <summary>Pointer to an array of VkSemaphore (<c>ulong</c>) signalled when execution completes.</summary>
     public IntPtr SignalSemaphores;
+}
+
+/// <summary>Mirror of <c>VkComponentMapping</c> — per-channel swizzle; all-zero = identity.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkComponentMapping
+{
+    public uint R, G, B, A;
+}
+
+/// <summary>Mirror of <c>VkImageViewCreateInfo</c> — parameters of <c>vkCreateImageView</c>.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkImageViewCreateInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public uint Flags;
+    public ulong Image;
+    public VkImageViewType ViewType;
+    public VkFormat Format;
+    public VkComponentMapping Components;
+    public VkImageSubresourceRange SubresourceRange;
+}
+
+/// <summary>Mirror of <c>VkOffset2D</c>.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkOffset2D
+{
+    public int X;
+    public int Y;
+}
+
+/// <summary>Mirror of <c>VkRect2D</c> — an offset/extent pair in pixels.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkRect2D
+{
+    public VkOffset2D Offset;
+    public VkExtent2D Extent;
+}
+
+/// <summary>
+/// Mirror of <c>VkRenderingAttachmentInfo</c> — one attachment of a dynamic
+/// rendering episode: the view to draw on, its expected layout, and the
+/// load/store behaviour at the episode's boundaries. The resolve fields concern
+/// multisampling — zeroed here.
+/// </summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkRenderingAttachmentInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public ulong ImageView;
+    public VkImageLayout ImageLayout;
+    /// <summary><c>VkResolveModeFlagBits</c> — 0 = no multisample resolve.</summary>
+    public uint ResolveMode;
+    public ulong ResolveImageView;
+    public VkImageLayout ResolveImageLayout;
+    public VkAttachmentLoadOp LoadOp;
+    public VkAttachmentStoreOp StoreOp;
+    /// <summary><c>VkClearValue</c> union (16 bytes) — only the colour interpretation is used here.</summary>
+    public VkClearColorValue ClearValue;
+}
+
+/// <summary>Mirror of <c>VkRenderingInfo</c> — parameters of <c>vkCmdBeginRendering</c>.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkRenderingInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public uint Flags;
+    public VkRect2D RenderArea;
+    public uint LayerCount;
+    /// <summary>Multiview bitmask — 0 when multiview is not used.</summary>
+    public uint ViewMask;
+    public uint ColorAttachmentCount;
+    /// <summary>Pointer to an array of <see cref="VkRenderingAttachmentInfo"/>.</summary>
+    public IntPtr ColorAttachments;
+    /// <summary>Pointer to a <see cref="VkRenderingAttachmentInfo"/>, or zero — no depth here.</summary>
+    public IntPtr DepthAttachment;
+    public IntPtr StencilAttachment;
+}
+
+/// <summary>
+/// Mirror of <c>VkPhysicalDeviceDynamicRenderingFeatures</c> — chained into
+/// <see cref="VkDeviceCreateInfo.Next"/> to enable dynamic rendering at device creation.
+/// </summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkPhysicalDeviceDynamicRenderingFeatures
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    /// <summary>VkBool32 — 1 to enable.</summary>
+    public uint DynamicRendering;
 }
 
 /// <summary>Mirror of <c>VkPresentInfoKHR</c> — parameters of <c>vkQueuePresentKHR</c>.</summary>

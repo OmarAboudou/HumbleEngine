@@ -3,10 +3,11 @@ namespace HumbleEngine.Vulkan;
 /// <summary>
 /// Vulkan renderer bound to a window surface.
 /// Owns the VkSurfaceKHR, the logical device, its graphics+present queue, the
-/// swapchain and the per-frame objects (command buffer, semaphores, fence).
-/// Single frame in flight:
+/// swapchain with its image views, and the per-frame objects (command buffer,
+/// semaphores, fence). Single frame in flight:
 /// <see cref="BeginFrame"/> waits for the previous frame, acquires a swapchain
-/// image and records a clear; <see cref="EndFrame"/> submits the command buffer;
+/// image and opens a dynamic rendering episode (loadOp = clear);
+/// <see cref="EndFrame"/> closes the episode and submits the command buffer;
 /// <see cref="Present"/> hands the image to the presentation engine.
 /// The swapchain is recreated transparently when the surface changes (resize).
 /// </summary>
@@ -20,6 +21,7 @@ internal sealed class VulkanRenderer : IRenderer
     private readonly Action<int, int>? _onResize;
 
     private ulong _swapchain;
+    private ulong[] _imageViews = [];
 
     // Per-frame objects (single frame in flight).
     private readonly ulong  _commandPool;
@@ -71,6 +73,8 @@ internal sealed class VulkanRenderer : IRenderer
 
         try
         {
+            CreateImageViews();
+
             var poolInfo = new VkCommandPoolCreateInfo
             {
                 SType            = VkStructureType.CommandPoolCreateInfo,
@@ -108,6 +112,7 @@ internal sealed class VulkanRenderer : IRenderer
         catch
         {
             DestroyFrameObjects();
+            DestroyImageViews();
             throw;
         }
 
@@ -120,11 +125,12 @@ internal sealed class VulkanRenderer : IRenderer
     }
 
     /// <summary>
-    /// Waits for the previous frame to finish, acquires the next swapchain image
-    /// and records its clear to dark grey (layout transition + vkCmdClearColorImage).
+    /// Waits for the previous frame to finish, acquires the next swapchain image,
+    /// transitions it to the colour-attachment layout and opens the dynamic
+    /// rendering episode — the clear to dark grey is its <c>loadOp</c>.
     /// Recreates the swapchain first when it is out of date.
     /// </summary>
-    public void BeginFrame()
+    public unsafe void BeginFrame()
     {
         if (_swapchainDirty)
         {
@@ -154,40 +160,53 @@ internal sealed class VulkanRenderer : IRenderer
         Check(VulkanNative.vkBeginCommandBuffer(_commandBuffer, in beginInfo), "vkBeginCommandBuffer");
 
         TransitionImage(Images[_imageIndex],
-            VkImageLayout.Undefined, VkImageLayout.TransferDstOptimal,
-            VkAccessFlags.None, VkAccessFlags.TransferWrite,
-            VkPipelineStageFlags.TopOfPipe, VkPipelineStageFlags.Transfer);
+            VkImageLayout.Undefined, VkImageLayout.ColorAttachmentOptimal,
+            VkAccessFlags.None, VkAccessFlags.ColorAttachmentWrite,
+            VkPipelineStageFlags.TopOfPipe, VkPipelineStageFlags.ColorAttachmentOutput);
 
-        var clearColor = new VkClearColorValue(0.1f, 0.1f, 0.1f, 1.0f);
-        var range = new VkImageSubresourceRange
+        var colorAttachment = new VkRenderingAttachmentInfo
         {
-            AspectMask = VkImageSubresourceRange.AspectColor,
-            LevelCount = 1,
-            LayerCount = 1,
+            SType       = VkStructureType.RenderingAttachmentInfo,
+            ImageView   = _imageViews[_imageIndex],
+            ImageLayout = VkImageLayout.ColorAttachmentOptimal,
+            LoadOp      = VkAttachmentLoadOp.Clear,
+            StoreOp     = VkAttachmentStoreOp.Store,
+            ClearValue  = new VkClearColorValue(0.1f, 0.1f, 0.1f, 1.0f),
         };
-        VulkanNative.vkCmdClearColorImage(
-            _commandBuffer, Images[_imageIndex], VkImageLayout.TransferDstOptimal,
-            in clearColor, 1, in range);
+
+        var renderingInfo = new VkRenderingInfo
+        {
+            SType                = VkStructureType.RenderingInfo,
+            RenderArea           = new VkRect2D { Extent = Extent },
+            LayerCount           = 1,
+            ColorAttachmentCount = 1,
+            ColorAttachments     = (IntPtr)(&colorAttachment),
+        };
+
+        VulkanNative.vkCmdBeginRendering(_commandBuffer, in renderingInfo);
     }
 
     /// <summary>
-    /// Transitions the image to the presentable layout, ends the command buffer
-    /// and submits it: wait <c>imageAvailable</c> at the transfer stage,
-    /// signal <c>renderFinished</c> and the in-flight fence on completion.
+    /// Closes the rendering episode, transitions the image to the presentable
+    /// layout, ends the command buffer and submits it: wait <c>imageAvailable</c>
+    /// at the colour-output stage, signal <c>renderFinished</c> and the in-flight
+    /// fence on completion.
     /// </summary>
     public unsafe void EndFrame()
     {
+        VulkanNative.vkCmdEndRendering(_commandBuffer);
+
         TransitionImage(Images[_imageIndex],
-            VkImageLayout.TransferDstOptimal, VkImageLayout.PresentSrcKhr,
-            VkAccessFlags.TransferWrite, VkAccessFlags.None,
-            VkPipelineStageFlags.Transfer, VkPipelineStageFlags.BottomOfPipe);
+            VkImageLayout.ColorAttachmentOptimal, VkImageLayout.PresentSrcKhr,
+            VkAccessFlags.ColorAttachmentWrite, VkAccessFlags.None,
+            VkPipelineStageFlags.ColorAttachmentOutput, VkPipelineStageFlags.BottomOfPipe);
 
         Check(VulkanNative.vkEndCommandBuffer(_commandBuffer), "vkEndCommandBuffer");
 
         ulong  waitSemaphore   = _imageAvailable;
         ulong  signalSemaphore = _renderFinished;
         IntPtr commandBuffer   = _commandBuffer;
-        var    waitStage       = VkPipelineStageFlags.Transfer;
+        var    waitStage       = VkPipelineStageFlags.ColorAttachmentOutput;
 
         var submit = new VkSubmitInfo
         {
@@ -248,6 +267,7 @@ internal sealed class VulkanRenderer : IRenderer
 
         VulkanNative.vkDeviceWaitIdle(_device);
         DestroyFrameObjects();
+        DestroyImageViews();
         VulkanNative.vkDestroySwapchainKHR(_device, _swapchain, IntPtr.Zero);
         VulkanNative.vkDestroyDevice(_device, IntPtr.Zero);
         VulkanNative.vkDestroySurfaceKHR(_instance, _surface, IntPtr.Zero);
@@ -270,6 +290,7 @@ internal sealed class VulkanRenderer : IRenderer
     private void RecreateSwapchain()
     {
         VulkanNative.vkDeviceWaitIdle(_device);
+        DestroyImageViews();
         VulkanNative.vkDestroySwapchainKHR(_device, _swapchain, IntPtr.Zero);
 
         (_swapchain, var images, var format, var extent) =
@@ -278,6 +299,46 @@ internal sealed class VulkanRenderer : IRenderer
         Images      = images;
         ImageFormat = format;
         Extent      = extent;
+        CreateImageViews();
+    }
+
+    /// <summary>
+    /// Creates one view per swapchain image — the pipeline's typed window onto
+    /// the raw image: colour aspect, single mip, single layer, swapchain format.
+    /// Views live and die with the swapchain.
+    /// </summary>
+    private void CreateImageViews()
+    {
+        _imageViews = new ulong[Images.Length];
+        for (var i = 0; i < Images.Length; i++)
+        {
+            var createInfo = new VkImageViewCreateInfo
+            {
+                SType    = VkStructureType.ImageViewCreateInfo,
+                Image    = Images[i],
+                ViewType = VkImageViewType.Type2D,
+                Format   = ImageFormat,
+                SubresourceRange = new VkImageSubresourceRange
+                {
+                    AspectMask = VkImageSubresourceRange.AspectColor,
+                    LevelCount = 1,
+                    LayerCount = 1,
+                },
+            };
+            Check(VulkanNative.vkCreateImageView(_device, in createInfo, IntPtr.Zero, out _imageViews[i]),
+                  "vkCreateImageView");
+        }
+    }
+
+    /// <summary>Destroys the swapchain image views; the images themselves belong to the swapchain.</summary>
+    private void DestroyImageViews()
+    {
+        foreach (var view in _imageViews)
+        {
+            if (view != 0)
+                VulkanNative.vkDestroyImageView(_device, view, IntPtr.Zero);
+        }
+        _imageViews = [];
     }
 
     /// <summary>Records a layout transition of the image's colour aspect into the command buffer.</summary>

@@ -34,6 +34,68 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
   d'instance si présente (build Debug uniquement) : les messages détaillés du driver
   sont le filet de sécurité de toute la phase.
 
+### La chaîne de montage du pipeline (passe 1)
+
+- **Cinq postes** : vertex shader (programmable, 1×/sommet, contrat : `gl_Position`)
+  → assemblage de primitives (figé, piloté par la topologie) → rasterization (figée :
+  couverture des pixels + **interpolation barycentrique** des sorties du VS — le
+  dégradé naît ici, gratuit) → fragment shader (programmable, 1×/fragment, contrat :
+  une couleur) → blending (configurable ; éteint pour un triangle opaque, se
+  réveillera pour l'UI).
+- **Le PSO fige tout d'avance** — l'anti-OpenGL : au lieu d'un état global mutable
+  que le driver doit revalider/recompiler au draw (hitches), la configuration
+  complète (shaders, topologie, rasterizer, blending, formats des attachments) est
+  déclarée dans un objet immuable, compilé une fois en microcode réel. Draw = bind +
+  go. Corollaire : un shader différent = un pipeline différent.
+- **Deux soupapes** : le *dynamic state* — viewport/scissor fournis au draw, donc le
+  pipeline **survit au resize** (seule la swapchain est recréée, comme aujourd'hui) ;
+  les *specialization constants* (variantes de compilation), hors roadmap.
+- **PSO du Bloc 3** : 2 `VkShaderModule`, aucun vertex input (sommets en dur),
+  topologie triangle list, rasterizer par défaut, pas de blending, viewport/scissor
+  dynamiques, format couleur de la swapchain déclaré au pipeline (le dynamic
+  rendering n'ayant plus de render pass pour le porter).
+
+### Shaders et SPIR-V (passe 2)
+
+- **Les deux shaders du triangle sont écrits** — `triangle.vert` : tableaux constants
+  indexés par `gl_VertexIndex` (le « triangle sans données »), sortie couleur ;
+  `triangle.frag` : passthrough de la couleur interpolée. Le contrat entre étages
+  passe par `layout(location = N)` — et entre les deux, le rasterizer interpole.
+  NDC Vulkan **Y vers le bas**, encodé à la main dans les constantes (c'est le clip
+  space que `Matrix4x4.CreateOrthographic` absorbe quand il y a une matrice).
+- **SPIR-V = l'IL du GPU** — GLSL est le C#, SPIR-V est l'IL, le driver fait le JIT
+  final vers le microcode. Compilation **hors ligne** par `glslangValidator -V` :
+  les erreurs sortent au build chez nous, le driver ne reçoit que du binaire validé
+  (fin des compilateurs GLSL par vendor et de leurs divergences, la plaie d'OpenGL).
+- **Intégration au build** — sources versionnées dans `HAL.Vulkan/Shaders/`, cible
+  MSBuild `glslangValidator` → `obj/`, `.spv` embarqués en **ressources** d'assembly
+  (artefacts, jamais commités). Runtime : `GetManifestResourceStream` →
+  `vkCreateShaderModule` (simple enveloppe d'octets ; le point d'entrée `main` est
+  désigné par le pipeline, par étage). Assumé : builder `HAL.Vulkan` exige
+  `glslangValidator` sur la machine.
+
+### Le dynamic rendering en pratique (passe 3)
+
+- **`VkImageView` : l'interprétation déclarée d'une image** — le pipeline ne dessine
+  jamais sur une image brute, toujours à travers une view (format, aspect, mips,
+  couches) ; un `Span<T>` typé posé sur la mémoire brute. Une view par image de
+  swapchain — naissent avec elle, recréées au resize, détruites avec elle.
+- **`vkCmdBeginRendering` = l'épisode déclaré inline** — `VkRenderingInfo` porte le
+  renderArea et l'attachment couleur (`view`, `layout`, `loadOp`, `storeOp`,
+  `clearValue`). **Le clear cesse d'être une commande** (`vkCmdClearColorImage`
+  supprimé) **et devient une propriété d'ouverture** : `loadOp = Clear` — la forme
+  que les GPU à tuiles savent rendre gratuite.
+- **Les barriers restent, les destinations changent** — le dynamic rendering laisse
+  les transitions de layout à notre charge (le render pass les faisait
+  implicitement) : `Undefined → ColorAttachmentOptimal` (stage ColorAttachmentOutput,
+  access ColorAttachmentWrite) avant l'épisode, `→ PresentSrcKhr` après.
+- **`pNext` : le mécanisme d'extension universel** — chaque struct Vulkan peut
+  chaîner des suppléments en liste. Deux branchements : `ApiVersion` déclaré → 1.3
+  (la machine est en 1.4), et `VkPhysicalDeviceDynamicRenderingFeatures
+  { dynamicRendering = true }` chaînée au `VkDeviceCreateInfo`. Au Bloc 3, le
+  pipeline déclarera son format d'attachment via `VkPipelineRenderingCreateInfo`
+  chaînée — le résidu du contrat render pass, réduit à un champ.
+
 ### Hors périmètre (volontairement)
 
 Intégration SceneGraph↔renderer, quads UI, textures, uniforms/descripteurs,
@@ -50,13 +112,12 @@ profondeur, multi-frames in flight — chacun viendra avec son client.
   - Validation : layer chargée (trace loader), 14 tests d'intégration Vulkan verts,
     Sandbox 6 s sans aucun message — le chemin clear existant est propre
 
-- [ ] **Bloc 1 — Conception** (passes progressives)
-  - [ ] Passe 1 : la chaîne de montage du pipeline — étages programmables vs fixes,
-    pourquoi le PSO fige tout d'avance
-  - [ ] Passe 2 : shaders et SPIR-V — GLSL, compilation au build, `gl_VertexIndex`,
-    interpolation des sorties entre sommets
-  - [ ] Passe 3 : dynamic rendering en pratique — image views, attachments,
-    branchement sur les barriers existantes
+- [x] **Bloc 1 — Conception** ✅ (passes progressives)
+  - [x] Passe 1 : la chaîne de montage ✅ → section « La chaîne de montage du
+    pipeline » ci-dessus
+  - [x] Passe 2 : shaders et SPIR-V ✅ → section « Shaders et SPIR-V » ci-dessus
+  - [x] Passe 3 : dynamic rendering en pratique ✅ → section « Le dynamic rendering
+    en pratique » ci-dessus
 
 - [ ] **Bloc 2 — Image views + chemin rendering** — le clear actuel réécrit via
   `vkCmdBeginRendering` (loadOp = Clear) : écran toujours gris, mais par le chemin
