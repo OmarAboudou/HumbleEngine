@@ -20,8 +20,10 @@ var window = windowBackend.CreateWindow(
 graphicsBackend.Initialize();
 var renderer = graphicsBackend.CreateRenderer(window);
 
-var scene = new SandboxScene(renderer) { Name = "Main" };
-var tree  = new SceneTree { Root = scene };
+// The trio: this window's renderer pairs with this tree; the scene is a pure
+// template — its nodes acquire their GPU resources on entering the tree.
+var scene = new SandboxScene { Name = "Main" };
+var tree  = new SceneTree(renderer) { Root = scene };
 
 Console.WriteLine($"OS       : {OS.Current.Name}");
 Console.WriteLine($"Window   : {windowBackend.Name}");
@@ -44,7 +46,7 @@ window.Run(() =>
     scene.BreathingSize.Value = new Vector2(150f, 60f + 40f * MathF.Sin(t * 3f));
 
     renderer.BeginFrame();
-    tree.Render(renderer);
+    tree.Render();
     renderer.EndFrame();
     renderer.Present();
 

@@ -13,6 +13,9 @@ internal sealed class TestVisualNode(string name, List<string>? log = null) : Vi
     /// <summary>The renderer received by the last <see cref="OnDraw"/> call.</summary>
     public IRenderer? LastRenderer { get; private set; }
 
+    /// <summary>The protected <see cref="VisualNode.Renderer"/> protocol, exposed for assertions.</summary>
+    public IRenderer? RendererView => Renderer;
+
     /// <summary>Number of <see cref="OnDraw"/> calls received.</summary>
     public int DrawCount { get; private set; }
 

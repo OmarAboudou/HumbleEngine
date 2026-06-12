@@ -61,10 +61,10 @@ public sealed class UINodeTests
     {
         var panel = MakePanel(10f, 20f, 30f, 40f);
         panel.Color.Value = new Vector4(0.1f, 0.2f, 0.3f, 0.4f);
-        using var tree = new SceneTree { Root = panel };
         var renderer = new FakeRenderer();
+        using var tree = new SceneTree(renderer) { Root = panel };
 
-        tree.Render(renderer);
+        tree.Render();
 
         Assert.That(renderer.Quads, Has.Count.EqualTo(1));
         Assert.That(renderer.Quads[0].Rect, Is.EqualTo(new Rect(10f, 20f, 30f, 40f)));

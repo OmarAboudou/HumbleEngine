@@ -218,7 +218,7 @@ public sealed class SlotTests
         var root = new TestNode("root");
         var scene = new FramedScene();
         root.AttachChild(scene);
-        using var tree = new SceneTree { Root = root };
+        using var tree = new SceneTree(new FakeRenderer()) { Root = root };
 
         // Long after construction: same API, same semantics, hooks fire.
         var late = new TestNode("late");
@@ -235,7 +235,7 @@ public sealed class SlotTests
         var root = new TestNode("root");
         var card = new CardScene();
         root.AttachChild(card);
-        using var tree = new SceneTree { Root = root };
+        using var tree = new SceneTree(new FakeRenderer()) { Root = root };
 
         var icon = new TestNode("sword");
         card.Icon = icon;

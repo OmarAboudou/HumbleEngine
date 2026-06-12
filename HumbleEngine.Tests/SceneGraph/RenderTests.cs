@@ -1,13 +1,31 @@
 namespace HumbleEngine.Tests.SceneGraph;
 
 /// <summary>
-/// Unit tests for the tree-driven drawing (roadmap 07): traversal order,
-/// pure-logic nodes staying silent, the renderer never being retained, and the
-/// frame-N death semantics of <see cref="Node.QueueDispose"/> seen from the
-/// drawing side — mesh ownership included.
+/// Unit tests for the tree-driven drawing (roadmaps 07 and 09): traversal
+/// order, pure-logic nodes staying silent, the window–renderer–tree trio
+/// (the tree's renderer is the one handed to nodes, and the
+/// <see cref="VisualNode"/> protocol resolves it), the attach/detach resource
+/// lifecycle, and the frame-N death semantics of <see cref="Node.QueueDispose"/>
+/// seen from the drawing side.
 /// </summary>
 public sealed class RenderTests
 {
+    /// <summary>
+    /// The resource-owning node pattern (the Sandbox triangle's shape):
+    /// default-constructible, acquires its mesh from the context renderer on
+    /// attach, releases it on detach.
+    /// </summary>
+    private sealed class ResourceNode : VisualNode
+    {
+        /// <summary>The mesh acquired by the last attach; kept after release for assertions.</summary>
+        public FakeMesh? Mesh { get; private set; }
+
+        protected override void OnAttached() =>
+            Mesh = (FakeMesh)Renderer!.CreateMesh([new Vertex(default, default)]);
+
+        protected override void OnDetached() => Mesh?.Dispose();
+    }
+
     [Test]
     public void Render_VisitsVisualNodes_ParentsBeforeChildren_InAttachOrder()
     {
@@ -19,10 +37,10 @@ public sealed class RenderTests
         root.AttachChild(left);
         root.AttachChild(right);
         left.AttachChild(leftChild);
-        using var tree = new SceneTree { Root = root };
+        using var tree = new SceneTree(new FakeRenderer()) { Root = root };
         log.Clear();
 
-        tree.Render(new FakeRenderer());
+        tree.Render();
 
         Assert.That(log, Is.EqualTo(new[]
         {
@@ -39,10 +57,10 @@ public sealed class RenderTests
         var visual = new TestVisualNode("visual", log);
         root.AttachChild(logic);
         logic.AttachChild(visual);
-        using var tree = new SceneTree { Root = root };
+        using var tree = new SceneTree(new FakeRenderer()) { Root = root };
         log.Clear();
 
-        tree.Render(new FakeRenderer());
+        tree.Render();
 
         Assert.That(log, Is.EqualTo(new[] { "visual:Draw" }));
     }
@@ -50,42 +68,87 @@ public sealed class RenderTests
     [Test]
     public void Render_WithoutRoot_DoesNothing()
     {
-        using var tree = new SceneTree();
+        using var tree = new SceneTree(new FakeRenderer());
 
-        Assert.DoesNotThrow(() => tree.Render(new FakeRenderer()));
+        Assert.DoesNotThrow(() => tree.Render());
     }
 
     [Test]
-    public void Render_NullRenderer_Throws()
+    public void Tree_RequiresARenderer()
     {
-        using var tree = new SceneTree { Root = new TestVisualNode("root") };
-
-        Assert.Throws<ArgumentNullException>(() => tree.Render(null!));
+        Assert.Throws<ArgumentNullException>(() => _ = new SceneTree(null!));
     }
 
     [Test]
     public void Render_OnDisposedTree_Throws()
     {
-        var tree = new SceneTree { Root = new TestVisualNode("root") };
+        var tree = new SceneTree(new FakeRenderer()) { Root = new TestVisualNode("root") };
         tree.Dispose();
 
-        Assert.Throws<ObjectDisposedException>(() => tree.Render(new FakeRenderer()));
+        Assert.Throws<ObjectDisposedException>(() => tree.Render());
     }
 
     [Test]
-    public void Render_HandsTheGivenRendererToNodes_NothingRetained()
+    public void Render_HandsTheTreeRendererToNodes()
     {
+        var renderer = new FakeRenderer();
         var node = new TestVisualNode("root");
-        using var tree = new SceneTree { Root = node };
-        var first = new FakeRenderer();
-        var second = new FakeRenderer();
+        using var tree = new SceneTree(renderer) { Root = node };
 
-        tree.Render(first);
-        Assert.That(node.LastRenderer, Is.SameAs(first));
+        tree.Render();
 
-        // A second renderer is honoured as-is: the tree kept no rendering state.
-        tree.Render(second);
-        Assert.That(node.LastRenderer, Is.SameAs(second));
+        Assert.That(node.LastRenderer, Is.SameAs(renderer));
+    }
+
+    [Test]
+    public void RendererProtocol_ResolvesTheTreeRenderer_AndNullWhenDetached()
+    {
+        var renderer = new FakeRenderer();
+        var node = new TestVisualNode("node");
+        Assert.That(node.RendererView, Is.Null);
+
+        using var tree = new SceneTree(renderer) { Root = node };
+        Assert.That(node.RendererView, Is.SameAs(renderer));
+
+        tree.Root = null;
+        Assert.That(node.RendererView, Is.Null);
+    }
+
+    [Test]
+    public void ResourceNode_AcquiresOnAttach_ReleasesOnDetach_ReacquiresOnReattach()
+    {
+        var renderer = new FakeRenderer();
+        var root = new TestNode("root");
+        var node = new ResourceNode();
+        using var tree = new SceneTree(renderer) { Root = root };
+
+        root.AttachChild(node);
+        var firstMesh = node.Mesh;
+        Assert.That(firstMesh, Is.Not.Null);
+        Assert.That(firstMesh!.IsDisposed, Is.False);
+
+        root.DetachChild(node);
+        Assert.That(firstMesh.IsDisposed, Is.True);
+
+        root.AttachChild(node);
+        Assert.That(node.Mesh, Is.Not.SameAs(firstMesh));
+        Assert.That(node.Mesh!.IsDisposed, Is.False);
+    }
+
+    [Test]
+    public void ResourceNode_Disposal_ReleasesTheMesh_ThroughTheDetachPath()
+    {
+        var renderer = new FakeRenderer();
+        var root = new TestNode("root");
+        var node = new ResourceNode();
+        using var tree = new SceneTree(renderer) { Root = root };
+        root.AttachChild(node);
+        var mesh = node.Mesh!;
+
+        // Dispose detaches first: OnDetached is the single release path.
+        node.Dispose();
+
+        Assert.That(mesh.IsDisposed, Is.True);
     }
 
     [Test]
@@ -94,9 +157,9 @@ public sealed class RenderTests
         var renderer = new FakeRenderer();
         var mesh = renderer.CreateMesh([new Vertex(new Vector2(0f, 0f), new Vector3(1f, 0f, 0f))]);
         var node = new TestVisualNode("root") { Mesh = mesh };
-        using var tree = new SceneTree { Root = node };
+        using var tree = new SceneTree(renderer) { Root = node };
 
-        tree.Render(renderer);
+        tree.Render();
 
         Assert.That(renderer.DrawCount, Is.EqualTo(1));
         Assert.That(renderer.Meshes[0].VertexCount, Is.EqualTo(1));
@@ -111,11 +174,11 @@ public sealed class RenderTests
         var root = new TestVisualNode("root", log);
         var doomed = new TestVisualNode("doomed", log) { Mesh = mesh };
         root.AttachChild(doomed);
-        using var tree = new SceneTree { Root = root };
+        using var tree = new SceneTree(renderer) { Root = root };
         log.Clear();
 
         // Frame N: the node still draws, then queues its own death.
-        tree.Render(renderer);
+        tree.Render();
         doomed.QueueDispose();
         Assert.That(log, Does.Contain("doomed:Draw"));
         Assert.That(mesh.IsDisposed, Is.False);
@@ -126,7 +189,7 @@ public sealed class RenderTests
         log.Clear();
 
         // Frame N+1: the node is gone from the traversal.
-        tree.Render(renderer);
+        tree.Render();
         Assert.That(log, Is.EqualTo(new[] { "root:Draw" }));
     }
 }

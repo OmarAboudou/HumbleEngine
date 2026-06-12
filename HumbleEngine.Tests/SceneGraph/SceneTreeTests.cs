@@ -22,7 +22,7 @@ public sealed class SceneTreeTests
         child.AttachChild(grandchild);
         log.Clear();
 
-        using var tree = new SceneTree();
+        using var tree = new SceneTree(new FakeRenderer());
         tree.Root = root;
 
         Assert.That(
@@ -41,7 +41,7 @@ public sealed class SceneTreeTests
     {
         var log = new List<string>();
         var root = new TestNode("root", log);
-        using var tree = new SceneTree { Root = root };
+        using var tree = new SceneTree(new FakeRenderer()) { Root = root };
         log.Clear();
 
         var child = new TestNode("child", log);
@@ -80,7 +80,7 @@ public sealed class SceneTreeTests
         var grandchild = new TestNode("grandchild", log);
         root.AttachChild(child);
         child.AttachChild(grandchild);
-        using var tree = new SceneTree { Root = root };
+        using var tree = new SceneTree(new FakeRenderer()) { Root = root };
         log.Clear();
 
         root.DetachChild(child);
@@ -101,7 +101,7 @@ public sealed class SceneTreeTests
         var root = new TestNode("root");
         var child = new TestNode("child");
         root.AttachChild(child);
-        using var tree = new SceneTree { Root = root };
+        using var tree = new SceneTree(new FakeRenderer()) { Root = root };
 
         root.DetachChild(child);
 
@@ -119,7 +119,7 @@ public sealed class SceneTreeTests
         root.AttachChild(a);
         root.AttachChild(b);
         a.AttachChild(child);
-        using var tree = new SceneTree { Root = root };
+        using var tree = new SceneTree(new FakeRenderer()) { Root = root };
         log.Clear();
 
         b.AdoptChild(child);
@@ -136,7 +136,7 @@ public sealed class SceneTreeTests
         var root = new TestNode("root", log);
         var child = new TestNode("child", log);
         root.AttachChild(child);
-        using var tree = new SceneTree { Root = root };
+        using var tree = new SceneTree(new FakeRenderer()) { Root = root };
         var detached = new TestNode("detached", log);
         log.Clear();
 
@@ -152,7 +152,7 @@ public sealed class SceneTreeTests
     {
         var log = new List<string>();
         var root = new TestNode("root", log);
-        using var tree = new SceneTree { Root = root };
+        using var tree = new SceneTree(new FakeRenderer()) { Root = root };
         var detached = new TestNode("detached", log);
         var child = new TestNode("child", log);
         detached.AttachChild(child);
@@ -168,7 +168,7 @@ public sealed class SceneTreeTests
     public void RootOfATree_CannotBeAttachedOrAdoptedElsewhere()
     {
         var root = new TestNode("root");
-        using var tree = new SceneTree { Root = root };
+        using var tree = new SceneTree(new FakeRenderer()) { Root = root };
         var other = new TestNode("other");
 
         Assert.Throws<InvalidOperationException>(() => other.AttachChild(root));
@@ -182,7 +182,7 @@ public sealed class SceneTreeTests
         var child = new TestNode("child");
         parent.AttachChild(child);
 
-        using var tree = new SceneTree();
+        using var tree = new SceneTree(new FakeRenderer());
         Assert.Throws<InvalidOperationException>(() => tree.Root = child);
     }
 
@@ -190,8 +190,8 @@ public sealed class SceneTreeTests
     public void Root_OfAnotherTree_Throws()
     {
         var root = new TestNode("root");
-        using var tree1 = new SceneTree { Root = root };
-        using var tree2 = new SceneTree();
+        using var tree1 = new SceneTree(new FakeRenderer()) { Root = root };
+        using var tree2 = new SceneTree(new FakeRenderer());
 
         Assert.Throws<InvalidOperationException>(() => tree2.Root = root);
     }
@@ -202,7 +202,7 @@ public sealed class SceneTreeTests
         var log = new List<string>();
         var oldRoot = new TestNode("old", log);
         var newRoot = new TestNode("new", log);
-        using var tree = new SceneTree { Root = oldRoot };
+        using var tree = new SceneTree(new FakeRenderer()) { Root = oldRoot };
         log.Clear();
 
         tree.Root = newRoot;
@@ -221,7 +221,7 @@ public sealed class SceneTreeTests
         var root = new TestNode("root");
         var child = new TestNode("child");
         root.AttachChild(child);
-        using var tree = new SceneTree { Root = root };
+        using var tree = new SceneTree(new FakeRenderer()) { Root = root };
 
         child.QueueDispose();
         Assert.That(child.IsDisposed, Is.False);
@@ -246,7 +246,7 @@ public sealed class SceneTreeTests
         var root = new TestNode("root", log);
         var child = new TestNode("child", log);
         root.AttachChild(child);
-        using var tree = new SceneTree { Root = root };
+        using var tree = new SceneTree(new FakeRenderer()) { Root = root };
         log.Clear();
 
         child.Dispose();
@@ -261,7 +261,7 @@ public sealed class SceneTreeTests
     {
         var log = new List<string>();
         var root = new TestNode("root", log);
-        var tree = new SceneTree { Root = root };
+        var tree = new SceneTree(new FakeRenderer()) { Root = root };
         log.Clear();
 
         root.Dispose();
@@ -277,7 +277,7 @@ public sealed class SceneTreeTests
         var root = new TestNode("root");
         var child = new TestNode("child");
         root.AttachChild(child);
-        var tree = new SceneTree { Root = root };
+        var tree = new SceneTree(new FakeRenderer()) { Root = root };
 
         tree.Dispose();
 

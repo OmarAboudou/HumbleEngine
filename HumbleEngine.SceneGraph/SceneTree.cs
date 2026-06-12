@@ -5,17 +5,34 @@ namespace HumbleEngine;
 /// <see cref="Root"/> are "in tree" and receive the tree lifecycle hooks. Also
 /// hosts the deferred-dispose queue behind <see cref="Node.QueueDispose"/>.
 /// <para>
-/// The tree knows nothing about windows — wiring it to a surface and a frame
-/// loop is the application's business, one tree per driven surface. Rendering
-/// passes through <see cref="Render"/>: the renderer is handed in per call,
-/// never retained. There is no global tree: the application owns the lifecycle,
-/// as everywhere else in the engine.
+/// A tree is the third of the trio "one window ↔ one renderer ↔ one tree": the
+/// application injects the window's renderer at construction, and the tree
+/// hands it to nodes through the framework protocol
+/// (<see cref="VisualNode.Renderer"/>) — nodes acquire GPU resources when
+/// entering the tree, release them when leaving. The tree still knows nothing
+/// about windows: wiring the frame loop is the application's business, and
+/// multi-window means several trios side by side. There is no global tree: the
+/// application owns the lifecycle, as everywhere else in the engine.
+/// (The in-tree WindowNode/viewport model is the noted evolution — see roadmap 09.)
 /// </para>
 /// </summary>
 public sealed class SceneTree : IDisposable
 {
     private readonly List<Node> _disposeQueue = [];
     private Node? _root;
+
+    /// <summary>
+    /// Renderer driving this tree's surface — injected by the application,
+    /// read by nodes through <see cref="VisualNode.Renderer"/>.
+    /// </summary>
+    public IRenderer Renderer { get; }
+
+    /// <summary>Creates a tree paired with the renderer of the surface it drives.</summary>
+    public SceneTree(IRenderer renderer)
+    {
+        ArgumentNullException.ThrowIfNull(renderer);
+        Renderer = renderer;
+    }
 
     /// <summary>True once <see cref="Dispose"/> has run.</summary>
     public bool IsDisposed { get; private set; }
@@ -55,18 +72,16 @@ public sealed class SceneTree : IDisposable
     }
 
     /// <summary>
-    /// Draws the living tree: walks the root subtree, parents before children
-    /// (painter's order), letting every <see cref="VisualNode"/> submit its
-    /// draws. Call between the renderer's <see cref="IRenderer.BeginFrame"/>
-    /// and <see cref="IRenderer.EndFrame"/>. The renderer is not retained —
-    /// the tree holds no rendering state between frames.
+    /// Draws the living tree with <see cref="Renderer"/>: walks the root
+    /// subtree, parents before children (painter's order), letting every
+    /// <see cref="VisualNode"/> submit its draws. Call between the renderer's
+    /// <see cref="IRenderer.BeginFrame"/> and <see cref="IRenderer.EndFrame"/>.
     /// </summary>
     /// <exception cref="ObjectDisposedException">This tree is disposed.</exception>
-    public void Render(IRenderer renderer)
+    public void Render()
     {
-        ArgumentNullException.ThrowIfNull(renderer);
         ObjectDisposedException.ThrowIf(IsDisposed, this);
-        _root?.RenderSubtree(renderer);
+        _root?.RenderSubtree(Renderer);
     }
 
     /// <summary>

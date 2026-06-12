@@ -8,7 +8,7 @@ HumbleEngine is a C# game engine built from scratch with the goal of understandi
 
 - Language: C# / .NET 10.0
 - IDE: Rider (`.idea/` present)
-- Current phase: **brique UI, premier étage terminé** (`docs/roadmaps/08_ui_brique.md` ✅) — prochains étages : input/événements (hit-testing, client du two-way binding), texte
+- Current phase: **input en cours** (`docs/roadmaps/09_input.md`) — Bloc 1 : le branchement du trio fenêtre–renderer–arbre
 
 ## Build & run commands
 
@@ -140,6 +140,7 @@ if (renderer is ITileShadingCapability ts) ts.DispatchTileShader(desc);
 - Backend compatibility (`CompatibleWindowBackends`) declared as `IReadOnlyList<Type>` sur `IGraphicsBackend` — `Supports(IWindowBackend)` a une implémentation par défaut dans l'interface, overridable si nécessaire.
 - New renderer capabilities use `is` pattern, not interface inheritance, so backends don't need to implement unused capabilities.
 - Pas d'`EngineContext` global — le cycle de vie est à la charge de l'application, ce qui permet plusieurs fenêtres avec des backends différents. Destruction dans l'ordre inverse de la création.
+- Trio « une fenêtre ↔ un renderer ↔ un arbre » (`SceneTree(renderer)`). Les nœuds sont défaut-constructibles (contrat éditeur) : ressources GPU acquises à l'attach, libérées au detach, via le point d'accès unique `VisualNode.Renderer` (évolution WindowNode/viewport notée en roadmap 09).
 
 ## Convention de namespace
 

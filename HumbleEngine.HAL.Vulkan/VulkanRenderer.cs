@@ -235,7 +235,7 @@ internal sealed class VulkanRenderer : IRenderer
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         var (buffer, memory) = VulkanBuffers.CreateVertexBuffer(_physicalDevice, _device, vertices);
-        return new VulkanMesh(_device, buffer, memory, (uint)vertices.Length);
+        return new VulkanMesh(this, _device, buffer, memory, (uint)vertices.Length);
     }
 
     /// <summary>
@@ -251,6 +251,9 @@ internal sealed class VulkanRenderer : IRenderer
             throw new InvalidOperationException("Draw is only valid between BeginFrame and EndFrame.");
         if (mesh is not VulkanMesh vulkanMesh)
             throw new ArgumentException($"{mesh.GetType().Name} was not created by a Vulkan renderer.", nameof(mesh));
+        if (!ReferenceEquals(vulkanMesh.Owner, this))
+            throw new ArgumentException(
+                "The mesh was created by another renderer — its buffer lives on that renderer's device.", nameof(mesh));
 
         BindPipeline(_meshPipeline);
         ulong buffer = vulkanMesh.Buffer;

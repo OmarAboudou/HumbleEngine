@@ -300,12 +300,12 @@ public sealed class VulkanIntegrationTests
         graphicsBackend.Initialize();
         using var renderer = graphicsBackend.CreateRenderer(window);
 
-        var node = new MeshNode(renderer);
-        using var tree = new SceneTree { Root = node };
+        var node = new MeshNode();
+        using var tree = new SceneTree(renderer) { Root = node };
 
         // Frame N: the tree submits the draw; the node then queues its death.
         renderer.BeginFrame();
-        tree.Render(renderer);
+        tree.Render();
         renderer.EndFrame();
         renderer.Present();
         node.QueueDispose();
@@ -313,9 +313,38 @@ public sealed class VulkanIntegrationTests
 
         // Frame N+1: empty tree, the mesh is gone, the frame still renders.
         renderer.BeginFrame();
-        tree.Render(renderer);
+        tree.Render();
         renderer.EndFrame();
         renderer.Present();
+    }
+
+    [Test]
+    public void Draw_WithMeshFromAnotherRenderer_Throws()
+    {
+        using var windowBackend   = new X11WindowBackend();
+        using var graphicsBackend = new VulkanGraphicsBackend();
+
+        windowBackend.Initialize();
+        using var windowA = windowBackend.CreateWindow(new WindowDescription("A", 100, 100));
+        using var windowB = windowBackend.CreateWindow(new WindowDescription("B", 100, 100));
+
+        graphicsBackend.Initialize();
+        using var rendererA = graphicsBackend.CreateRenderer(windowA);
+        using var rendererB = graphicsBackend.CreateRenderer(windowB);
+        using var meshFromA = rendererA.CreateMesh(Triangle);
+
+        // The origin guard: a mesh's buffer lives on its creator's device —
+        // mixing renderers must be a clear exception, not a Vulkan crash.
+        rendererB.BeginFrame();
+        try
+        {
+            Assert.Throws<ArgumentException>(() => rendererB.Draw(meshFromA));
+        }
+        finally
+        {
+            rendererB.EndFrame();
+            rendererB.Present();
+        }
     }
 
     // --- Bloc 5 roadmap 08 : le chemin quad (übershader UI) ---
@@ -383,19 +412,23 @@ public sealed class VulkanIntegrationTests
     }
 
     /// <summary>
-    /// The Sandbox triangle's shape, replayed against the real backend: mesh
-    /// created on the injected renderer, drawn by the traversal, disposed with
-    /// the node.
+    /// The Sandbox triangle's shape, replayed against the real backend:
+    /// default-constructible, mesh acquired from the context renderer on
+    /// attach, released on detach (roadmap 09).
     /// </summary>
     private sealed class MeshNode : VisualNode
     {
-        private readonly IMesh _mesh;
+        private IMesh? _mesh;
 
-        public MeshNode(IRenderer renderer) => _mesh = renderer.CreateMesh(Triangle);
+        protected override void OnAttached() => _mesh = Renderer!.CreateMesh(Triangle);
 
-        protected override void OnDraw(IRenderer renderer) => renderer.Draw(_mesh);
+        protected override void OnDetached()
+        {
+            _mesh?.Dispose();
+            _mesh = null;
+        }
 
-        protected override void OnDispose() => _mesh.Dispose();
+        protected override void OnDraw(IRenderer renderer) => renderer.Draw(_mesh!);
     }
 
     private sealed class FakeSurface : IGraphicsSurface

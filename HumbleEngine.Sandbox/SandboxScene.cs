@@ -3,8 +3,9 @@ namespace HumbleEngine.Sandbox;
 /// <summary>
 /// Root scene of the Sandbox: composes the triangle node (roadmap 07) and a
 /// translucent panel drawn over it (roadmap 08 — attach order is painter's
-/// order), and narrates its tree lifecycle on the console. The renderer is
-/// injected — no ambient context, as everywhere in the engine.
+/// order), and narrates its tree lifecycle on the console. Default-constructible
+/// like every node (roadmap 09): GPU resources come from the tree the scene
+/// enters, not from constructor arguments.
 /// </summary>
 public sealed class SandboxScene : Scene
 {
@@ -28,9 +29,9 @@ public sealed class SandboxScene : Scene
     /// Builds the interior: a triangle, a panel over its heart, and a column
     /// of three panels on the right (roadmap 08, Bloc 4).
     /// </summary>
-    public SandboxScene(IRenderer renderer)
+    public SandboxScene()
     {
-        _triangle = new TriangleNode(renderer) { Name = "Triangle" };
+        _triangle = new TriangleNode { Name = "Triangle" };
         Attach(_triangle);
 
         _panel = new Panel { Name = "Panel" };

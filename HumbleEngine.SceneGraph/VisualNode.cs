@@ -12,6 +12,16 @@ namespace HumbleEngine;
 public abstract class VisualNode : Node
 {
     /// <summary>
+    /// Renderer of this node's rendering context — the <b>single access point</b>
+    /// of the framework protocol, so nodes never hard-code the resolution:
+    /// today it is the tree's renderer; the WindowNode/viewport evolution will
+    /// resolve the nearest viewport ancestor instead, without touching any
+    /// node. Null when detached: acquire GPU resources in
+    /// <see cref="Node.OnAttached"/>, release them in <see cref="Node.OnDetached"/>.
+    /// </summary>
+    protected IRenderer? Renderer => Tree?.Renderer;
+
+    /// <summary>
     /// Called once per frame between the renderer's <see cref="IRenderer.BeginFrame"/>
     /// and <see cref="IRenderer.EndFrame"/>, parents before children (painter's
     /// order: children draw over their parent). Submit this node's draws here.

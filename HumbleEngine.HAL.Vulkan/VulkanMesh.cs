@@ -7,9 +7,15 @@ namespace HumbleEngine.Vulkan;
 /// rendered. The stall is the learning-grade answer; deferred destruction
 /// arrives with frames in flight.
 /// </summary>
-internal sealed class VulkanMesh(IntPtr device, ulong buffer, ulong memory, uint vertexCount) : IMesh
+internal sealed class VulkanMesh(VulkanRenderer owner, IntPtr device, ulong buffer, ulong memory, uint vertexCount) : IMesh
 {
     private bool _disposed;
+
+    /// <summary>
+    /// The renderer that created this mesh — the buffer lives on its device,
+    /// so drawing it anywhere else is rejected up front.
+    /// </summary>
+    internal VulkanRenderer Owner { get; } = owner;
 
     /// <summary>The <c>VkBuffer</c> bound at draw time.</summary>
     internal ulong Buffer { get; } = buffer;
