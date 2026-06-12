@@ -59,7 +59,9 @@ Découpage en blocs — chaque bloc compile, est testé et validé avant de pass
   (branché sur la boucle plus tard), pour le cas « le handler détruit son propre conteneur ».
 - **`Name` optionnel, non unique** — debug et futur éditeur uniquement, jamais un identifiant
   (le lookup par chemin étant rejeté — principe 2 — l'unicité par parent de Godot n'a pas de client).
-- **Reparentage : `Reparent()` dédié, sémantique exacte** — tire toujours `OnParentChanged` (5e hook,
+- **Reparentage : `Adopt()` dédié, sémantique exacte** — le verbe vit **côté adoptant** (`parent.Adopt(child)`,
+  renommé de `Reparent` à l'implémentation) : rien n'entre dans la composition d'un nœud sauf par l'API de ce
+  nœud, et la symétrie `Attach`/`Detach`/`Adopt` donne un seul modèle mental. Tire toujours `OnParentChanged` (5e hook,
   « qui est mon parent ? » étant un fait distinct de « suis-je dans un arbre vivant ? ») ; ne tire les
   hooks d'arbre que si l'appartenance à un arbre vivant change réellement (même arbre → aucun
   exit/enter ; vers/depuis un sous-arbre détaché → les hooks correspondants). **Les hooks ne racontent
@@ -120,7 +122,7 @@ le cap UI n'en a pas besoin ; le pattern d'invalidation (dirty flags) sera appri
   - [x] Défauts de Godot à éviter → principes 1-3 ci-dessus (d'autres défauts pourront s'ajouter)
   - [x] Conventions math → section « Conventions mathématiques » ci-dessus
   - [x] Conception `Node` → section « Conception du Node » ci-dessus (sans transform — principe 4 + cap UI)
-  - [x] Trancher le reparentage → `Reparent()` + `OnParentChanged`, sémantique exacte (ci-dessus)
+  - [x] Trancher le reparentage → `Adopt()` + `OnParentChanged`, sémantique exacte (ci-dessus)
   - [x] Conception `Scene` + `SceneTree` + slots → section « Conception de la Scene et de l'arbre » ci-dessus
 
 - [x] **Bloc 2 — HumbleEngine.Mathematics** ✅ (65 tests unitaires verts au total)
@@ -130,12 +132,26 @@ le cap UI n'en a pas besoin ; le pattern d'invalidation (dirty flags) sera appri
 
 - [x] **Bloc 3 — HumbleEngine.SceneGraph : Node + hiérarchie** ✅ (84 tests verts au total)
   - `Node` nu : parent/enfants ordonnés, composition `protected` (fermé par défaut), `OnParentChanged`,
-    `Reparent()` exact (un seul événement, état conservé), `Dispose()` récursif enfants-d'abord,
+    `Adopt()` exact (un seul événement, état conservé), `Dispose()` récursif enfants-d'abord,
     `Name` optionnel, gardes d'invariants (anti-cycle, déjà-parenté, disposed)
   - Les 4 hooks d'arbre et `QueueDispose` exigent la frontière du vivant → déplacés au bloc 4
 
-- [ ] **Bloc 4 — Scene + SceneTree**
-  - `SceneTree` : frontière du vivant — les 4 hooks d'arbre (`OnAttaching`/`OnAttached`/
-    `OnDetaching`/`OnDetached`) avec leurs ordres de parcours, et la file `QueueDispose`
-  - `Scene` (composition fermée, slots par instances), parcours de l'arbre
-  - Tests unitaires
+- [x] **Bloc 4 — Scene + SceneTree** ✅ (114 tests unitaires verts au total)
+  - `SceneTree` : frontière du vivant — les 4 hooks d'arbre avec leurs ordres de parcours
+    (une seule récursion donne le pré-ordre et le post-ordre), `Root` remplaçable, file `QueueDispose`
+  - `NodeSlot<T>` / `NodeList<T>` : la sémantique de slot écrite une fois (adoption = transfert de
+    propriété, auto-réparation, initialiseurs C#), créables uniquement par leur propriétaire
+  - `Scene` : marqueur sémantique — la fermeture étant déjà le défaut de `Node`, elle n'ajoute aucune mécanique
+  - `IsTreeRoot` explicite ; parcours public de l'arbre différé (aucun client avant le rendu/UI)
+
+---
+
+## Résultat
+
+Le cœur du SceneGraph est en place : `HumbleEngine.Mathematics` (vecteurs, `Rect`, `Matrix4x4`
+column-major avec projection orthographique absorbant Vulkan) et `HumbleEngine.SceneGraph`
+(`Node` fermé par défaut, `SceneTree` et ses hooks exacts, slots typés, `Scene`). 114 tests
+unitaires sans display. Prochaines briques (hors roadmap) : bindings réactifs (`ObservableProperty`),
+puis la brique UI (`UINode`, layout, rendu) — voir le cap produit dans CLAUDE.md.
+
+*Tâche terminée*

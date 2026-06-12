@@ -12,6 +12,10 @@ internal sealed class TestNode(string name, List<string>? log = null) : Node
     /// <summary>Number of <see cref="Node.OnParentChanged"/> calls received.</summary>
     public int ParentChangeCount { get; private set; }
 
+    /// <summary>Captured during <see cref="Node.OnDetaching"/>: the hook must run
+    /// while the node is still in the tree, structure intact.</summary>
+    public bool? WasInTreeDuringDetaching { get; private set; }
+
     /// <summary>Children, exposed for assertions.</summary>
     public IReadOnlyList<Node> ChildrenView => Children;
 
@@ -21,7 +25,7 @@ internal sealed class TestNode(string name, List<string>? log = null) : Node
 
     public void DetachChild(Node child) => Detach(child);
 
-    public void ReparentChild(Node child) => Reparent(child);
+    public void AdoptChild(Node child) => Adopt(child);
 
     protected override void OnParentChanged(Node? oldParent, Node? newParent)
     {
@@ -29,6 +33,18 @@ internal sealed class TestNode(string name, List<string>? log = null) : Node
         ParentChangeCount++;
         log?.Add($"{NodeName}:ParentChanged");
     }
+
+    protected override void OnAttaching() => log?.Add($"{NodeName}:Attaching");
+
+    protected override void OnAttached() => log?.Add($"{NodeName}:Attached");
+
+    protected override void OnDetaching()
+    {
+        WasInTreeDuringDetaching = IsInTree && Parent is not null;
+        log?.Add($"{NodeName}:Detaching");
+    }
+
+    protected override void OnDetached() => log?.Add($"{NodeName}:Detached");
 
     protected override void OnDispose() => log?.Add($"{NodeName}:Disposed");
 }

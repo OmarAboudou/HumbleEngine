@@ -109,14 +109,14 @@ public sealed class NodeTests
     }
 
     [Fact]
-    public void Reparent_MovesNode_BetweenParents()
+    public void Adopt_MovesNode_BetweenParents()
     {
         var oldParent = new TestNode("old");
         var newParent = new TestNode("new");
         var child = new TestNode("child");
         oldParent.AttachChild(child);
 
-        newParent.ReparentChild(child);
+        newParent.AdoptChild(child);
 
         Assert.Same(newParent, child.Parent);
         Assert.Empty(oldParent.ChildrenView);
@@ -124,52 +124,52 @@ public sealed class NodeTests
     }
 
     [Fact]
-    public void Reparent_FiresOnParentChanged_ExactlyOnce()
+    public void Adopt_FiresOnParentChanged_ExactlyOnce()
     {
         var oldParent = new TestNode("old");
         var newParent = new TestNode("new");
         var child = new TestNode("child");
         oldParent.AttachChild(child);
 
-        newParent.ReparentChild(child);
+        newParent.AdoptChild(child);
 
         Assert.Equal((oldParent, newParent), child.LastParentChange);
         Assert.Equal(2, child.ParentChangeCount); // attach + reparent, nothing else
     }
 
     [Fact]
-    public void Reparent_ToSameParent_IsNoOp()
+    public void Adopt_ToSameParent_IsNoOp()
     {
         var parent = new TestNode("parent");
         var child = new TestNode("child");
         parent.AttachChild(child);
 
-        parent.ReparentChild(child);
+        parent.AdoptChild(child);
 
         Assert.Equal(1, child.ParentChangeCount);
         Assert.Equal([child], parent.ChildrenView);
     }
 
     [Fact]
-    public void Reparent_ParentlessNode_Attaches()
+    public void Adopt_ParentlessNode_Attaches()
     {
         var parent = new TestNode("parent");
         var child = new TestNode("child");
 
-        parent.ReparentChild(child);
+        parent.AdoptChild(child);
 
         Assert.Same(parent, child.Parent);
         Assert.Equal((null, parent), child.LastParentChange);
     }
 
     [Fact]
-    public void Reparent_UnderOwnDescendant_Throws()
+    public void Adopt_UnderOwnDescendant_Throws()
     {
         var root = new TestNode("root");
         var leaf = new TestNode("leaf");
         root.AttachChild(leaf);
 
-        Assert.Throws<InvalidOperationException>(() => leaf.ReparentChild(root));
+        Assert.Throws<InvalidOperationException>(() => leaf.AdoptChild(root));
     }
 
     [Fact]

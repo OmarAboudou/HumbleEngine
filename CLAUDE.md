@@ -45,7 +45,7 @@ HumbleEngine.HAL.Vulkan/     — Backend graphique Vulkan — instance, fallback
 HumbleEngine.HAL.OpenGL/     — Backend graphique OpenGL — GLX context, BeginFrame/EndFrame/Present
 HumbleEngine.HAL.Linux/      — Assembly de plateforme Linux (agrège X11, Wayland, Vulkan, OpenGL)
 HumbleEngine.Mathematics/    — Types mathématiques (Vector2, Rect, …) — autonome, aucune dépendance
-HumbleEngine.SceneGraph/     — Node (hiérarchie, cycle de vie) ; Scene et SceneTree à venir
+HumbleEngine.SceneGraph/     — Node (fermé par défaut), SceneTree (hooks de cycle de vie, QueueDispose), Scene, NodeSlot/NodeList
 HumbleEngine.Sandbox/        — Projet exécutable de test — `dotnet run -- [Wayland|X11] [Vulkan|OpenGL]`
 HumbleEngine.Tests/          — Tests unitaires — FakeOS, aucune dépendance à un display
 HumbleEngine.Tests.Linux/    — Tests d'intégration — X11, GLX, Wayland, Vulkan, cycle frame complet
