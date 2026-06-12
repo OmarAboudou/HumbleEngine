@@ -1,0 +1,53 @@
+namespace HumbleEngine;
+
+/// <summary>
+/// Base of the UI family: a visual node living in pixel space, defined by a
+/// <see cref="Position"/> relative to its nearest UI ancestors and a
+/// <see cref="Size"/>. Draws nothing itself (like Godot's <c>Control</c>) —
+/// concrete UI nodes do.
+/// <para>
+/// Both properties are reactive cells (created through
+/// <see cref="Node.CreateReactive{T}"/>, so their bindings die with the node).
+/// Reactivity is not what makes the panel move on screen — everything is
+/// redrawn every frame, <see cref="VisualNode.OnDraw"/> just reads the current
+/// values — the cells are the <b>binding surface</b> (wire a model to the UI)
+/// and what the layout containers listen to.
+/// </para>
+/// </summary>
+public abstract class UINode : VisualNode
+{
+    /// <summary>
+    /// Top-left corner in pixels, relative to the parent UI node (Y down).
+    /// Written by layout containers; bindable by the application.
+    /// </summary>
+    public Reactive<Vector2> Position { get; }
+
+    /// <summary>Extent in pixels. The layout reads it; never writes it (this étage).</summary>
+    public Reactive<Vector2> Size { get; }
+
+    protected UINode()
+    {
+        Position = CreateReactive(Vector2.Zero);
+        Size     = CreateReactive(Vector2.Zero);
+    }
+
+    /// <summary>
+    /// Rectangle in window coordinates: <see cref="Position"/> offset by every
+    /// UI ancestor's (non-UI nodes in the chain are transparent — they have no
+    /// geometry). Resolved on demand, O(depth) — the dirty-flagged cache is
+    /// Godot's optimisation, deferred until deep trees exist.
+    /// </summary>
+    public Rect GlobalRect
+    {
+        get
+        {
+            var origin = Position.Value;
+            for (var ancestor = Parent; ancestor is not null; ancestor = ancestor.Parent)
+            {
+                if (ancestor is UINode ui)
+                    origin += ui.Position.Value;
+            }
+            return new Rect(origin, Size.Value);
+        }
+    }
+}

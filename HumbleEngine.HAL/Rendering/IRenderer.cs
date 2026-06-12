@@ -25,4 +25,14 @@ public interface IRenderer : IDisposable
     /// only with a mesh created by this renderer.
     /// </summary>
     void Draw(IMesh mesh);
+
+    /// <summary>
+    /// Records a draw of an axis-aligned quad into the current frame: a
+    /// pixel-space rectangle (origin at the window's top-left, Y down) filled
+    /// with an RGBA colour, alpha-blended over what is already drawn. The UI
+    /// primitive — no resource to create or own: the geometry never changes,
+    /// only the draw's parameters do. Only valid between
+    /// <see cref="BeginFrame"/> and <see cref="EndFrame"/>.
+    /// </summary>
+    void DrawQuad(Rect rect, Vector4 color);
 }

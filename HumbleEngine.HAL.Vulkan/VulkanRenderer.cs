@@ -23,8 +23,11 @@ internal sealed class VulkanRenderer : IRenderer
 
     private ulong _swapchain;
     private ulong[] _imageViews = [];
-    private ulong _pipeline;
-    private ulong _pipelineLayout;
+    private ulong _meshPipeline;
+    private ulong _meshPipelineLayout;
+    private ulong _quadPipeline;
+    private ulong _quadPipelineLayout;
+    private ulong _boundPipeline;
 
     // Per-frame objects (single frame in flight).
     private readonly ulong  _commandPool;
@@ -78,7 +81,8 @@ internal sealed class VulkanRenderer : IRenderer
         try
         {
             CreateImageViews();
-            (_pipeline, _pipelineLayout) = VulkanPipeline.CreateMeshPipeline(device, imageFormat);
+            (_meshPipeline, _meshPipelineLayout) = VulkanPipeline.CreateMeshPipeline(device, imageFormat);
+            (_quadPipeline, _quadPipelineLayout) = VulkanPipeline.CreateQuadPipeline(device, imageFormat);
 
             var poolInfo = new VkCommandPoolCreateInfo
             {
@@ -192,7 +196,9 @@ internal sealed class VulkanRenderer : IRenderer
 
         VulkanNative.vkCmdBeginRendering(_commandBuffer, in renderingInfo);
 
-        VulkanNative.vkCmdBindPipeline(_commandBuffer, VkPipelineBindPoint.Graphics, _pipeline);
+        // Pipelines are bound lazily by Draw/DrawQuad; the command buffer was
+        // reset, so nothing is bound yet.
+        _boundPipeline = 0;
 
         // Viewport and scissor are dynamic pipeline state: provided each frame,
         // so the pipeline itself survives window resizes.
@@ -206,6 +212,15 @@ internal sealed class VulkanRenderer : IRenderer
 
         var scissor = new VkRect2D { Extent = Extent };
         VulkanNative.vkCmdSetScissor(_commandBuffer, 0, 1, in scissor);
+
+        // Pixels → clip for the whole frame: push constants persist across the
+        // command buffer's draws, so the übershader matrix is written once here
+        // and every DrawQuad only pushes its own 48 bytes.
+        var projection = Matrix4x4.CreateOrthographic(0f, Extent.Width, Extent.Height, 0f, 0f, 1f);
+        VulkanNative.vkCmdPushConstants(
+            _commandBuffer, _quadPipelineLayout,
+            VkShaderStageFlags.Vertex | VkShaderStageFlags.Fragment,
+            QuadPush.MatrixOffset, QuadPush.MatrixSize, (IntPtr)(&projection));
 
         _frameOpen = true;
     }
@@ -224,8 +239,8 @@ internal sealed class VulkanRenderer : IRenderer
     }
 
     /// <summary>
-    /// Records a draw of the mesh into the open rendering episode: bind its
-    /// vertex buffer, draw its vertices. The mesh pipeline is already bound.
+    /// Records a draw of the mesh into the open rendering episode: bind the
+    /// mesh pipeline (if not current), bind the vertex buffer, draw.
     /// </summary>
     /// <exception cref="InvalidOperationException">No frame is open.</exception>
     /// <exception cref="ArgumentException">The mesh was not created by this renderer.</exception>
@@ -237,10 +252,41 @@ internal sealed class VulkanRenderer : IRenderer
         if (mesh is not VulkanMesh vulkanMesh)
             throw new ArgumentException($"{mesh.GetType().Name} was not created by a Vulkan renderer.", nameof(mesh));
 
+        BindPipeline(_meshPipeline);
         ulong buffer = vulkanMesh.Buffer;
         ulong offset = 0;
         VulkanNative.vkCmdBindVertexBuffers(_commandBuffer, 0, 1, in buffer, in offset);
         VulkanNative.vkCmdDraw(_commandBuffer, vulkanMesh.VertexCount, 1, 0, 0);
+    }
+
+    /// <summary>
+    /// Records an übershader quad draw into the open episode: bind the quad
+    /// pipeline (if not current), push the per-draw parameters (rect, colour,
+    /// mode 0 — flat colour), draw the six generated vertices. No buffer, no
+    /// descriptor: the unit quad is born in the vertex shader.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">No frame is open.</exception>
+    public unsafe void DrawQuad(Rect rect, Vector4 color)
+    {
+        if (!_frameOpen)
+            throw new InvalidOperationException("DrawQuad is only valid between BeginFrame and EndFrame.");
+
+        BindPipeline(_quadPipeline);
+        var quad = new QuadParams(new Vector4(rect.X, rect.Y, rect.Width, rect.Height), color, mode: 0);
+        VulkanNative.vkCmdPushConstants(
+            _commandBuffer, _quadPipelineLayout,
+            VkShaderStageFlags.Vertex | VkShaderStageFlags.Fragment,
+            QuadPush.ParamsOffset, QuadPush.ParamsSize, (IntPtr)(&quad));
+        VulkanNative.vkCmdDraw(_commandBuffer, 6, 1, 0, 0);
+    }
+
+    /// <summary>Binds the pipeline unless it is already the one bound in this command buffer.</summary>
+    private void BindPipeline(ulong pipeline)
+    {
+        if (_boundPipeline == pipeline)
+            return;
+        VulkanNative.vkCmdBindPipeline(_commandBuffer, VkPipelineBindPoint.Graphics, pipeline);
+        _boundPipeline = pipeline;
     }
 
     /// <summary>
@@ -389,15 +435,21 @@ internal sealed class VulkanRenderer : IRenderer
         }
     }
 
-    /// <summary>Destroys the pipeline and its layout.</summary>
+    /// <summary>Destroys both pipelines (mesh, quad) and their layouts.</summary>
     private void DestroyPipeline()
     {
-        if (_pipeline != 0)
-            VulkanNative.vkDestroyPipeline(_device, _pipeline, IntPtr.Zero);
-        if (_pipelineLayout != 0)
-            VulkanNative.vkDestroyPipelineLayout(_device, _pipelineLayout, IntPtr.Zero);
-        _pipeline = 0;
-        _pipelineLayout = 0;
+        if (_meshPipeline != 0)
+            VulkanNative.vkDestroyPipeline(_device, _meshPipeline, IntPtr.Zero);
+        if (_meshPipelineLayout != 0)
+            VulkanNative.vkDestroyPipelineLayout(_device, _meshPipelineLayout, IntPtr.Zero);
+        if (_quadPipeline != 0)
+            VulkanNative.vkDestroyPipeline(_device, _quadPipeline, IntPtr.Zero);
+        if (_quadPipelineLayout != 0)
+            VulkanNative.vkDestroyPipelineLayout(_device, _quadPipelineLayout, IntPtr.Zero);
+        _meshPipeline = 0;
+        _meshPipelineLayout = 0;
+        _quadPipeline = 0;
+        _quadPipelineLayout = 0;
     }
 
     /// <summary>Destroys the swapchain image views; the images themselves belong to the swapchain.</summary>

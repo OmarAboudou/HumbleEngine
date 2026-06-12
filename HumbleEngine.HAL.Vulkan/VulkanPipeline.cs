@@ -3,34 +3,139 @@ using System.Runtime.InteropServices;
 namespace HumbleEngine.Vulkan;
 
 /// <summary>
-/// Builds the mesh graphics pipeline: the complete assembly-line configuration
-/// — shaders, topology, rasterizer, blending, dynamic state and the colour
-/// attachment format — baked once into an immutable PSO.
+/// Push-constant geography of the UI übershader — one 112-byte block (within
+/// the 128 guaranteed by the standard), two write cadences: the orthographic
+/// matrix once per frame, the quad parameters once per draw. Push constants
+/// persist across draws of a command buffer, so the matrix outlives every quad.
+/// </summary>
+internal static class QuadPush
+{
+    /// <summary>Pixels → clip matrix: offset 0, written once per frame, vertex stage.</summary>
+    internal const uint MatrixOffset = 0;
+
+    /// <summary>Size of the matrix portion (a raw <see cref="Matrix4x4"/> copy).</summary>
+    internal const uint MatrixSize = 64;
+
+    /// <summary>Per-draw parameters: offset just after the matrix.</summary>
+    internal const uint ParamsOffset = MatrixSize;
+
+    /// <summary>Size of <see cref="QuadParams"/>.</summary>
+    internal const uint ParamsSize = 48;
+
+    /// <summary>Whole block, declared as a single vertex+fragment range.</summary>
+    internal const uint TotalSize = MatrixSize + ParamsSize;
+}
+
+/// <summary>
+/// Per-draw half of the übershader push block, laid out exactly as the GLSL
+/// declaration (vec4 rect, vec4 color, int mode — tail padded to 16).
+/// </summary>
+[StructLayout(LayoutKind.Sequential)]
+internal readonly struct QuadParams(Vector4 rect, Vector4 color, int mode)
+{
+    /// <summary>x, y, width, height — pixels, origin top-left.</summary>
+    public readonly Vector4 Rect = rect;
+
+    /// <summary>RGBA colour, alpha blended.</summary>
+    public readonly Vector4 Color = color;
+
+    /// <summary>Fragment-side interpretation — 0: flat colour (the only mode so far).</summary>
+    public readonly int Mode = mode;
+
+    private readonly int _pad0, _pad1, _pad2;
+}
+
+/// <summary>
+/// Builds the engine's graphics pipelines, each a complete assembly-line
+/// configuration baked once into an immutable PSO: the <b>mesh</b> pipeline
+/// (vertex buffer input, opaque) and the <b>quad</b> pipeline (the UI
+/// übershader: no vertex input, push constants, alpha blending).
 /// SPIR-V bytecode is loaded from embedded resources (compiled from
 /// <c>Shaders/*.vert|frag</c> at build time by glslangValidator).
 /// </summary>
 internal static unsafe class VulkanPipeline
 {
     /// <summary>
-    /// Creates the (empty) pipeline layout and the mesh pipeline targeting
-    /// the given colour format. Shader modules are destroyed before returning —
-    /// once the pipeline is compiled, the bytecode containers serve no purpose.
-    /// Viewport and scissor are dynamic: the pipeline survives window resizes.
+    /// Creates the mesh pipeline: one vertex stream of HAL <see cref="Vertex"/>
+    /// (Vector2 position at location 0, Vector3 colour at location 1 — the typed
+    /// contract matching the shader's <c>layout(location = N) in</c>), no
+    /// blending, empty layout.
     /// </summary>
     /// <exception cref="InvalidOperationException">A Vulkan object could not be created.</exception>
     internal static (ulong Pipeline, ulong Layout) CreateMeshPipeline(IntPtr device, VkFormat colorFormat)
     {
-        var vertModule = CreateShaderModule(device, "Shaders/triangle.vert.spv");
+        var binding = new VkVertexInputBindingDescription
+        {
+            Binding   = 0,
+            Stride    = (uint)sizeof(Vertex),
+            InputRate = 0, // per vertex
+        };
+
+        var attributes = stackalloc VkVertexInputAttributeDescription[2]
+        {
+            new() { Location = 0, Binding = 0, Format = VkFormat.R32G32Sfloat, Offset = 0 },
+            new() { Location = 1, Binding = 0, Format = VkFormat.R32G32B32Sfloat, Offset = (uint)sizeof(Vector2) },
+        };
+
+        return CreatePipeline(
+            device, colorFormat,
+            "Shaders/triangle.vert.spv", "Shaders/triangle.frag.spv",
+            &binding, 1, attributes, 2,
+            alphaBlend: false, null, 0);
+    }
+
+    /// <summary>
+    /// Creates the quad pipeline (UI übershader): no vertex input at all (the
+    /// unit quad is generated from <c>gl_VertexIndex</c>), classic alpha
+    /// blending, and a single vertex+fragment push-constant range covering the
+    /// whole <see cref="QuadPush"/> block.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">A Vulkan object could not be created.</exception>
+    internal static (ulong Pipeline, ulong Layout) CreateQuadPipeline(IntPtr device, VkFormat colorFormat)
+    {
+        var range = new VkPushConstantRange
+        {
+            StageFlags = VkShaderStageFlags.Vertex | VkShaderStageFlags.Fragment,
+            Offset     = 0,
+            Size       = QuadPush.TotalSize,
+        };
+
+        return CreatePipeline(
+            device, colorFormat,
+            "Shaders/ui.vert.spv", "Shaders/ui.frag.spv",
+            null, 0, null, 0,
+            alphaBlend: true, &range, 1);
+    }
+
+    /// <summary>
+    /// The shared assembly line: layout (with optional push ranges) + PSO —
+    /// shaders, vertex input (optional), topology, rasterizer, blending
+    /// (opaque or alpha), dynamic viewport/scissor, and the colour attachment
+    /// format chained through pNext (dynamic rendering, no render pass).
+    /// Shader modules are destroyed before returning — once the pipeline is
+    /// compiled, the bytecode containers serve no purpose.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">A Vulkan object could not be created.</exception>
+    private static (ulong Pipeline, ulong Layout) CreatePipeline(
+        IntPtr device, VkFormat colorFormat,
+        string vertResource, string fragResource,
+        VkVertexInputBindingDescription* bindings, uint bindingCount,
+        VkVertexInputAttributeDescription* attributes, uint attributeCount,
+        bool alphaBlend, VkPushConstantRange* pushRanges, uint pushRangeCount)
+    {
+        var vertModule = CreateShaderModule(device, vertResource);
         ulong fragModule = 0;
         ulong layout = 0;
 
         try
         {
-            fragModule = CreateShaderModule(device, "Shaders/triangle.frag.spv");
+            fragModule = CreateShaderModule(device, fragResource);
 
             var layoutInfo = new VkPipelineLayoutCreateInfo
             {
-                SType = VkStructureType.PipelineLayoutCreateInfo,
+                SType                  = VkStructureType.PipelineLayoutCreateInfo,
+                PushConstantRangeCount = pushRangeCount,
+                PushConstantRanges     = (IntPtr)pushRanges,
             };
             Check(VulkanNative.vkCreatePipelineLayout(device, in layoutInfo, IntPtr.Zero, out layout),
                   "vkCreatePipelineLayout");
@@ -54,38 +159,12 @@ internal static unsafe class VulkanPipeline
                     Name   = entryPoint,
                 };
 
-                // One stream of HAL Vertex: Vector2 position feeding
-                // location 0, Vector3 colour feeding location 1 — the typed
-                // contract matching the shader's `layout(location = N) in`.
-                var binding = new VkVertexInputBindingDescription
-                {
-                    Binding   = 0,
-                    Stride    = (uint)sizeof(Vertex),
-                    InputRate = 0, // per vertex
-                };
-
-                var attributes = stackalloc VkVertexInputAttributeDescription[2];
-                attributes[0] = new VkVertexInputAttributeDescription
-                {
-                    Location = 0,
-                    Binding  = 0,
-                    Format   = VkFormat.R32G32Sfloat,
-                    Offset   = 0,
-                };
-                attributes[1] = new VkVertexInputAttributeDescription
-                {
-                    Location = 1,
-                    Binding  = 0,
-                    Format   = VkFormat.R32G32B32Sfloat,
-                    Offset   = (uint)sizeof(Vector2),
-                };
-
                 var vertexInput = new VkPipelineVertexInputStateCreateInfo
                 {
                     SType                           = VkStructureType.PipelineVertexInputStateCreateInfo,
-                    VertexBindingDescriptionCount   = 1,
-                    VertexBindingDescriptions       = (IntPtr)(&binding),
-                    VertexAttributeDescriptionCount = 2,
+                    VertexBindingDescriptionCount   = bindingCount,
+                    VertexBindingDescriptions       = (IntPtr)bindings,
+                    VertexAttributeDescriptionCount = attributeCount,
                     VertexAttributeDescriptions     = (IntPtr)attributes,
                 };
 
@@ -120,6 +199,17 @@ internal static unsafe class VulkanPipeline
                 {
                     ColorWriteMask = VkPipelineColorBlendAttachmentState.WriteAll,
                 };
+                if (alphaBlend)
+                {
+                    // Classic "over" compositing: src·α + dst·(1−α).
+                    blendAttachment.BlendEnable         = 1;
+                    blendAttachment.SrcColorBlendFactor = VkBlendFactor.SrcAlpha;
+                    blendAttachment.DstColorBlendFactor = VkBlendFactor.OneMinusSrcAlpha;
+                    blendAttachment.ColorBlendOp        = VkBlendOp.Add;
+                    blendAttachment.SrcAlphaBlendFactor = VkBlendFactor.One;
+                    blendAttachment.DstAlphaBlendFactor = VkBlendFactor.OneMinusSrcAlpha;
+                    blendAttachment.AlphaBlendOp        = VkBlendOp.Add;
+                }
 
                 var colorBlend = new VkPipelineColorBlendStateCreateInfo
                 {

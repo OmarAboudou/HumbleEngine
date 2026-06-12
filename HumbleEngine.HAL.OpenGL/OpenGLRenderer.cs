@@ -47,6 +47,10 @@ internal sealed class OpenGLRenderer : IRenderer
     public void Draw(IMesh mesh) =>
         throw new NotSupportedException("The OpenGL backend has no drawing path — use Vulkan.");
 
+    /// <inheritdoc cref="CreateMesh"/>
+    public void DrawQuad(Rect rect, Vector4 color) =>
+        throw new NotSupportedException("The OpenGL backend has no drawing path — use Vulkan.");
+
     /// <summary>Releases the GLX context and destroys it. Idempotent.</summary>
     public void Dispose()
     {

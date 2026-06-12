@@ -34,6 +34,15 @@ var frames   = 0;
 
 window.Run(() =>
 {
+    // Bloc 3 roadmap 08 — a reactive value drives the screen: the panel slides
+    // over the triangle because its Position cell changes, nothing else.
+    var t = (float)clock.Elapsed.TotalSeconds;
+    scene.PanelPosition.Value = new Vector2(250f + 100f * MathF.Sin(t * 2f), 150f);
+
+    // Bloc 4 — reactive layout: the middle tile breathes, the Column notices
+    // the Size change and restacks; the tile below slides on its own.
+    scene.BreathingSize.Value = new Vector2(150f, 60f + 40f * MathF.Sin(t * 3f));
+
     renderer.BeginFrame();
     tree.Render(renderer);
     renderer.EndFrame();

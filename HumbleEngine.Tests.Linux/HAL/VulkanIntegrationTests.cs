@@ -318,6 +318,49 @@ public sealed class VulkanIntegrationTests
         renderer.Present();
     }
 
+    // --- Bloc 5 roadmap 08 : le chemin quad (übershader UI) ---
+
+    [Test]
+    public void Renderer_DrawsQuadsAndMesh_InTheSameFrame()
+    {
+        using var windowBackend   = new X11WindowBackend();
+        using var graphicsBackend = new VulkanGraphicsBackend();
+
+        windowBackend.Initialize();
+        using var window = windowBackend.CreateWindow(new WindowDescription("Test", 100, 100));
+
+        graphicsBackend.Initialize();
+        using var renderer = graphicsBackend.CreateRenderer(window);
+        using var mesh = renderer.CreateMesh(Triangle);
+
+        // Quad → mesh → quad: the lazy pipeline binding switches twice.
+        for (int i = 0; i < 3; i++)
+        {
+            renderer.BeginFrame();
+            renderer.DrawQuad(new Rect(10f, 10f, 50f, 30f), new Vector4(1f, 0f, 0f, 0.5f));
+            renderer.Draw(mesh);
+            renderer.DrawQuad(new Rect(20f, 40f, 50f, 30f), new Vector4(0f, 1f, 0f, 1f));
+            renderer.EndFrame();
+            renderer.Present();
+        }
+    }
+
+    [Test]
+    public void DrawQuad_OutsideFrame_Throws()
+    {
+        using var windowBackend   = new X11WindowBackend();
+        using var graphicsBackend = new VulkanGraphicsBackend();
+
+        windowBackend.Initialize();
+        using var window = windowBackend.CreateWindow(new WindowDescription("Test", 100, 100));
+
+        graphicsBackend.Initialize();
+        using var renderer = graphicsBackend.CreateRenderer(window);
+
+        Assert.Throws<InvalidOperationException>(
+            () => renderer.DrawQuad(new Rect(0f, 0f, 10f, 10f), new Vector4(1f, 1f, 1f, 1f)));
+    }
+
     [Test]
     public void Window_ReportsItsSize()
     {

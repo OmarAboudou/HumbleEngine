@@ -8,7 +8,7 @@ HumbleEngine is a C# game engine built from scratch with the goal of understandi
 
 - Language: C# / .NET 10.0
 - IDE: Rider (`.idea/` present)
-- Current phase: **intégration SceneGraph↔renderer terminée** (`docs/roadmaps/07_scenegraph_renderer.md` ✅) — prochain chantier : la brique UI (UINode, layout, quads)
+- Current phase: **brique UI, premier étage terminé** (`docs/roadmaps/08_ui_brique.md` ✅) — prochains étages : input/événements (hit-testing, client du two-way binding), texte
 
 ## Build & run commands
 
@@ -41,12 +41,12 @@ dotnet test --filter "FullyQualifiedName~TestMethodName"
 HumbleEngine.HAL/            — Abstractions uniquement (interfaces, classes abstraites) + contrat de dessin (Vertex, IMesh). Dépend de Mathematics seulement.
 HumbleEngine.HAL.X11/        — Backend fenêtrage X11 (P/Invoke libX11)
 HumbleEngine.HAL.Wayland/    — Backend fenêtrage Wayland (libdecor + fallback XDG brut)
-HumbleEngine.HAL.Vulkan/     — Backend graphique Vulkan — instance (validation en Debug), fallback multi-GPU, swapchain, dynamic rendering, pipeline + shaders SPIR-V (compilés au build), meshes (CreateMesh/Draw)
+HumbleEngine.HAL.Vulkan/     — Backend graphique Vulkan — instance (validation en Debug), fallback multi-GPU, swapchain, dynamic rendering, pipelines + shaders SPIR-V (compilés au build), meshes (CreateMesh/Draw), quads UI (übershader, push constants, DrawQuad)
 HumbleEngine.HAL.OpenGL/     — Backend graphique OpenGL — GLX context, BeginFrame/EndFrame/Present
 HumbleEngine.HAL.Linux/      — Assembly de plateforme Linux (agrège X11, Wayland, Vulkan, OpenGL)
 HumbleEngine.Mathematics/    — Types mathématiques (Vector2, Rect, …) — autonome, aucune dépendance
 HumbleEngine.Reactive/       — Primitives réactives (Reactive&lt;T&gt;, ReactiveList&lt;T&gt;, bindings) — autonome, aucune dépendance
-HumbleEngine.SceneGraph/     — Node (fermé par défaut), VisualNode (OnDraw), SceneTree (hooks de cycle de vie, QueueDispose, Render), Scene, NodeSlot/NodeList observables, BindItemsFrom
+HumbleEngine.SceneGraph/     — Node (fermé par défaut), VisualNode (OnDraw), UINode/Panel/Column/Row (pixels, layout réactif), SceneTree (hooks de cycle de vie, QueueDispose, Render), Scene, NodeSlot/NodeList observables, BindItemsFrom
 HumbleEngine.Sandbox/        — Projet exécutable de test — `dotnet run -- [Wayland|X11] [Vulkan|OpenGL]`
 HumbleEngine.Tests/          — Tests unitaires — FakeOS, aucune dépendance à un display
 HumbleEngine.Tests.Linux/    — Tests d'intégration — X11, GLX, Wayland, Vulkan, cycle frame complet

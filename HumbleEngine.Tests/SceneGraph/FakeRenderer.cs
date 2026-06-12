@@ -13,6 +13,9 @@ internal sealed class FakeRenderer : IRenderer
     /// <summary>Number of <see cref="Draw"/> calls received.</summary>
     public int DrawCount { get; private set; }
 
+    /// <summary>Quads received by <see cref="DrawQuad"/>, in submission order.</summary>
+    public List<(Rect Rect, Vector4 Color)> Quads { get; } = [];
+
     public void BeginFrame()
     {
     }
@@ -33,6 +36,8 @@ internal sealed class FakeRenderer : IRenderer
     }
 
     public void Draw(IMesh mesh) => DrawCount++;
+
+    public void DrawQuad(Rect rect, Vector4 color) => Quads.Add((rect, color));
 
     public void Dispose()
     {

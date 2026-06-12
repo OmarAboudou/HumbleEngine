@@ -1,19 +1,61 @@
 namespace HumbleEngine.Sandbox;
 
 /// <summary>
-/// Root scene of the Sandbox: composes the triangle node (roadmap 07, Bloc 3)
-/// and narrates its tree lifecycle on the console. The renderer is injected —
-/// no ambient context, as everywhere in the engine.
+/// Root scene of the Sandbox: composes the triangle node (roadmap 07) and a
+/// translucent panel drawn over it (roadmap 08 — attach order is painter's
+/// order), and narrates its tree lifecycle on the console. The renderer is
+/// injected — no ambient context, as everywhere in the engine.
 /// </summary>
 public sealed class SandboxScene : Scene
 {
     private TriangleNode? _triangle;
+    private readonly Panel _panel;
+    private readonly Panel _breathing;
 
-    /// <summary>Builds the interior: one triangle drawing on <paramref name="renderer"/>.</summary>
+    /// <summary>
+    /// Panel position, exposed as the scene's typed contract — the Sandbox
+    /// animates it to show a reactive value driving the screen.
+    /// </summary>
+    public Reactive<Vector2> PanelPosition => _panel.Position;
+
+    /// <summary>
+    /// Size of the column's middle panel — the Sandbox animates its height to
+    /// show the reactive layout: the panel below slides on its own.
+    /// </summary>
+    public Reactive<Vector2> BreathingSize => _breathing.Size;
+
+    /// <summary>
+    /// Builds the interior: a triangle, a panel over its heart, and a column
+    /// of three panels on the right (roadmap 08, Bloc 4).
+    /// </summary>
     public SandboxScene(IRenderer renderer)
     {
         _triangle = new TriangleNode(renderer) { Name = "Triangle" };
         Attach(_triangle);
+
+        _panel = new Panel { Name = "Panel" };
+        _panel.Position.Value = new Vector2(250f, 150f);
+        _panel.Size.Value     = new Vector2(300f, 200f);
+        _panel.Color.Value    = new Vector4(0.2f, 0.5f, 0.9f, 0.7f);
+        Attach(_panel);
+
+        _breathing = MakeTile(new Vector4(0.3f, 0.8f, 0.4f, 1f));
+        var column = new Column { Name = "Column" };
+        column.Position.Value = new Vector2(620f, 40f);
+        column.Spacing.Value  = 10f;
+        column.Children.Add(MakeTile(new Vector4(0.9f, 0.35f, 0.3f, 1f)));
+        column.Children.Add(_breathing);
+        column.Children.Add(MakeTile(new Vector4(0.95f, 0.8f, 0.3f, 1f)));
+        Attach(column);
+    }
+
+    /// <summary>A 150×60 opaque tile for the column.</summary>
+    private static Panel MakeTile(Vector4 color)
+    {
+        var tile = new Panel();
+        tile.Size.Value  = new Vector2(150f, 60f);
+        tile.Color.Value = color;
+        return tile;
     }
 
     /// <summary>

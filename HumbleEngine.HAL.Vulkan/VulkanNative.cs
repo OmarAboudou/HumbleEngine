@@ -342,6 +342,17 @@ internal static class VulkanNative
     internal static extern void vkCmdBindVertexBuffers(
         IntPtr commandBuffer, uint firstBinding, uint bindingCount, in ulong buffer, in ulong offset);
 
+    /// <summary>
+    /// Writes push constants straight into the command buffer — the cheapest
+    /// route to a shader (no allocation, no descriptor, per-draw granularity).
+    /// Values persist across draws and pipeline binds; reads are interpreted
+    /// through a layout push-compatible with the one used here.
+    /// </summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkCmdPushConstants(
+        IntPtr commandBuffer, ulong layout, VkShaderStageFlags stageFlags,
+        uint offset, uint size, IntPtr values);
+
     // --- Synchronisation ---
 
     /// <summary>Creates a semaphore — GPU↔GPU synchronisation (queue waits on queue/present engine).</summary>
@@ -1248,20 +1259,20 @@ internal struct VkPipelineMultisampleStateCreateInfo
 
 /// <summary>
 /// Mirror of <c>VkPipelineColorBlendAttachmentState</c> — blending for one colour
-/// attachment. Disabled here: an opaque triangle overwrites; blending will wake
-/// up for the UI (text anti-aliasing, transparency).
+/// attachment. Off for the opaque mesh pipeline (overwrite); the quad pipeline
+/// enables classic alpha blending (src·α + dst·(1−α)) for the UI.
 /// </summary>
 [StructLayout(LayoutKind.Sequential)]
 internal struct VkPipelineColorBlendAttachmentState
 {
     /// <summary>VkBool32.</summary>
     public uint BlendEnable;
-    public uint SrcColorBlendFactor;
-    public uint DstColorBlendFactor;
-    public uint ColorBlendOp;
-    public uint SrcAlphaBlendFactor;
-    public uint DstAlphaBlendFactor;
-    public uint AlphaBlendOp;
+    public VkBlendFactor SrcColorBlendFactor;
+    public VkBlendFactor DstColorBlendFactor;
+    public VkBlendOp ColorBlendOp;
+    public VkBlendFactor SrcAlphaBlendFactor;
+    public VkBlendFactor DstAlphaBlendFactor;
+    public VkBlendOp AlphaBlendOp;
     /// <summary>Which channels are written (<c>VkColorComponentFlags</c>) — 0xF = RGBA.</summary>
     public uint ColorWriteMask;
 
@@ -1297,6 +1308,21 @@ internal struct VkPipelineDynamicStateCreateInfo
     public IntPtr DynamicStates;
 }
 
+/// <summary>Multiplier applied to a blend operand (<c>VkBlendFactor</c>). Subset.</summary>
+internal enum VkBlendFactor : uint
+{
+    Zero             = 0,
+    One              = 1,
+    SrcAlpha         = 6,
+    OneMinusSrcAlpha = 7,
+}
+
+/// <summary>How the two blend operands combine (<c>VkBlendOp</c>). Subset.</summary>
+internal enum VkBlendOp : uint
+{
+    Add = 0,
+}
+
 /// <summary>Mirror of <c>VkPipelineLayoutCreateInfo</c> — empty for self-contained shaders.</summary>
 [StructLayout(LayoutKind.Sequential)]
 internal struct VkPipelineLayoutCreateInfo
@@ -1308,6 +1334,18 @@ internal struct VkPipelineLayoutCreateInfo
     public IntPtr SetLayouts;
     public uint PushConstantRangeCount;
     public IntPtr PushConstantRanges;
+}
+
+/// <summary>
+/// Mirror of <c>VkPushConstantRange</c> — one window of the push constant block,
+/// visible to the given stages from <see cref="Offset"/> over <see cref="Size"/> bytes.
+/// </summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkPushConstantRange
+{
+    public VkShaderStageFlags StageFlags;
+    public uint Offset;
+    public uint Size;
 }
 
 /// <summary>
