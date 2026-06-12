@@ -14,4 +14,30 @@
         <ProjectReference Include="..\HumbleEngine.HAL.Wayland\HumbleEngine.HAL.Wayland.csproj" />
     </ItemGroup>
 
+    <!-- GLSL → SPIR-V at build time (requires glslangValidator on the machine).
+         The .spv are build artefacts: compiled into obj/, embedded as assembly
+         resources under "Shaders/<name>.spv", never committed. -->
+    <ItemGroup>
+        <ShaderSource Include="Shaders/**/*.vert" />
+        <ShaderSource Include="Shaders/**/*.frag" />
+    </ItemGroup>
+
+    <!-- $(IntermediateOutputPath) is only defined by the SDK targets, after the
+         project body is evaluated — reference it inside the targets (lazy),
+         never from a top-level PropertyGroup (eager, empty at that point). -->
+    <Target Name="CompileShaders"
+            Inputs="@(ShaderSource)"
+            Outputs="@(ShaderSource->'$(IntermediateOutputPath)shaders/%(Filename)%(Extension).spv')">
+        <MakeDir Directories="$(IntermediateOutputPath)shaders/" />
+        <Exec Command="glslangValidator -V &quot;%(ShaderSource.FullPath)&quot; -o &quot;$(IntermediateOutputPath)shaders/%(ShaderSource.Filename)%(ShaderSource.Extension).spv&quot;" />
+    </Target>
+
+    <Target Name="EmbedShaders" BeforeTargets="PrepareForBuild" DependsOnTargets="CompileShaders">
+        <ItemGroup>
+            <_CompiledShader Include="$(IntermediateOutputPath)shaders/*.spv" />
+            <EmbeddedResource Include="@(_CompiledShader)"
+                              LogicalName="Shaders/%(_CompiledShader.Filename)%(_CompiledShader.Extension)" />
+        </ItemGroup>
+    </Target>
+
 </Project>

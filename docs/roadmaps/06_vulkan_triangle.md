@@ -123,9 +123,12 @@ profondeur, multi-frames in flight — chacun viendra avec son client.
   `vkCmdBeginRendering` (loadOp = Clear) : écran toujours gris, mais par le chemin
   du dessin ; le chemin transfer disparaît
 
-- [ ] **Bloc 3 — Le triangle** — deux shaders, `VkShaderModule`, pipeline,
-  `vkCmdDraw(3)` : triangle coloré (interpolation) vérifié au Sandbox + test
-  d'intégration (cycle de frame avec pipeline, validation muette)
+- [x] **Bloc 3 — Le triangle** ✅ — shaders GLSL versionnés + compilation MSBuild
+  (`glslangValidator` → `.spv` embarqués en ressources, erreur GLSL = erreur de
+  build), `VulkanPipeline.cs` (PSO complet, `VkPipelineRenderingCreateInfo` en
+  `pNext`, modules détruits sitôt le pipeline compilé), bind + viewport/scissor
+  dynamiques + `vkCmdDraw(3)` dans l'épisode. Triangle en dégradé confirmé au
+  Sandbox, 14 tests verts, validation muette
 
 - [ ] **Bloc 4 — Vertex buffer** (avec sa passe de conception : heaps, types
   mémoire, host-visible vs device-local, vertex input) — le même triangle, alimenté

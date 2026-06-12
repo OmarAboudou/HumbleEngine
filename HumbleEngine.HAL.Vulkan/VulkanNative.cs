@@ -153,6 +153,46 @@ internal static class VulkanNative
     [DllImport(LibVulkan)]
     internal static extern void vkDestroyImageView(IntPtr device, ulong view, IntPtr allocator);
 
+    // --- Pipeline ---
+
+    /// <summary>
+    /// Wraps SPIR-V bytecode into a shader module. The module is only a container:
+    /// it can be destroyed as soon as the pipelines using it are created.
+    /// </summary>
+    [DllImport(LibVulkan)]
+    internal static extern VkResult vkCreateShaderModule(
+        IntPtr device, in VkShaderModuleCreateInfo createInfo, IntPtr allocator, out ulong shaderModule);
+
+    /// <summary>Destroys a shader module.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkDestroyShaderModule(IntPtr device, ulong shaderModule, IntPtr allocator);
+
+    /// <summary>
+    /// Creates a pipeline layout — the declaration of every external resource the
+    /// shaders can reach (descriptor sets, push constants). Empty for now: the
+    /// triangle's shaders are self-contained.
+    /// </summary>
+    [DllImport(LibVulkan)]
+    internal static extern VkResult vkCreatePipelineLayout(
+        IntPtr device, in VkPipelineLayoutCreateInfo createInfo, IntPtr allocator, out ulong pipelineLayout);
+
+    /// <summary>Destroys a pipeline layout.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkDestroyPipelineLayout(IntPtr device, ulong pipelineLayout, IntPtr allocator);
+
+    /// <summary>
+    /// Compiles graphics pipelines — the full assembly-line configuration baked
+    /// into real GPU state, up front. Declared for a single pipeline, no cache.
+    /// </summary>
+    [DllImport(LibVulkan)]
+    internal static extern VkResult vkCreateGraphicsPipelines(
+        IntPtr device, ulong pipelineCache, uint createInfoCount,
+        in VkGraphicsPipelineCreateInfo createInfo, IntPtr allocator, out ulong pipeline);
+
+    /// <summary>Destroys a pipeline.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkDestroyPipeline(IntPtr device, ulong pipeline, IntPtr allocator);
+
     /// <summary>Retrieves the VkImage handles owned by the swapchain. Two-call idiom.</summary>
     [DllImport(LibVulkan)]
     internal static extern VkResult vkGetSwapchainImagesKHR(
@@ -215,6 +255,29 @@ internal static class VulkanNative
     /// <summary>Closes the current dynamic rendering episode.</summary>
     [DllImport(LibVulkan)]
     internal static extern void vkCmdEndRendering(IntPtr commandBuffer);
+
+    /// <summary>Binds a pipeline: every draw that follows runs through its configuration.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkCmdBindPipeline(
+        IntPtr commandBuffer, VkPipelineBindPoint pipelineBindPoint, ulong pipeline);
+
+    /// <summary>Sets the viewport — declared dynamic in the pipeline so it survives resizes. Single viewport.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkCmdSetViewport(
+        IntPtr commandBuffer, uint firstViewport, uint viewportCount, in VkViewport viewport);
+
+    /// <summary>Sets the scissor rectangle — declared dynamic alongside the viewport. Single scissor.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkCmdSetScissor(
+        IntPtr commandBuffer, uint firstScissor, uint scissorCount, in VkRect2D scissor);
+
+    /// <summary>
+    /// Records a draw: runs the bound pipeline's vertex shader
+    /// <paramref name="vertexCount"/> times (gl_VertexIndex = firstVertex…).
+    /// </summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkCmdDraw(
+        IntPtr commandBuffer, uint vertexCount, uint instanceCount, uint firstVertex, uint firstInstance);
 
     // --- Synchronisation ---
 
@@ -331,6 +394,17 @@ internal enum VkStructureType
     FenceCreateInfo              = 8,
     SemaphoreCreateInfo          = 9,
     ImageViewCreateInfo          = 15,
+    ShaderModuleCreateInfo       = 16,
+    PipelineShaderStageCreateInfo         = 18,
+    PipelineVertexInputStateCreateInfo    = 19,
+    PipelineInputAssemblyStateCreateInfo  = 20,
+    PipelineViewportStateCreateInfo       = 22,
+    PipelineRasterizationStateCreateInfo  = 23,
+    PipelineMultisampleStateCreateInfo    = 24,
+    PipelineColorBlendStateCreateInfo     = 26,
+    PipelineDynamicStateCreateInfo        = 27,
+    GraphicsPipelineCreateInfo            = 28,
+    PipelineLayoutCreateInfo              = 30,
     CommandPoolCreateInfo        = 39,
     CommandBufferAllocateInfo    = 40,
     CommandBufferBeginInfo       = 42,
@@ -733,6 +807,55 @@ internal enum VkAttachmentStoreOp
     DontCare = 1,
 }
 
+/// <summary>Which kind of work a pipeline bind targets (<c>VkPipelineBindPoint</c>). Subset.</summary>
+internal enum VkPipelineBindPoint
+{
+    Graphics = 0,
+}
+
+/// <summary>Programmable stages (<c>VkShaderStageFlagBits</c>). Subset.</summary>
+[Flags]
+internal enum VkShaderStageFlags : uint
+{
+    Vertex   = 0x1,
+    Fragment = 0x10,
+}
+
+/// <summary>How vertices are assembled into primitives (<c>VkPrimitiveTopology</c>). Subset.</summary>
+internal enum VkPrimitiveTopology
+{
+    /// <summary>Every 3 vertices form one independent triangle.</summary>
+    TriangleList = 3,
+}
+
+/// <summary>How polygons are rasterized (<c>VkPolygonMode</c>). Subset.</summary>
+internal enum VkPolygonMode
+{
+    Fill = 0,
+}
+
+/// <summary>Which faces are discarded before rasterization (<c>VkCullModeFlagBits</c>). Subset.</summary>
+internal enum VkCullModeFlags : uint
+{
+    /// <summary>No culling — both windings are drawn (UI quads do not cull either).</summary>
+    None = 0,
+}
+
+/// <summary>Which winding counts as front-facing (<c>VkFrontFace</c>).</summary>
+internal enum VkFrontFace
+{
+    CounterClockwise = 0,
+    Clockwise        = 1,
+}
+
+/// <summary>Pipeline settings provided at draw time instead of being baked (<c>VkDynamicState</c>). Subset.</summary>
+internal enum VkDynamicState
+{
+    /// <summary>The pipeline survives window resizes thanks to these two.</summary>
+    Viewport = 0,
+    Scissor  = 1,
+}
+
 /// <summary>Mirror of <c>VkCommandPoolCreateInfo</c>.</summary>
 [StructLayout(LayoutKind.Sequential)]
 internal struct VkCommandPoolCreateInfo
@@ -938,6 +1061,244 @@ internal struct VkPhysicalDeviceDynamicRenderingFeatures
     public IntPtr Next;
     /// <summary>VkBool32 — 1 to enable.</summary>
     public uint DynamicRendering;
+}
+
+/// <summary>Mirror of <c>VkShaderModuleCreateInfo</c> — wraps SPIR-V bytecode.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkShaderModuleCreateInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public uint Flags;
+    /// <summary>Size of the bytecode in <b>bytes</b> (<c>size_t</c>), although <see cref="Code"/> points to uint words.</summary>
+    public nuint CodeSize;
+    /// <summary>Pointer to the SPIR-V words (must be 4-byte aligned).</summary>
+    public IntPtr Code;
+}
+
+/// <summary>Mirror of <c>VkPipelineShaderStageCreateInfo</c> — one programmable stage of a pipeline.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkPipelineShaderStageCreateInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public uint Flags;
+    public VkShaderStageFlags Stage;
+    public ulong Module;
+    /// <summary>Pointer to the entry point name as a null-terminated ANSI string (<c>main</c>).</summary>
+    public IntPtr Name;
+    /// <summary>Specialization constants — zero here.</summary>
+    public IntPtr SpecializationInfo;
+}
+
+/// <summary>
+/// Mirror of <c>VkPipelineVertexInputStateCreateInfo</c> — the vertex data layout.
+/// All-zero for the first triangle: the vertex shader feeds itself.
+/// </summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkPipelineVertexInputStateCreateInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public uint Flags;
+    public uint VertexBindingDescriptionCount;
+    public IntPtr VertexBindingDescriptions;
+    public uint VertexAttributeDescriptionCount;
+    public IntPtr VertexAttributeDescriptions;
+}
+
+/// <summary>Mirror of <c>VkPipelineInputAssemblyStateCreateInfo</c> — how vertices group into primitives.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkPipelineInputAssemblyStateCreateInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public uint Flags;
+    public VkPrimitiveTopology Topology;
+    /// <summary>VkBool32 — strip-restart, meaningless for lists.</summary>
+    public uint PrimitiveRestartEnable;
+}
+
+/// <summary>
+/// Mirror of <c>VkPipelineViewportStateCreateInfo</c>. Counts only — the actual
+/// viewport/scissor are dynamic, provided at draw time.
+/// </summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkPipelineViewportStateCreateInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public uint Flags;
+    public uint ViewportCount;
+    public IntPtr Viewports;
+    public uint ScissorCount;
+    public IntPtr Scissors;
+}
+
+/// <summary>Mirror of <c>VkPipelineRasterizationStateCreateInfo</c> — fixed-stage rasterizer settings.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkPipelineRasterizationStateCreateInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public uint Flags;
+    /// <summary>VkBool32.</summary>
+    public uint DepthClampEnable;
+    /// <summary>VkBool32 — discards everything before rasterization (transform feedback only).</summary>
+    public uint RasterizerDiscardEnable;
+    public VkPolygonMode PolygonMode;
+    public VkCullModeFlags CullMode;
+    public VkFrontFace FrontFace;
+    /// <summary>VkBool32.</summary>
+    public uint DepthBiasEnable;
+    public float DepthBiasConstantFactor;
+    public float DepthBiasClamp;
+    public float DepthBiasSlopeFactor;
+    /// <summary>Must be 1.0 unless the wideLines feature is enabled.</summary>
+    public float LineWidth;
+}
+
+/// <summary>Mirror of <c>VkPipelineMultisampleStateCreateInfo</c> — MSAA settings; 1 sample = off.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkPipelineMultisampleStateCreateInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public uint Flags;
+    /// <summary><c>VkSampleCountFlagBits</c> — 1 = no multisampling.</summary>
+    public uint RasterizationSamples;
+    /// <summary>VkBool32.</summary>
+    public uint SampleShadingEnable;
+    public float MinSampleShading;
+    public IntPtr SampleMask;
+    /// <summary>VkBool32.</summary>
+    public uint AlphaToCoverageEnable;
+    /// <summary>VkBool32.</summary>
+    public uint AlphaToOneEnable;
+}
+
+/// <summary>
+/// Mirror of <c>VkPipelineColorBlendAttachmentState</c> — blending for one colour
+/// attachment. Disabled here: an opaque triangle overwrites; blending will wake
+/// up for the UI (text anti-aliasing, transparency).
+/// </summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkPipelineColorBlendAttachmentState
+{
+    /// <summary>VkBool32.</summary>
+    public uint BlendEnable;
+    public uint SrcColorBlendFactor;
+    public uint DstColorBlendFactor;
+    public uint ColorBlendOp;
+    public uint SrcAlphaBlendFactor;
+    public uint DstAlphaBlendFactor;
+    public uint AlphaBlendOp;
+    /// <summary>Which channels are written (<c>VkColorComponentFlags</c>) — 0xF = RGBA.</summary>
+    public uint ColorWriteMask;
+
+    /// <summary>RGBA write mask.</summary>
+    public const uint WriteAll = 0xF;
+}
+
+/// <summary>Mirror of <c>VkPipelineColorBlendStateCreateInfo</c>.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal unsafe struct VkPipelineColorBlendStateCreateInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public uint Flags;
+    /// <summary>VkBool32 — bitwise logic ops instead of blending; off.</summary>
+    public uint LogicOpEnable;
+    public uint LogicOp;
+    public uint AttachmentCount;
+    /// <summary>Pointer to an array of <see cref="VkPipelineColorBlendAttachmentState"/>.</summary>
+    public IntPtr Attachments;
+    public fixed float BlendConstants[4];
+}
+
+/// <summary>Mirror of <c>VkPipelineDynamicStateCreateInfo</c> — which settings are provided at draw time.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkPipelineDynamicStateCreateInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public uint Flags;
+    public uint DynamicStateCount;
+    /// <summary>Pointer to an array of <see cref="VkDynamicState"/>.</summary>
+    public IntPtr DynamicStates;
+}
+
+/// <summary>Mirror of <c>VkPipelineLayoutCreateInfo</c> — empty for self-contained shaders.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkPipelineLayoutCreateInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public uint Flags;
+    public uint SetLayoutCount;
+    public IntPtr SetLayouts;
+    public uint PushConstantRangeCount;
+    public IntPtr PushConstantRanges;
+}
+
+/// <summary>
+/// Mirror of <c>VkPipelineRenderingCreateInfo</c> — chained into
+/// <see cref="VkGraphicsPipelineCreateInfo.Next"/>: with dynamic rendering there
+/// is no render pass to carry the attachment formats, so the pipeline declares
+/// them itself. The residue of the render-pass contract, reduced to a field.
+/// </summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkPipelineRenderingCreateInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public uint ViewMask;
+    public uint ColorAttachmentCount;
+    /// <summary>Pointer to an array of <see cref="VkFormat"/>.</summary>
+    public IntPtr ColorAttachmentFormats;
+    public VkFormat DepthAttachmentFormat;
+    public VkFormat StencilAttachmentFormat;
+}
+
+/// <summary>Mirror of <c>VkGraphicsPipelineCreateInfo</c> — the whole assembly line, declared up front.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkGraphicsPipelineCreateInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public uint Flags;
+    public uint StageCount;
+    /// <summary>Pointer to an array of <see cref="VkPipelineShaderStageCreateInfo"/>.</summary>
+    public IntPtr Stages;
+    public IntPtr VertexInputState;
+    public IntPtr InputAssemblyState;
+    /// <summary>Tessellation — zero, stage unused.</summary>
+    public IntPtr TessellationState;
+    public IntPtr ViewportState;
+    public IntPtr RasterizationState;
+    public IntPtr MultisampleState;
+    /// <summary>Depth/stencil — zero, no depth attachment.</summary>
+    public IntPtr DepthStencilState;
+    public IntPtr ColorBlendState;
+    public IntPtr DynamicState;
+    public ulong Layout;
+    /// <summary>0 with dynamic rendering — formats come from the chained <see cref="VkPipelineRenderingCreateInfo"/>.</summary>
+    public ulong RenderPass;
+    public uint Subpass;
+    public ulong BasePipelineHandle;
+    public int BasePipelineIndex;
+}
+
+/// <summary>Mirror of <c>VkViewport</c> — the NDC→pixels mapping, depth range included.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkViewport
+{
+    public float X;
+    public float Y;
+    public float Width;
+    public float Height;
+    public float MinDepth;
+    public float MaxDepth;
 }
 
 /// <summary>Mirror of <c>VkPresentInfoKHR</c> — parameters of <c>vkQueuePresentKHR</c>.</summary>

@@ -22,6 +22,8 @@ internal sealed class VulkanRenderer : IRenderer
 
     private ulong _swapchain;
     private ulong[] _imageViews = [];
+    private ulong _pipeline;
+    private ulong _pipelineLayout;
 
     // Per-frame objects (single frame in flight).
     private readonly ulong  _commandPool;
@@ -74,6 +76,7 @@ internal sealed class VulkanRenderer : IRenderer
         try
         {
             CreateImageViews();
+            (_pipeline, _pipelineLayout) = VulkanPipeline.CreateTrianglePipeline(device, imageFormat);
 
             var poolInfo = new VkCommandPoolCreateInfo
             {
@@ -112,6 +115,7 @@ internal sealed class VulkanRenderer : IRenderer
         catch
         {
             DestroyFrameObjects();
+            DestroyPipeline();
             DestroyImageViews();
             throw;
         }
@@ -126,9 +130,10 @@ internal sealed class VulkanRenderer : IRenderer
 
     /// <summary>
     /// Waits for the previous frame to finish, acquires the next swapchain image,
-    /// transitions it to the colour-attachment layout and opens the dynamic
-    /// rendering episode — the clear to dark grey is its <c>loadOp</c>.
-    /// Recreates the swapchain first when it is out of date.
+    /// transitions it to the colour-attachment layout, opens the dynamic
+    /// rendering episode — the clear to dark grey is its <c>loadOp</c> — and
+    /// records the triangle draw. Recreates the swapchain first when it is out
+    /// of date.
     /// </summary>
     public unsafe void BeginFrame()
     {
@@ -184,6 +189,23 @@ internal sealed class VulkanRenderer : IRenderer
         };
 
         VulkanNative.vkCmdBeginRendering(_commandBuffer, in renderingInfo);
+
+        VulkanNative.vkCmdBindPipeline(_commandBuffer, VkPipelineBindPoint.Graphics, _pipeline);
+
+        // Viewport and scissor are dynamic pipeline state: provided each frame,
+        // so the pipeline itself survives window resizes.
+        var viewport = new VkViewport
+        {
+            Width    = Extent.Width,
+            Height   = Extent.Height,
+            MaxDepth = 1.0f,
+        };
+        VulkanNative.vkCmdSetViewport(_commandBuffer, 0, 1, in viewport);
+
+        var scissor = new VkRect2D { Extent = Extent };
+        VulkanNative.vkCmdSetScissor(_commandBuffer, 0, 1, in scissor);
+
+        VulkanNative.vkCmdDraw(_commandBuffer, 3, 1, 0, 0);
     }
 
     /// <summary>
@@ -267,6 +289,7 @@ internal sealed class VulkanRenderer : IRenderer
 
         VulkanNative.vkDeviceWaitIdle(_device);
         DestroyFrameObjects();
+        DestroyPipeline();
         DestroyImageViews();
         VulkanNative.vkDestroySwapchainKHR(_device, _swapchain, IntPtr.Zero);
         VulkanNative.vkDestroyDevice(_device, IntPtr.Zero);
@@ -328,6 +351,17 @@ internal sealed class VulkanRenderer : IRenderer
             Check(VulkanNative.vkCreateImageView(_device, in createInfo, IntPtr.Zero, out _imageViews[i]),
                   "vkCreateImageView");
         }
+    }
+
+    /// <summary>Destroys the pipeline and its layout.</summary>
+    private void DestroyPipeline()
+    {
+        if (_pipeline != 0)
+            VulkanNative.vkDestroyPipeline(_device, _pipeline, IntPtr.Zero);
+        if (_pipelineLayout != 0)
+            VulkanNative.vkDestroyPipelineLayout(_device, _pipelineLayout, IntPtr.Zero);
+        _pipeline = 0;
+        _pipelineLayout = 0;
     }
 
     /// <summary>Destroys the swapchain image views; the images themselves belong to the swapchain.</summary>
