@@ -9,7 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\HumbleEngine.Core\HumbleEngine.Core.csproj" />
+        <ProjectReference Include="..\HumbleEngine.HAL\HumbleEngine.HAL.csproj" />
     </ItemGroup>
 
 </Project>

@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\HumbleEngine.Core\HumbleEngine.Core.csproj" />
-    <ProjectReference Include="..\HumbleEngine.Linux\HumbleEngine.Linux.csproj" />
+    <ProjectReference Include="..\HumbleEngine.HAL\HumbleEngine.HAL.csproj" />
+    <ProjectReference Include="..\HumbleEngine.HAL.Linux\HumbleEngine.HAL.Linux.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

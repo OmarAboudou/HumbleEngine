@@ -1,16 +1,16 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.Core", "HumbleEngine.Core\HumbleEngine.Core.csproj", "{92DD0639-4505-479A-ACBC-3401F7D4DF99}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.HAL", "HumbleEngine.HAL\HumbleEngine.HAL.csproj", "{92DD0639-4505-479A-ACBC-3401F7D4DF99}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.Linux", "HumbleEngine.Linux\HumbleEngine.Linux.csproj", "{0F8E0F1C-C7DB-4115-9E4E-5225DF8AFB26}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.HAL.Linux", "HumbleEngine.HAL.Linux\HumbleEngine.HAL.Linux.csproj", "{0F8E0F1C-C7DB-4115-9E4E-5225DF8AFB26}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.Vulkan", "HumbleEngine.Vulkan\HumbleEngine.Vulkan.csproj", "{CA0B2033-81B1-458D-A60B-3FD08570C670}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.HAL.Vulkan", "HumbleEngine.HAL.Vulkan\HumbleEngine.HAL.Vulkan.csproj", "{CA0B2033-81B1-458D-A60B-3FD08570C670}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.OpenGL", "HumbleEngine.OpenGL\HumbleEngine.OpenGL.csproj", "{8A7D61BD-FAFE-4767-83C0-CA0C7BDDE53B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.HAL.OpenGL", "HumbleEngine.HAL.OpenGL\HumbleEngine.HAL.OpenGL.csproj", "{8A7D61BD-FAFE-4767-83C0-CA0C7BDDE53B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.X11", "HumbleEngine.X11\HumbleEngine.X11.csproj", "{BFAF892A-994B-41B2-A954-88E673FBFB0C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.HAL.X11", "HumbleEngine.HAL.X11\HumbleEngine.HAL.X11.csproj", "{BFAF892A-994B-41B2-A954-88E673FBFB0C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.Wayland", "HumbleEngine.Wayland\HumbleEngine.Wayland.csproj", "{DB3BF59C-EB24-4A9B-BEC0-C308FC25AFAD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.HAL.Wayland", "HumbleEngine.HAL.Wayland\HumbleEngine.HAL.Wayland.csproj", "{DB3BF59C-EB24-4A9B-BEC0-C308FC25AFAD}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.Sandbox", "HumbleEngine.Sandbox\HumbleEngine.Sandbox.csproj", "{658CF037-805F-4170-AC27-F16FEF47B3EA}"
 EndProject

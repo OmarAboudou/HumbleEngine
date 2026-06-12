@@ -8,9 +8,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\HumbleEngine.Core\HumbleEngine.Core.csproj" />
-        <ProjectReference Include="..\HumbleEngine.X11\HumbleEngine.X11.csproj" />
-        <ProjectReference Include="..\HumbleEngine.Wayland\HumbleEngine.Wayland.csproj" />
+        <ProjectReference Include="..\HumbleEngine.HAL\HumbleEngine.HAL.csproj" />
+        <ProjectReference Include="..\HumbleEngine.HAL.X11\HumbleEngine.HAL.X11.csproj" />
+        <ProjectReference Include="..\HumbleEngine.HAL.Wayland\HumbleEngine.HAL.Wayland.csproj" />
     </ItemGroup>
 
 </Project>

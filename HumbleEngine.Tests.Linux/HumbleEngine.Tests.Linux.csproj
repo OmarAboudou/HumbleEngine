@@ -20,12 +20,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\HumbleEngine.Core\HumbleEngine.Core.csproj" />
-    <ProjectReference Include="..\HumbleEngine.Linux\HumbleEngine.Linux.csproj" />
-    <ProjectReference Include="..\HumbleEngine.X11\HumbleEngine.X11.csproj" />
-    <ProjectReference Include="..\HumbleEngine.OpenGL\HumbleEngine.OpenGL.csproj" />
-    <ProjectReference Include="..\HumbleEngine.Wayland\HumbleEngine.Wayland.csproj" />
-    <ProjectReference Include="..\HumbleEngine.Vulkan\HumbleEngine.Vulkan.csproj" />
+    <ProjectReference Include="..\HumbleEngine.HAL\HumbleEngine.HAL.csproj" />
+    <ProjectReference Include="..\HumbleEngine.HAL.Linux\HumbleEngine.HAL.Linux.csproj" />
+    <ProjectReference Include="..\HumbleEngine.HAL.X11\HumbleEngine.HAL.X11.csproj" />
+    <ProjectReference Include="..\HumbleEngine.HAL.OpenGL\HumbleEngine.HAL.OpenGL.csproj" />
+    <ProjectReference Include="..\HumbleEngine.HAL.Wayland\HumbleEngine.HAL.Wayland.csproj" />
+    <ProjectReference Include="..\HumbleEngine.HAL.Vulkan\HumbleEngine.HAL.Vulkan.csproj" />
   </ItemGroup>
 
 </Project>
