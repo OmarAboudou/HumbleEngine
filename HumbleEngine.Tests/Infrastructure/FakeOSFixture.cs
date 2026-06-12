@@ -1,13 +1,15 @@
-namespace HumbleEngine.Tests.Infrastructure;
+using HumbleEngine.Tests.Infrastructure;
+
+namespace HumbleEngine.Tests;
 
 /// <summary>
-/// Registers FakeDesktopOS once per test process so OS contract tests can run
-/// without any platform assembly.
+/// Registers FakeDesktopOS once per test run so OS contract tests can run
+/// without any platform assembly. Lives in the root test namespace so the
+/// one-time setup covers the whole assembly.
 /// </summary>
-public sealed class FakeOSFixture
+[SetUpFixture]
+public sealed class FakeOSSetup
 {
-    public FakeOSFixture() => OS.Register(new FakeDesktopOS());
+    [OneTimeSetUp]
+    public void RegisterFakeOS() => OS.Register(new FakeDesktopOS());
 }
-
-[CollectionDefinition("FakeOS")]
-public sealed class FakeOSCollection : ICollectionFixture<FakeOSFixture> { }

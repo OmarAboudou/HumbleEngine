@@ -11,7 +11,7 @@ public sealed class SceneTreeTests
         log.Where(e => e.EndsWith(":Attaching") || e.EndsWith(":Attached")
                     || e.EndsWith(":Detaching") || e.EndsWith(":Detached"));
 
-    [Fact]
+    [Test]
     public void SettingRoot_FiresEnterHooks_AttachingTopDown_AttachedBottomUp()
     {
         var log = new List<string>();
@@ -25,15 +25,18 @@ public sealed class SceneTreeTests
         using var tree = new SceneTree();
         tree.Root = root;
 
-        Assert.Equal(
-            ["root:Attaching", "child:Attaching", "grandchild:Attaching",
-             "grandchild:Attached", "child:Attached", "root:Attached"],
-            TreeHookEntries(log));
-        Assert.True(grandchild.IsInTree);
-        Assert.Same(tree, grandchild.Tree);
+        Assert.That(
+            TreeHookEntries(log),
+            Is.EqualTo(new[]
+            {
+                "root:Attaching", "child:Attaching", "grandchild:Attaching",
+                "grandchild:Attached", "child:Attached", "root:Attached"
+            }));
+        Assert.That(grandchild.IsInTree, Is.True);
+        Assert.That(grandchild.Tree, Is.SameAs(tree));
     }
 
-    [Fact]
+    [Test]
     public void AttachingSubtree_ToLiveParent_FiresHooksOnSubtreeOnly()
     {
         var log = new List<string>();
@@ -46,12 +49,15 @@ public sealed class SceneTreeTests
         child.AttachChild(grandchild);
         root.AttachChild(child);
 
-        Assert.Equal(
-            ["child:Attaching", "grandchild:Attaching", "grandchild:Attached", "child:Attached"],
-            TreeHookEntries(log));
+        Assert.That(
+            TreeHookEntries(log),
+            Is.EqualTo(new[]
+            {
+                "child:Attaching", "grandchild:Attaching", "grandchild:Attached", "child:Attached"
+            }));
     }
 
-    [Fact]
+    [Test]
     public void ManipulatingDetachedSubtree_FiresNoTreeHooks()
     {
         var log = new List<string>();
@@ -61,11 +67,11 @@ public sealed class SceneTreeTests
         parent.AttachChild(child);
         parent.DetachChild(child);
 
-        Assert.Empty(TreeHookEntries(log));
-        Assert.False(parent.IsInTree);
+        Assert.That(TreeHookEntries(log), Is.Empty);
+        Assert.That(parent.IsInTree, Is.False);
     }
 
-    [Fact]
+    [Test]
     public void Detach_FromLiveTree_FiresExitHooks_DetachingTopDown_DetachedBottomUp()
     {
         var log = new List<string>();
@@ -79,14 +85,17 @@ public sealed class SceneTreeTests
 
         root.DetachChild(child);
 
-        Assert.Equal(
-            ["child:Detaching", "grandchild:Detaching", "grandchild:Detached", "child:Detached"],
-            TreeHookEntries(log));
-        Assert.Null(child.Tree);
-        Assert.Null(grandchild.Tree);
+        Assert.That(
+            TreeHookEntries(log),
+            Is.EqualTo(new[]
+            {
+                "child:Detaching", "grandchild:Detaching", "grandchild:Detached", "child:Detached"
+            }));
+        Assert.That(child.Tree, Is.Null);
+        Assert.That(grandchild.Tree, Is.Null);
     }
 
-    [Fact]
+    [Test]
     public void OnDetaching_RunsWhileStillInTree_StructureIntact()
     {
         var root = new TestNode("root");
@@ -96,10 +105,10 @@ public sealed class SceneTreeTests
 
         root.DetachChild(child);
 
-        Assert.True(child.WasInTreeDuringDetaching);
+        Assert.That(child.WasInTreeDuringDetaching, Is.True);
     }
 
-    [Fact]
+    [Test]
     public void Adopt_WithinSameTree_FiresNoTreeHooks()
     {
         var log = new List<string>();
@@ -115,12 +124,12 @@ public sealed class SceneTreeTests
 
         b.AdoptChild(child);
 
-        Assert.Empty(TreeHookEntries(log));
-        Assert.Equal(["child:ParentChanged"], log);
-        Assert.Same(tree, child.Tree);
+        Assert.That(TreeHookEntries(log), Is.Empty);
+        Assert.That(log, Is.EqualTo(new[] { "child:ParentChanged" }));
+        Assert.That(child.Tree, Is.SameAs(tree));
     }
 
-    [Fact]
+    [Test]
     public void Adopt_FromLiveTreeToDetachedParent_FiresExitHooks()
     {
         var log = new List<string>();
@@ -133,12 +142,12 @@ public sealed class SceneTreeTests
 
         detached.AdoptChild(child);
 
-        Assert.Equal(["child:Detaching", "child:Detached"], TreeHookEntries(log));
-        Assert.Null(child.Tree);
-        Assert.Same(detached, child.Parent);
+        Assert.That(TreeHookEntries(log), Is.EqualTo(new[] { "child:Detaching", "child:Detached" }));
+        Assert.That(child.Tree, Is.Null);
+        Assert.That(child.Parent, Is.SameAs(detached));
     }
 
-    [Fact]
+    [Test]
     public void Adopt_FromDetachedToLiveTree_FiresEnterHooks()
     {
         var log = new List<string>();
@@ -151,11 +160,11 @@ public sealed class SceneTreeTests
 
         root.AdoptChild(child);
 
-        Assert.Equal(["child:Attaching", "child:Attached"], TreeHookEntries(log));
-        Assert.Same(tree, child.Tree);
+        Assert.That(TreeHookEntries(log), Is.EqualTo(new[] { "child:Attaching", "child:Attached" }));
+        Assert.That(child.Tree, Is.SameAs(tree));
     }
 
-    [Fact]
+    [Test]
     public void RootOfATree_CannotBeAttachedOrAdoptedElsewhere()
     {
         var root = new TestNode("root");
@@ -166,7 +175,7 @@ public sealed class SceneTreeTests
         Assert.Throws<InvalidOperationException>(() => other.AdoptChild(root));
     }
 
-    [Fact]
+    [Test]
     public void Root_ParentedNode_Throws()
     {
         var parent = new TestNode("parent");
@@ -177,7 +186,7 @@ public sealed class SceneTreeTests
         Assert.Throws<InvalidOperationException>(() => tree.Root = child);
     }
 
-    [Fact]
+    [Test]
     public void Root_OfAnotherTree_Throws()
     {
         var root = new TestNode("root");
@@ -187,7 +196,7 @@ public sealed class SceneTreeTests
         Assert.Throws<InvalidOperationException>(() => tree2.Root = root);
     }
 
-    [Fact]
+    [Test]
     public void ReplacingRoot_ExitsOldRoot_EntersNewRoot()
     {
         var log = new List<string>();
@@ -198,14 +207,15 @@ public sealed class SceneTreeTests
 
         tree.Root = newRoot;
 
-        Assert.Equal(["old:Detaching", "old:Detached", "new:Attaching", "new:Attached"],
-            TreeHookEntries(log));
-        Assert.Null(oldRoot.Tree);
-        Assert.False(oldRoot.IsDisposed); // stays alive, owned by its reference holder
-        Assert.Same(tree, newRoot.Tree);
+        Assert.That(
+            TreeHookEntries(log),
+            Is.EqualTo(new[] { "old:Detaching", "old:Detached", "new:Attaching", "new:Attached" }));
+        Assert.That(oldRoot.Tree, Is.Null);
+        Assert.That(oldRoot.IsDisposed, Is.False); // stays alive, owned by its reference holder
+        Assert.That(newRoot.Tree, Is.SameAs(tree));
     }
 
-    [Fact]
+    [Test]
     public void QueueDispose_InTree_DefersUntilFlush()
     {
         var root = new TestNode("root");
@@ -214,22 +224,22 @@ public sealed class SceneTreeTests
         using var tree = new SceneTree { Root = root };
 
         child.QueueDispose();
-        Assert.False(child.IsDisposed);
+        Assert.That(child.IsDisposed, Is.False);
 
         tree.FlushDisposeQueue();
-        Assert.True(child.IsDisposed);
-        Assert.Null(child.Parent);
+        Assert.That(child.IsDisposed, Is.True);
+        Assert.That(child.Parent, Is.Null);
     }
 
-    [Fact]
+    [Test]
     public void QueueDispose_DetachedNode_DisposesImmediately()
     {
         var node = new TestNode("node");
         node.QueueDispose();
-        Assert.True(node.IsDisposed);
+        Assert.That(node.IsDisposed, Is.True);
     }
 
-    [Fact]
+    [Test]
     public void DisposingInTreeNode_FiresExitHooks_BeforeDisposal()
     {
         var log = new List<string>();
@@ -241,11 +251,12 @@ public sealed class SceneTreeTests
 
         child.Dispose();
 
-        Assert.Equal(["child:Detaching", "child:Detached", "child:Disposed"],
-            log.Where(e => e.StartsWith("child:") && e != "child:ParentChanged"));
+        Assert.That(
+            log.Where(e => e.StartsWith("child:") && e != "child:ParentChanged"),
+            Is.EqualTo(new[] { "child:Detaching", "child:Detached", "child:Disposed" }));
     }
 
-    [Fact]
+    [Test]
     public void DisposingRootDirectly_ExitsTree_AndClearsRoot()
     {
         var log = new List<string>();
@@ -255,12 +266,12 @@ public sealed class SceneTreeTests
 
         root.Dispose();
 
-        Assert.Equal(["root:Detaching", "root:Detached"], TreeHookEntries(log));
-        Assert.Null(tree.Root);
+        Assert.That(TreeHookEntries(log), Is.EqualTo(new[] { "root:Detaching", "root:Detached" }));
+        Assert.That(tree.Root, Is.Null);
         tree.Dispose();
     }
 
-    [Fact]
+    [Test]
     public void TreeDispose_DisposesRootSubtree()
     {
         var root = new TestNode("root");
@@ -270,9 +281,9 @@ public sealed class SceneTreeTests
 
         tree.Dispose();
 
-        Assert.True(tree.IsDisposed);
-        Assert.True(root.IsDisposed);
-        Assert.True(child.IsDisposed);
-        Assert.Null(tree.Root);
+        Assert.That(tree.IsDisposed, Is.True);
+        Assert.That(root.IsDisposed, Is.True);
+        Assert.That(child.IsDisposed, Is.True);
+        Assert.That(tree.Root, Is.Null);
     }
 }

@@ -1,4 +1,3 @@
-using HumbleEngine.Tests.Linux.Infrastructure;
 using HumbleEngine.Vulkan;
 using HumbleEngine.Wayland;
 using HumbleEngine.X11;
@@ -10,17 +9,16 @@ namespace HumbleEngine.Tests.Linux.HAL;
 /// Bloc 1 (instance + physical device) requires only the Vulkan loader and an ICD;
 /// bloc 2 (renderer: surface + device + swapchain) also requires a display connection.
 /// </summary>
-[Collection("Linux")]
 public sealed class VulkanIntegrationTests
 {
-    [Fact]
+    [Test]
     public void Initialize_Succeeds()
     {
         using var backend = new VulkanGraphicsBackend();
         backend.Initialize();
     }
 
-    [Fact]
+    [Test]
     public void Initialize_IsIdempotent()
     {
         using var backend = new VulkanGraphicsBackend();
@@ -28,23 +26,23 @@ public sealed class VulkanIntegrationTests
         backend.Initialize();
     }
 
-    [Fact]
+    [Test]
     public void Initialize_SelectsAGpu()
     {
         using var backend = new VulkanGraphicsBackend();
         backend.Initialize();
 
-        Assert.False(string.IsNullOrWhiteSpace(backend.DeviceName));
+        Assert.That(string.IsNullOrWhiteSpace(backend.DeviceName), Is.False);
     }
 
-    [Fact]
+    [Test]
     public void DeviceName_BeforeInitialize_IsNull()
     {
         using var backend = new VulkanGraphicsBackend();
-        Assert.Null(backend.DeviceName);
+        Assert.That(backend.DeviceName, Is.Null);
     }
 
-    [Fact]
+    [Test]
     public void CreateRenderer_BeforeInitialize_Throws()
     {
         using var backend       = new VulkanGraphicsBackend();
@@ -55,7 +53,7 @@ public sealed class VulkanIntegrationTests
         Assert.Throws<InvalidOperationException>(() => backend.CreateRenderer(window));
     }
 
-    [Fact]
+    [Test]
     public void Dispose_IsIdempotent()
     {
         var backend = new VulkanGraphicsBackend();
@@ -64,7 +62,7 @@ public sealed class VulkanIntegrationTests
         backend.Dispose();
     }
 
-    [Fact]
+    [Test]
     public void Dispose_ThenInitialize_Succeeds()
     {
         using var backend = new VulkanGraphicsBackend();
@@ -72,12 +70,12 @@ public sealed class VulkanIntegrationTests
         backend.Dispose();
         backend.Initialize();
 
-        Assert.False(string.IsNullOrWhiteSpace(backend.DeviceName));
+        Assert.That(string.IsNullOrWhiteSpace(backend.DeviceName), Is.False);
     }
 
     // --- Bloc 2 : surface + device logique + swapchain ---
 
-    [Fact]
+    [Test]
     public void CreateRenderer_OnX11Window_ReturnsRenderer()
     {
         using var windowBackend   = new X11WindowBackend();
@@ -89,10 +87,10 @@ public sealed class VulkanIntegrationTests
         graphicsBackend.Initialize();
         using var renderer = graphicsBackend.CreateRenderer(window);
 
-        Assert.NotNull(renderer);
+        Assert.That(renderer, Is.Not.Null);
     }
 
-    [Fact]
+    [Test]
     public void CreateRenderer_OnWaylandWindow_ReturnsRenderer()
     {
         using var windowBackend   = new WaylandWindowBackend();
@@ -104,10 +102,10 @@ public sealed class VulkanIntegrationTests
         graphicsBackend.Initialize();
         using var renderer = graphicsBackend.CreateRenderer(window);
 
-        Assert.NotNull(renderer);
+        Assert.That(renderer, Is.Not.Null);
     }
 
-    [Fact]
+    [Test]
     public void CreateRenderer_WithSurfaceWithoutNativeHandle_Throws()
     {
         using var backend = new VulkanGraphicsBackend();
@@ -116,7 +114,7 @@ public sealed class VulkanIntegrationTests
         Assert.Throws<ArgumentException>(() => backend.CreateRenderer(new FakeSurface()));
     }
 
-    [Fact]
+    [Test]
     public void Renderer_Dispose_IsIdempotent()
     {
         using var windowBackend   = new X11WindowBackend();
@@ -134,7 +132,7 @@ public sealed class VulkanIntegrationTests
 
     // --- Bloc 3 : cycle de frame ---
 
-    [Fact]
+    [Test]
     public void Renderer_FrameCycle_OnX11_DoesNotThrow()
     {
         using var windowBackend   = new X11WindowBackend();
@@ -154,7 +152,7 @@ public sealed class VulkanIntegrationTests
         }
     }
 
-    [Fact]
+    [Test]
     public void Renderer_FrameCycle_OnWayland_DoesNotThrow()
     {
         using var windowBackend   = new WaylandWindowBackend();
@@ -174,15 +172,15 @@ public sealed class VulkanIntegrationTests
         }
     }
 
-    [Fact]
+    [Test]
     public void Window_ReportsItsSize()
     {
         using var windowBackend = new X11WindowBackend();
         windowBackend.Initialize();
         using var window = windowBackend.CreateWindow(new WindowDescription("Test", 320, 240));
 
-        Assert.Equal(320, window.Width);
-        Assert.Equal(240, window.Height);
+        Assert.That(window.Width, Is.EqualTo(320));
+        Assert.That(window.Height, Is.EqualTo(240));
     }
 
     // --- Fakes ---

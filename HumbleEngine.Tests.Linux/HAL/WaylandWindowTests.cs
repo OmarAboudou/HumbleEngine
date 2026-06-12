@@ -1,4 +1,3 @@
-using HumbleEngine.Tests.Linux.Infrastructure;
 using HumbleEngine.Wayland;
 
 namespace HumbleEngine.Tests.Linux.HAL;
@@ -8,19 +7,18 @@ namespace HumbleEngine.Tests.Linux.HAL;
 /// (<c>WAYLAND_DISPLAY</c> set) — they exercise both decoration paths:
 /// libdecor (default) and raw XDG Shell (<see cref="WindowDescription.Borderless"/>).
 /// </summary>
-[Collection("Linux")]
 public sealed class WaylandWindowTests
 {
     // --- Backend lifecycle ---
 
-    [Fact]
+    [Test]
     public void Initialize_Succeeds()
     {
         using var backend = new WaylandWindowBackend();
         backend.Initialize();
     }
 
-    [Fact]
+    [Test]
     public void Initialize_IsIdempotent()
     {
         using var backend = new WaylandWindowBackend();
@@ -28,7 +26,7 @@ public sealed class WaylandWindowTests
         backend.Initialize();
     }
 
-    [Fact]
+    [Test]
     public void CreateWindow_BeforeInitialize_Throws()
     {
         using var backend = new WaylandWindowBackend();
@@ -38,17 +36,17 @@ public sealed class WaylandWindowTests
 
     // --- Decorated window (libdecor path when libdecor-0 is installed) ---
 
-    [Fact]
+    [Test]
     public void CreateWindow_Decorated_ReturnsWindow()
     {
         using var backend = new WaylandWindowBackend();
         backend.Initialize();
         using var window = backend.CreateWindow(new WindowDescription("Test", 100, 100));
 
-        Assert.NotNull(window);
+        Assert.That(window, Is.Not.Null);
     }
 
-    [Fact]
+    [Test]
     public void GetNativeHandle_Decorated_ReturnsNonZero()
     {
         using var backend = new WaylandWindowBackend();
@@ -56,10 +54,10 @@ public sealed class WaylandWindowTests
         using var window = backend.CreateWindow(new WindowDescription("Test", 100, 100));
 
         var handle = (INativeWindowHandle)window;
-        Assert.NotEqual(IntPtr.Zero, handle.GetNativeHandle());
+        Assert.That(handle.GetNativeHandle(), Is.Not.EqualTo(IntPtr.Zero));
     }
 
-    [Fact]
+    [Test]
     public void GetConnectionHandle_Decorated_ReturnsNonZero()
     {
         using var backend = new WaylandWindowBackend();
@@ -67,10 +65,10 @@ public sealed class WaylandWindowTests
         using var window = backend.CreateWindow(new WindowDescription("Test", 100, 100));
 
         var handle = (INativeWindowHandle)window;
-        Assert.NotEqual(IntPtr.Zero, handle.GetConnectionHandle());
+        Assert.That(handle.GetConnectionHandle(), Is.Not.EqualTo(IntPtr.Zero));
     }
 
-    [Fact]
+    [Test]
     public void SetTitle_Decorated_DoesNotThrow()
     {
         using var backend = new WaylandWindowBackend();
@@ -82,7 +80,7 @@ public sealed class WaylandWindowTests
 
     // --- Borderless window (raw XDG Shell path, no libdecor) ---
 
-    [Fact]
+    [Test]
     public void CreateWindow_Borderless_ReturnsWindow()
     {
         using var backend = new WaylandWindowBackend();
@@ -90,10 +88,10 @@ public sealed class WaylandWindowTests
         using var window = backend.CreateWindow(
             new WindowDescription("Test", 100, 100) { Borderless = true });
 
-        Assert.NotNull(window);
+        Assert.That(window, Is.Not.Null);
     }
 
-    [Fact]
+    [Test]
     public void GetNativeHandle_Borderless_ReturnsNonZero()
     {
         using var backend = new WaylandWindowBackend();
@@ -102,10 +100,10 @@ public sealed class WaylandWindowTests
             new WindowDescription("Test", 100, 100) { Borderless = true });
 
         var handle = (INativeWindowHandle)window;
-        Assert.NotEqual(IntPtr.Zero, handle.GetNativeHandle());
+        Assert.That(handle.GetNativeHandle(), Is.Not.EqualTo(IntPtr.Zero));
     }
 
-    [Fact]
+    [Test]
     public void SetTitle_Borderless_DoesNotThrow()
     {
         using var backend = new WaylandWindowBackend();
@@ -118,7 +116,7 @@ public sealed class WaylandWindowTests
 
     // --- Multiple windows / disposal ---
 
-    [Fact]
+    [Test]
     public void CreateWindow_Twice_BothValid()
     {
         using var backend = new WaylandWindowBackend();
@@ -126,12 +124,12 @@ public sealed class WaylandWindowTests
         using var first  = backend.CreateWindow(new WindowDescription("First", 100, 100));
         using var second = backend.CreateWindow(new WindowDescription("Second", 100, 100));
 
-        Assert.NotEqual(
-            ((INativeWindowHandle)first).GetNativeHandle(),
-            ((INativeWindowHandle)second).GetNativeHandle());
+        Assert.That(
+            ((INativeWindowHandle)second).GetNativeHandle(),
+            Is.Not.EqualTo(((INativeWindowHandle)first).GetNativeHandle()));
     }
 
-    [Fact]
+    [Test]
     public void Window_Dispose_IsIdempotent()
     {
         using var backend = new WaylandWindowBackend();
@@ -142,7 +140,7 @@ public sealed class WaylandWindowTests
         window.Dispose();
     }
 
-    [Fact]
+    [Test]
     public void Backend_Dispose_IsIdempotent()
     {
         var backend = new WaylandWindowBackend();

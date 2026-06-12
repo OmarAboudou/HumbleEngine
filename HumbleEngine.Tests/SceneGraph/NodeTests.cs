@@ -6,7 +6,7 @@ namespace HumbleEngine.Tests.SceneGraph;
 /// </summary>
 public sealed class NodeTests
 {
-    [Fact]
+    [Test]
     public void Attach_SetsParent_AndAppendsChildInOrder()
     {
         var parent = new TestNode("parent");
@@ -16,11 +16,11 @@ public sealed class NodeTests
         parent.AttachChild(first);
         parent.AttachChild(second);
 
-        Assert.Same(parent, first.Parent);
-        Assert.Equal([first, second], parent.ChildrenView);
+        Assert.That(first.Parent, Is.SameAs(parent));
+        Assert.That(parent.ChildrenView, Is.EqualTo(new[] { first, second }));
     }
 
-    [Fact]
+    [Test]
     public void Attach_FiresOnParentChanged_FromNullToParent()
     {
         var parent = new TestNode("parent");
@@ -28,24 +28,24 @@ public sealed class NodeTests
 
         parent.AttachChild(child);
 
-        Assert.Equal((null, parent), child.LastParentChange);
-        Assert.Equal(1, child.ParentChangeCount);
+        Assert.That(child.LastParentChange, Is.EqualTo(((Node?)null, (Node?)parent)));
+        Assert.That(child.ParentChangeCount, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public void Attach_NullChild_Throws()
     {
         Assert.Throws<ArgumentNullException>(() => new TestNode("parent").AttachChild(null!));
     }
 
-    [Fact]
+    [Test]
     public void Attach_Self_Throws()
     {
         var node = new TestNode("node");
         Assert.Throws<InvalidOperationException>(() => node.AttachChild(node));
     }
 
-    [Fact]
+    [Test]
     public void Attach_AlreadyParentedNode_Throws()
     {
         var a = new TestNode("a");
@@ -56,7 +56,7 @@ public sealed class NodeTests
         Assert.Throws<InvalidOperationException>(() => b.AttachChild(child));
     }
 
-    [Fact]
+    [Test]
     public void Attach_Ancestor_Throws_NoCycleAllowed()
     {
         var root = new TestNode("root");
@@ -68,7 +68,7 @@ public sealed class NodeTests
         Assert.Throws<InvalidOperationException>(() => leaf.AttachChild(root));
     }
 
-    [Fact]
+    [Test]
     public void Attach_DisposedChild_Throws()
     {
         var parent = new TestNode("parent");
@@ -78,7 +78,7 @@ public sealed class NodeTests
         Assert.Throws<ObjectDisposedException>(() => parent.AttachChild(child));
     }
 
-    [Fact]
+    [Test]
     public void Attach_OnDisposedParent_Throws()
     {
         var parent = new TestNode("parent");
@@ -87,7 +87,7 @@ public sealed class NodeTests
         Assert.Throws<ObjectDisposedException>(() => parent.AttachChild(new TestNode("child")));
     }
 
-    [Fact]
+    [Test]
     public void Detach_ClearsParent_AndFiresOnParentChanged()
     {
         var parent = new TestNode("parent");
@@ -96,19 +96,19 @@ public sealed class NodeTests
 
         parent.DetachChild(child);
 
-        Assert.Null(child.Parent);
-        Assert.Empty(parent.ChildrenView);
-        Assert.Equal((parent, null), child.LastParentChange);
+        Assert.That(child.Parent, Is.Null);
+        Assert.That(parent.ChildrenView, Is.Empty);
+        Assert.That(child.LastParentChange, Is.EqualTo(((Node?)parent, (Node?)null)));
     }
 
-    [Fact]
+    [Test]
     public void Detach_NonChild_Throws()
     {
         var parent = new TestNode("parent");
         Assert.Throws<InvalidOperationException>(() => parent.DetachChild(new TestNode("stranger")));
     }
 
-    [Fact]
+    [Test]
     public void Adopt_MovesNode_BetweenParents()
     {
         var oldParent = new TestNode("old");
@@ -118,12 +118,12 @@ public sealed class NodeTests
 
         newParent.AdoptChild(child);
 
-        Assert.Same(newParent, child.Parent);
-        Assert.Empty(oldParent.ChildrenView);
-        Assert.Equal([child], newParent.ChildrenView);
+        Assert.That(child.Parent, Is.SameAs(newParent));
+        Assert.That(oldParent.ChildrenView, Is.Empty);
+        Assert.That(newParent.ChildrenView, Is.EqualTo(new[] { child }));
     }
 
-    [Fact]
+    [Test]
     public void Adopt_FiresOnParentChanged_ExactlyOnce()
     {
         var oldParent = new TestNode("old");
@@ -133,11 +133,11 @@ public sealed class NodeTests
 
         newParent.AdoptChild(child);
 
-        Assert.Equal((oldParent, newParent), child.LastParentChange);
-        Assert.Equal(2, child.ParentChangeCount); // attach + reparent, nothing else
+        Assert.That(child.LastParentChange, Is.EqualTo(((Node?)oldParent, (Node?)newParent)));
+        Assert.That(child.ParentChangeCount, Is.EqualTo(2)); // attach + reparent, nothing else
     }
 
-    [Fact]
+    [Test]
     public void Adopt_ToSameParent_IsNoOp()
     {
         var parent = new TestNode("parent");
@@ -146,11 +146,11 @@ public sealed class NodeTests
 
         parent.AdoptChild(child);
 
-        Assert.Equal(1, child.ParentChangeCount);
-        Assert.Equal([child], parent.ChildrenView);
+        Assert.That(child.ParentChangeCount, Is.EqualTo(1));
+        Assert.That(parent.ChildrenView, Is.EqualTo(new[] { child }));
     }
 
-    [Fact]
+    [Test]
     public void Adopt_ParentlessNode_Attaches()
     {
         var parent = new TestNode("parent");
@@ -158,11 +158,11 @@ public sealed class NodeTests
 
         parent.AdoptChild(child);
 
-        Assert.Same(parent, child.Parent);
-        Assert.Equal((null, parent), child.LastParentChange);
+        Assert.That(child.Parent, Is.SameAs(parent));
+        Assert.That(child.LastParentChange, Is.EqualTo(((Node?)null, (Node?)parent)));
     }
 
-    [Fact]
+    [Test]
     public void Adopt_UnderOwnDescendant_Throws()
     {
         var root = new TestNode("root");
@@ -172,7 +172,7 @@ public sealed class NodeTests
         Assert.Throws<InvalidOperationException>(() => leaf.AdoptChild(root));
     }
 
-    [Fact]
+    [Test]
     public void Dispose_DisposesSubtree_ChildrenFirst()
     {
         var log = new List<string>();
@@ -184,14 +184,14 @@ public sealed class NodeTests
 
         root.Dispose();
 
-        Assert.True(root.IsDisposed);
-        Assert.True(child.IsDisposed);
-        Assert.True(grandchild.IsDisposed);
-        Assert.Equal(["grandchild:Disposed", "child:Disposed", "root:Disposed"],
-            log.Where(e => e.EndsWith(":Disposed")));
+        Assert.That(root.IsDisposed, Is.True);
+        Assert.That(child.IsDisposed, Is.True);
+        Assert.That(grandchild.IsDisposed, Is.True);
+        Assert.That(log.Where(e => e.EndsWith(":Disposed")),
+            Is.EqualTo(new[] { "grandchild:Disposed", "child:Disposed", "root:Disposed" }));
     }
 
-    [Fact]
+    [Test]
     public void Dispose_DetachesFromParent()
     {
         var parent = new TestNode("parent");
@@ -200,12 +200,12 @@ public sealed class NodeTests
 
         child.Dispose();
 
-        Assert.Null(child.Parent);
-        Assert.Empty(parent.ChildrenView);
-        Assert.False(parent.IsDisposed);
+        Assert.That(child.Parent, Is.Null);
+        Assert.That(parent.ChildrenView, Is.Empty);
+        Assert.That(parent.IsDisposed, Is.False);
     }
 
-    [Fact]
+    [Test]
     public void Dispose_IsIdempotent()
     {
         var log = new List<string>();
@@ -214,13 +214,13 @@ public sealed class NodeTests
         node.Dispose();
         node.Dispose();
 
-        Assert.Equal(["node:Disposed"], log);
+        Assert.That(log, Is.EqualTo(new[] { "node:Disposed" }));
     }
 
-    [Fact]
+    [Test]
     public void ToString_UsesTypeAndOptionalName()
     {
-        Assert.Equal("TestNode 'menu'", new TestNode("x") { Name = "menu" }.ToString());
-        Assert.Equal("TestNode", new TestNode("x").ToString());
+        Assert.That(new TestNode("x") { Name = "menu" }.ToString(), Is.EqualTo("TestNode 'menu'"));
+        Assert.That(new TestNode("x").ToString(), Is.EqualTo("TestNode"));
     }
 }

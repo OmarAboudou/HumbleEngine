@@ -5,29 +5,28 @@ namespace HumbleEngine.Tests.HAL;
 /// <summary>
 /// Tests the OS registration contract using a fake platform — no real OS needed.
 /// </summary>
-[Collection("FakeOS")]
 public sealed class OSContractTests
 {
-    [Fact]
+    [Test]
     public void Register_Twice_Throws()
     {
         Assert.Throws<InvalidOperationException>(() => OS.Register(new FakeDesktopOS()));
     }
 
-    [Fact]
+    [Test]
     public void Current_IsDesktopOS()
     {
-        Assert.IsAssignableFrom<DesktopOS>(OS.Current);
+        Assert.That(OS.Current, Is.InstanceOf<DesktopOS>());
     }
 
-    [Fact]
+    [Test]
     public void GetGraphicsBackend_UnknownName_Throws()
     {
         Assert.Throws<KeyNotFoundException>(
             () => OS.Current.GetGraphicsBackend("NonExistent"));
     }
 
-    [Fact]
+    [Test]
     public void GetWindowBackend_UnknownName_Throws()
     {
         Assert.Throws<KeyNotFoundException>(

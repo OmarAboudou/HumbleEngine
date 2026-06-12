@@ -1,20 +1,18 @@
 using HumbleEngine.OpenGL;
-using HumbleEngine.Tests.Linux.Infrastructure;
 using HumbleEngine.X11;
 
 namespace HumbleEngine.Tests.Linux.HAL;
 
-[Collection("Linux")]
 public sealed class OpenGLIntegrationTests
 {
-    [Fact]
+    [Test]
     public void Initialize_Succeeds()
     {
         using var backend = new OpenGLGraphicsBackend();
         backend.Initialize();
     }
 
-    [Fact]
+    [Test]
     public void Initialize_IsIdempotent()
     {
         using var backend = new OpenGLGraphicsBackend();
@@ -22,7 +20,7 @@ public sealed class OpenGLIntegrationTests
         backend.Initialize();
     }
 
-    [Fact]
+    [Test]
     public void CreateRenderer_BeforeInitialize_Throws()
     {
         using var backend       = new OpenGLGraphicsBackend();
@@ -33,7 +31,7 @@ public sealed class OpenGLIntegrationTests
         Assert.Throws<InvalidOperationException>(() => backend.CreateRenderer(window));
     }
 
-    [Fact]
+    [Test]
     public void CreateRenderer_WithSurfaceWithoutNativeHandle_Throws()
     {
         using var backend = new OpenGLGraphicsBackend();
@@ -41,7 +39,7 @@ public sealed class OpenGLIntegrationTests
         Assert.Throws<ArgumentException>(() => backend.CreateRenderer(new FakeSurface()));
     }
 
-    [Fact]
+    [Test]
     public void CreateRenderer_WithNullConnectionHandle_Throws()
     {
         using var backend = new OpenGLGraphicsBackend();
@@ -50,7 +48,7 @@ public sealed class OpenGLIntegrationTests
             () => backend.CreateRenderer(new FakeSurfaceWithHandle(IntPtr.Zero, IntPtr.Zero)));
     }
 
-    [Fact]
+    [Test]
     public void CreateRenderer_ReturnsRenderer()
     {
         using var windowBackend   = new X11WindowBackend();
@@ -62,10 +60,10 @@ public sealed class OpenGLIntegrationTests
         graphicsBackend.Initialize();
         using var renderer = graphicsBackend.CreateRenderer(window);
 
-        Assert.NotNull(renderer);
+        Assert.That(renderer, Is.Not.Null);
     }
 
-    [Fact]
+    [Test]
     public void Renderer_FrameCycle_DoesNotThrow()
     {
         using var windowBackend   = new X11WindowBackend();
@@ -82,7 +80,7 @@ public sealed class OpenGLIntegrationTests
         renderer.Present();
     }
 
-    [Fact]
+    [Test]
     public void Renderer_Dispose_IsIdempotent()
     {
         using var windowBackend   = new X11WindowBackend();

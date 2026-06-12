@@ -6,120 +6,120 @@ namespace HumbleEngine.Tests.Mathematics;
 /// </summary>
 public sealed class RectTests
 {
-    [Fact]
+    [Test]
     public void Constructor_StoresComponents()
     {
         var r = new Rect(1f, 2f, 30f, 40f);
-        Assert.Equal(1f, r.X);
-        Assert.Equal(2f, r.Y);
-        Assert.Equal(30f, r.Width);
-        Assert.Equal(40f, r.Height);
+        Assert.That(r.X, Is.EqualTo(1f));
+        Assert.That(r.Y, Is.EqualTo(2f));
+        Assert.That(r.Width, Is.EqualTo(30f));
+        Assert.That(r.Height, Is.EqualTo(40f));
     }
 
-    [Fact]
+    [Test]
     public void VectorConstructor_MatchesScalarConstructor()
     {
-        Assert.Equal(
-            new Rect(1f, 2f, 30f, 40f),
-            new Rect(new Vector2(1f, 2f), new Vector2(30f, 40f)));
+        Assert.That(
+            new Rect(new Vector2(1f, 2f), new Vector2(30f, 40f)),
+            Is.EqualTo(new Rect(1f, 2f, 30f, 40f)));
     }
 
-    [Fact]
+    [Test]
     public void DerivedPoints_AreComputedFromPositionAndSize()
     {
         var r = new Rect(10f, 20f, 30f, 40f);
-        Assert.Equal(new Vector2(10f, 20f), r.Position);
-        Assert.Equal(new Vector2(30f, 40f), r.Size);
-        Assert.Equal(new Vector2(40f, 60f), r.End);
-        Assert.Equal(new Vector2(25f, 40f), r.Center);
+        Assert.That(r.Position, Is.EqualTo(new Vector2(10f, 20f)));
+        Assert.That(r.Size, Is.EqualTo(new Vector2(30f, 40f)));
+        Assert.That(r.End, Is.EqualTo(new Vector2(40f, 60f)));
+        Assert.That(r.Center, Is.EqualTo(new Vector2(25f, 40f)));
     }
 
-    [Fact]
+    [Test]
     public void IsEmpty_DetectsZeroOrNegativeExtent()
     {
-        Assert.True(Rect.Zero.IsEmpty);
-        Assert.True(new Rect(0f, 0f, 10f, 0f).IsEmpty);
-        Assert.True(new Rect(0f, 0f, -5f, 10f).IsEmpty);
-        Assert.False(new Rect(0f, 0f, 1f, 1f).IsEmpty);
+        Assert.That(Rect.Zero.IsEmpty, Is.True);
+        Assert.That(new Rect(0f, 0f, 10f, 0f).IsEmpty, Is.True);
+        Assert.That(new Rect(0f, 0f, -5f, 10f).IsEmpty, Is.True);
+        Assert.That(new Rect(0f, 0f, 1f, 1f).IsEmpty, Is.False);
     }
 
-    [Fact]
+    [Test]
     public void Contains_IsHalfOpen_MinEdgeInside_MaxEdgeOutside()
     {
         var r = new Rect(0f, 0f, 10f, 10f);
-        Assert.True(r.Contains(new Vector2(0f, 0f)));
-        Assert.True(r.Contains(new Vector2(5f, 5f)));
-        Assert.False(r.Contains(new Vector2(10f, 5f)));
-        Assert.False(r.Contains(new Vector2(5f, 10f)));
-        Assert.False(r.Contains(new Vector2(-0.1f, 5f)));
+        Assert.That(r.Contains(new Vector2(0f, 0f)), Is.True);
+        Assert.That(r.Contains(new Vector2(5f, 5f)), Is.True);
+        Assert.That(r.Contains(new Vector2(10f, 5f)), Is.False);
+        Assert.That(r.Contains(new Vector2(5f, 10f)), Is.False);
+        Assert.That(r.Contains(new Vector2(-0.1f, 5f)), Is.False);
     }
 
-    [Fact]
+    [Test]
     public void Contains_AdjacentRects_NeverBothContainSharedEdgePoint()
     {
         var left = new Rect(0f, 0f, 10f, 10f);
         var right = new Rect(10f, 0f, 10f, 10f);
         var onSharedEdge = new Vector2(10f, 5f);
-        Assert.False(left.Contains(onSharedEdge));
-        Assert.True(right.Contains(onSharedEdge));
+        Assert.That(left.Contains(onSharedEdge), Is.False);
+        Assert.That(right.Contains(onSharedEdge), Is.True);
     }
 
-    [Fact]
+    [Test]
     public void Intersects_OverlappingRects_ReturnsTrue()
     {
-        Assert.True(new Rect(0f, 0f, 10f, 10f).Intersects(new Rect(5f, 5f, 10f, 10f)));
+        Assert.That(new Rect(0f, 0f, 10f, 10f).Intersects(new Rect(5f, 5f, 10f, 10f)), Is.True);
     }
 
-    [Fact]
+    [Test]
     public void Intersects_AdjacentRects_ReturnsFalse()
     {
-        Assert.False(new Rect(0f, 0f, 10f, 10f).Intersects(new Rect(10f, 0f, 10f, 10f)));
+        Assert.That(new Rect(0f, 0f, 10f, 10f).Intersects(new Rect(10f, 0f, 10f, 10f)), Is.False);
     }
 
-    [Fact]
+    [Test]
     public void Intersection_OverlappingRects_ReturnsOverlap()
     {
         var overlap = new Rect(0f, 0f, 10f, 10f).Intersection(new Rect(5f, 5f, 10f, 10f));
-        Assert.Equal(new Rect(5f, 5f, 5f, 5f), overlap);
+        Assert.That(overlap, Is.EqualTo(new Rect(5f, 5f, 5f, 5f)));
     }
 
-    [Fact]
+    [Test]
     public void Intersection_DisjointRects_ReturnsZero()
     {
         var result = new Rect(0f, 0f, 10f, 10f).Intersection(new Rect(20f, 20f, 5f, 5f));
-        Assert.Equal(Rect.Zero, result);
+        Assert.That(result, Is.EqualTo(Rect.Zero));
     }
 
-    [Fact]
+    [Test]
     public void Union_ContainsBothRects()
     {
         var union = new Rect(0f, 0f, 10f, 10f).Union(new Rect(20f, 5f, 10f, 10f));
-        Assert.Equal(new Rect(0f, 0f, 30f, 15f), union);
+        Assert.That(union, Is.EqualTo(new Rect(0f, 0f, 30f, 15f)));
     }
 
-    [Fact]
+    [Test]
     public void Translated_MovesPositionKeepsSize()
     {
         var r = new Rect(1f, 2f, 3f, 4f).Translated(new Vector2(10f, 20f));
-        Assert.Equal(new Rect(11f, 22f, 3f, 4f), r);
+        Assert.That(r, Is.EqualTo(new Rect(11f, 22f, 3f, 4f)));
     }
 
-    [Fact]
+    [Test]
     public void Grown_ExpandsAllSides_NegativeShrinks()
     {
         var r = new Rect(10f, 10f, 20f, 20f);
-        Assert.Equal(new Rect(5f, 5f, 30f, 30f), r.Grown(5f));
-        Assert.Equal(new Rect(15f, 15f, 10f, 10f), r.Grown(-5f));
+        Assert.That(r.Grown(5f), Is.EqualTo(new Rect(5f, 5f, 30f, 30f)));
+        Assert.That(r.Grown(-5f), Is.EqualTo(new Rect(15f, 15f, 10f, 10f)));
     }
 
-    [Fact]
+    [Test]
     public void Equality_ComparesAllComponents()
     {
         var a = new Rect(1f, 2f, 3f, 4f);
         var b = new Rect(1f, 2f, 3f, 4f);
         var c = new Rect(1f, 2f, 3f, 5f);
-        Assert.True(a == b);
-        Assert.True(a != c);
-        Assert.Equal(a.GetHashCode(), b.GetHashCode());
+        Assert.That(a == b, Is.True);
+        Assert.That(a != c, Is.True);
+        Assert.That(b.GetHashCode(), Is.EqualTo(a.GetHashCode()));
     }
 }

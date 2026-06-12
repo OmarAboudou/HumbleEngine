@@ -48,7 +48,7 @@ internal sealed class FramedScene : Scene
 /// </summary>
 public sealed class SlotTests
 {
-    [Fact]
+    [Test]
     public void NodeList_Add_TransfersOwnership()
     {
         var panel = new TestPanel();
@@ -56,11 +56,11 @@ public sealed class SlotTests
 
         panel.Children.Add(node);
 
-        Assert.Same(panel, node.Parent);
-        Assert.Equal(1, panel.Children.Count);
+        Assert.That(node.Parent, Is.SameAs(panel));
+        Assert.That(panel.Children.Count, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public void NodeList_SupportsCollectionInitializer_InAddOrder()
     {
         var a = new TestNode("a");
@@ -68,13 +68,13 @@ public sealed class SlotTests
 
         var panel = new TestPanel { Children = { a, b } };
 
-        Assert.Same(panel, a.Parent);
-        Assert.Same(panel, b.Parent);
-        Assert.Same(a, panel.Children[0]);
-        Assert.Same(b, panel.Children[1]);
+        Assert.That(a.Parent, Is.SameAs(panel));
+        Assert.That(b.Parent, Is.SameAs(panel));
+        Assert.That(panel.Children[0], Is.SameAs(a));
+        Assert.That(panel.Children[1], Is.SameAs(b));
     }
 
-    [Fact]
+    [Test]
     public void NodeList_Add_AdoptsFromAnotherParent()
     {
         var previous = new TestNode("previous");
@@ -84,11 +84,11 @@ public sealed class SlotTests
 
         panel.Children.Add(node);
 
-        Assert.Same(panel, node.Parent);
-        Assert.Empty(previous.ChildrenView);
+        Assert.That(node.Parent, Is.SameAs(panel));
+        Assert.That(previous.ChildrenView, Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public void NodeList_Add_Duplicate_Throws()
     {
         var panel = new TestPanel();
@@ -98,22 +98,22 @@ public sealed class SlotTests
         Assert.Throws<InvalidOperationException>(() => panel.Children.Add(node));
     }
 
-    [Fact]
+    [Test]
     public void NodeList_Remove_Detaches_NodeStaysAlive()
     {
         var panel = new TestPanel();
         var node = new TestNode("a");
         panel.Children.Add(node);
 
-        Assert.True(panel.Children.Remove(node));
+        Assert.That(panel.Children.Remove(node), Is.True);
 
-        Assert.Null(node.Parent);
-        Assert.False(node.IsDisposed);
-        Assert.Equal(0, panel.Children.Count);
-        Assert.False(panel.Children.Remove(node));
+        Assert.That(node.Parent, Is.Null);
+        Assert.That(node.IsDisposed, Is.False);
+        Assert.That(panel.Children.Count, Is.EqualTo(0));
+        Assert.That(panel.Children.Remove(node), Is.False);
     }
 
-    [Fact]
+    [Test]
     public void NodeList_Clear_DetachesAll()
     {
         var a = new TestNode("a");
@@ -122,12 +122,12 @@ public sealed class SlotTests
 
         panel.Children.Clear();
 
-        Assert.Equal(0, panel.Children.Count);
-        Assert.Null(a.Parent);
-        Assert.Null(b.Parent);
+        Assert.That(panel.Children.Count, Is.EqualTo(0));
+        Assert.That(a.Parent, Is.Null);
+        Assert.That(b.Parent, Is.Null);
     }
 
-    [Fact]
+    [Test]
     public void NodeList_PrunesMembersDisposedBehindItsBack()
     {
         var panel = new TestPanel();
@@ -136,22 +136,22 @@ public sealed class SlotTests
 
         node.Dispose();
 
-        Assert.Equal(0, panel.Children.Count);
-        Assert.Empty(panel.Children);
+        Assert.That(panel.Children.Count, Is.EqualTo(0));
+        Assert.That(panel.Children, Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public void NodeSlot_Assign_TransfersOwnership()
     {
         var icon = new TestNode("sword");
 
         var card = new CardScene { Icon = icon };
 
-        Assert.Same(card, icon.Parent);
-        Assert.Same(icon, card.Icon);
+        Assert.That(icon.Parent, Is.SameAs(card));
+        Assert.That(card.Icon, Is.SameAs(icon));
     }
 
-    [Fact]
+    [Test]
     public void NodeSlot_Replace_DetachesPrevious_AliveAndParentless()
     {
         var first = new TestNode("first");
@@ -160,12 +160,12 @@ public sealed class SlotTests
 
         card.Icon = second;
 
-        Assert.Same(second, card.Icon);
-        Assert.Null(first.Parent);
-        Assert.False(first.IsDisposed);
+        Assert.That(card.Icon, Is.SameAs(second));
+        Assert.That(first.Parent, Is.Null);
+        Assert.That(first.IsDisposed, Is.False);
     }
 
-    [Fact]
+    [Test]
     public void NodeSlot_AssignNull_EmptiesSlot()
     {
         var icon = new TestNode("sword");
@@ -173,11 +173,11 @@ public sealed class SlotTests
 
         card.Icon = null;
 
-        Assert.Null(card.Icon);
-        Assert.Null(icon.Parent);
+        Assert.That(card.Icon, Is.Null);
+        Assert.That(icon.Parent, Is.Null);
     }
 
-    [Fact]
+    [Test]
     public void NodeSlot_SelfHeals_WhenOccupantDisposedBehindItsBack()
     {
         var icon = new TestNode("sword");
@@ -185,10 +185,10 @@ public sealed class SlotTests
 
         icon.Dispose();
 
-        Assert.Null(card.Icon);
+        Assert.That(card.Icon, Is.Null);
     }
 
-    [Fact]
+    [Test]
     public void Scene_OwnsSlotContent_DisposalCascades()
     {
         var icon = new TestNode("sword");
@@ -196,10 +196,10 @@ public sealed class SlotTests
 
         card.Dispose();
 
-        Assert.True(icon.IsDisposed); // the tree owns: injecting transferred ownership
+        Assert.That(icon.IsDisposed, Is.True); // the tree owns: injecting transferred ownership
     }
 
-    [Fact]
+    [Test]
     public void SceneSlot_CanMountDeepInsideThePrivateSubtree()
     {
         var item = new TestNode("item");
@@ -208,11 +208,11 @@ public sealed class SlotTests
 
         // The member is a direct child of the *mount point*, not of the scene —
         // where the slot lands is the scene's private business.
-        Assert.Equal("frame", item.Parent?.Name);
-        Assert.NotSame(scene, item.Parent);
+        Assert.That(item.Parent?.Name, Is.EqualTo("frame"));
+        Assert.That(item.Parent, Is.Not.SameAs(scene));
     }
 
-    [Fact]
+    [Test]
     public void SceneSlot_AcceptsRuntimeAdditions_SlotsAreLiveObjects()
     {
         var root = new TestNode("root");
@@ -224,12 +224,12 @@ public sealed class SlotTests
         var late = new TestNode("late");
         scene.Items.Add(late);
 
-        Assert.True(late.IsInTree);
-        Assert.Equal("frame", late.Parent?.Name);
-        Assert.Equal(1, scene.Items.Count);
+        Assert.That(late.IsInTree, Is.True);
+        Assert.That(late.Parent?.Name, Is.EqualTo("frame"));
+        Assert.That(scene.Items.Count, Is.EqualTo(1));
     }
 
-    [Fact]
+    [Test]
     public void SlotContent_EntersLivingTree_WhenInjectedIntoLiveScene()
     {
         var root = new TestNode("root");
@@ -240,7 +240,7 @@ public sealed class SlotTests
         var icon = new TestNode("sword");
         card.Icon = icon;
 
-        Assert.True(icon.IsInTree);
-        Assert.Same(tree, icon.Tree);
+        Assert.That(icon.IsInTree, Is.True);
+        Assert.That(icon.Tree, Is.SameAs(tree));
     }
 }

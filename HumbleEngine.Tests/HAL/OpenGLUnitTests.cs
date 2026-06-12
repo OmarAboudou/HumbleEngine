@@ -9,37 +9,37 @@ namespace HumbleEngine.Tests.HAL;
 /// </summary>
 public sealed class OpenGLUnitTests
 {
-    [Fact]
+    [Test]
     public void Name_IsOpenGL()
     {
         using var backend = new OpenGLGraphicsBackend();
-        Assert.Equal("OpenGL", backend.Name);
+        Assert.That(backend.Name, Is.EqualTo("OpenGL"));
     }
 
-    [Fact]
+    [Test]
     public void CompatibleWindowBackends_ContainsX11AndWayland()
     {
         using var backend = new OpenGLGraphicsBackend();
-        Assert.Contains(typeof(X11WindowBackend),     backend.CompatibleWindowBackends);
-        Assert.Contains(typeof(WaylandWindowBackend), backend.CompatibleWindowBackends);
+        Assert.That(backend.CompatibleWindowBackends, Does.Contain(typeof(X11WindowBackend)));
+        Assert.That(backend.CompatibleWindowBackends, Does.Contain(typeof(WaylandWindowBackend)));
     }
 
-    [Fact]
+    [Test]
     public void Supports_X11Backend_ReturnsTrue()
     {
         using var backend       = new OpenGLGraphicsBackend();
         using var windowBackend = new X11WindowBackend();
-        Assert.True(((IGraphicsBackend)backend).Supports(windowBackend));
+        Assert.That(((IGraphicsBackend)backend).Supports(windowBackend), Is.True);
     }
 
-    [Fact]
+    [Test]
     public void Supports_UnknownBackend_ReturnsFalse()
     {
         using var backend = new OpenGLGraphicsBackend();
-        Assert.False(((IGraphicsBackend)backend).Supports(new FakeWindowBackend()));
+        Assert.That(((IGraphicsBackend)backend).Supports(new FakeWindowBackend()), Is.False);
     }
 
-    [Fact]
+    [Test]
     public void CreateRenderer_BeforeInitialize_Throws()
     {
         using var backend = new OpenGLGraphicsBackend();

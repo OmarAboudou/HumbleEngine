@@ -1,37 +1,35 @@
 using HumbleEngine.Linux;
 using HumbleEngine.OpenGL;
-using HumbleEngine.Tests.Linux.Infrastructure;
 using HumbleEngine.X11;
 
 namespace HumbleEngine.Tests.Linux.HAL;
 
-[Collection("Linux")]
 public sealed class OSLinuxTests
 {
-    [Fact]
+    [Test]
     public void Current_IsLinuxOS()
     {
-        Assert.IsType<LinuxOS>(OS.Current);
-        Assert.Equal("Linux", OS.Current.Name);
+        Assert.That(OS.Current, Is.TypeOf<LinuxOS>());
+        Assert.That(OS.Current.Name, Is.EqualTo("Linux"));
     }
 
-    [Fact]
+    [Test]
     public void Current_IsDesktopOS()
     {
-        Assert.IsAssignableFrom<DesktopOS>(OS.Current);
+        Assert.That(OS.Current, Is.InstanceOf<DesktopOS>());
     }
 
-    [Fact]
+    [Test]
     public void GetWindowBackend_X11_ReturnsX11Backend()
     {
         var backend = ((DesktopOS)OS.Current).GetWindowBackend("X11");
-        Assert.IsType<X11WindowBackend>(backend);
+        Assert.That(backend, Is.TypeOf<X11WindowBackend>());
     }
 
-    [Fact]
+    [Test]
     public void GetGraphicsBackend_OpenGL_ReturnsOpenGLBackend()
     {
         var backend = OS.Current.GetGraphicsBackend("OpenGL");
-        Assert.IsType<OpenGLGraphicsBackend>(backend);
+        Assert.That(backend, Is.TypeOf<OpenGLGraphicsBackend>());
     }
 }
