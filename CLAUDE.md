@@ -44,6 +44,7 @@ HumbleEngine.HAL.Wayland/    — Backend fenêtrage Wayland (libdecor + fallback
 HumbleEngine.HAL.Vulkan/     — Backend graphique Vulkan — instance, fallback multi-GPU, surface, device, swapchain, cycle de frame (clear)
 HumbleEngine.HAL.OpenGL/     — Backend graphique OpenGL — GLX context, BeginFrame/EndFrame/Present
 HumbleEngine.HAL.Linux/      — Assembly de plateforme Linux (agrège X11, Wayland, Vulkan, OpenGL)
+HumbleEngine.Mathematics/    — Types mathématiques (Vector2, Rect, …) — autonome, aucune dépendance
 HumbleEngine.Sandbox/        — Projet exécutable de test — `dotnet run -- [Wayland|X11] [Vulkan|OpenGL]`
 HumbleEngine.Tests/          — Tests unitaires — FakeOS, aucune dépendance à un display
 HumbleEngine.Tests.Linux/    — Tests d'intégration — X11, GLX, Wayland, Vulkan, cycle frame complet
@@ -66,7 +67,7 @@ HAL.OpenGL           → HAL + HAL.X11 + HAL.Wayland
 HAL.Linux            → HAL + HAL.X11 + HAL.Wayland + HAL.Vulkan + HAL.OpenGL
 HAL.Windows (futur)  → HAL + HAL.Win32 + HAL.Vulkan + HAL.D3D12
 HAL.macOS   (futur)  → HAL + HAL.Cocoa + HAL.Metal
-Mathematics (à venir) → (aucune)
+Mathematics          → (aucune)
 SceneGraph  (à venir) → Mathematics
 ```
 

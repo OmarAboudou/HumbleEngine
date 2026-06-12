@@ -18,6 +18,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.Tests", "Humbl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.Tests.Linux", "HumbleEngine.Tests.Linux\HumbleEngine.Tests.Linux.csproj", "{6DCB741B-6EBF-496F-925C-99FFBE02EEEB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HumbleEngine.Mathematics", "HumbleEngine.Mathematics\HumbleEngine.Mathematics.csproj", "{67E4A020-58E2-4045-850B-7AE66C6340A6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -136,6 +138,18 @@ Global
 		{6DCB741B-6EBF-496F-925C-99FFBE02EEEB}.Release|x64.Build.0 = Release|Any CPU
 		{6DCB741B-6EBF-496F-925C-99FFBE02EEEB}.Release|x86.ActiveCfg = Release|Any CPU
 		{6DCB741B-6EBF-496F-925C-99FFBE02EEEB}.Release|x86.Build.0 = Release|Any CPU
+		{67E4A020-58E2-4045-850B-7AE66C6340A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{67E4A020-58E2-4045-850B-7AE66C6340A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{67E4A020-58E2-4045-850B-7AE66C6340A6}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{67E4A020-58E2-4045-850B-7AE66C6340A6}.Debug|x64.Build.0 = Debug|Any CPU
+		{67E4A020-58E2-4045-850B-7AE66C6340A6}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{67E4A020-58E2-4045-850B-7AE66C6340A6}.Debug|x86.Build.0 = Debug|Any CPU
+		{67E4A020-58E2-4045-850B-7AE66C6340A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{67E4A020-58E2-4045-850B-7AE66C6340A6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{67E4A020-58E2-4045-850B-7AE66C6340A6}.Release|x64.ActiveCfg = Release|Any CPU
+		{67E4A020-58E2-4045-850B-7AE66C6340A6}.Release|x64.Build.0 = Release|Any CPU
+		{67E4A020-58E2-4045-850B-7AE66C6340A6}.Release|x86.ActiveCfg = Release|Any CPU
+		{67E4A020-58E2-4045-850B-7AE66C6340A6}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\HumbleEngine.HAL\HumbleEngine.HAL.csproj" />
+    <ProjectReference Include="..\HumbleEngine.Mathematics\HumbleEngine.Mathematics.csproj" />
     <ProjectReference Include="..\HumbleEngine.HAL.X11\HumbleEngine.HAL.X11.csproj" />
     <ProjectReference Include="..\HumbleEngine.HAL.OpenGL\HumbleEngine.HAL.OpenGL.csproj" />
     <ProjectReference Include="..\HumbleEngine.HAL.Wayland\HumbleEngine.HAL.Wayland.csproj" />
