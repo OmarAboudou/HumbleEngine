@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace HumbleEngine.Vulkan;
@@ -193,6 +194,60 @@ internal static class VulkanNative
     [DllImport(LibVulkan)]
     internal static extern void vkDestroyPipeline(IntPtr device, ulong pipeline, IntPtr allocator);
 
+    // --- Buffers and memory ---
+
+    /// <summary>Describes the memory landscape of a GPU: heaps (physical pools) and types (allocation flavours).</summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkGetPhysicalDeviceMemoryProperties(
+        IntPtr physicalDevice, out VkPhysicalDeviceMemoryProperties properties);
+
+    /// <summary>
+    /// Creates a buffer object — a description (size, usage), deliberately
+    /// without storage: memory is allocated and bound separately, which is what
+    /// makes sub-allocation possible.
+    /// </summary>
+    [DllImport(LibVulkan)]
+    internal static extern VkResult vkCreateBuffer(
+        IntPtr device, in VkBufferCreateInfo createInfo, IntPtr allocator, out ulong buffer);
+
+    /// <summary>Destroys a buffer. Its memory is freed separately.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkDestroyBuffer(IntPtr device, ulong buffer, IntPtr allocator);
+
+    /// <summary>
+    /// Real size/alignment the buffer needs, and the bitmask of memory types
+    /// that can back it — one input of the FindMemoryType loop.
+    /// </summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkGetBufferMemoryRequirements(
+        IntPtr device, ulong buffer, out VkMemoryRequirements requirements);
+
+    /// <summary>Allocates device memory from one memory type. Drivers cap the live allocation count (~4096) — real engines sub-allocate.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern VkResult vkAllocateMemory(
+        IntPtr device, in VkMemoryAllocateInfo allocateInfo, IntPtr allocator, out ulong memory);
+
+    /// <summary>Frees device memory. Everything bound to it must be destroyed first.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkFreeMemory(IntPtr device, ulong memory, IntPtr allocator);
+
+    /// <summary>Marries a buffer object to a region of allocated memory.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern VkResult vkBindBufferMemory(
+        IntPtr device, ulong buffer, ulong memory, ulong memoryOffset);
+
+    /// <summary>
+    /// Maps HOST_VISIBLE memory into the process address space — the returned
+    /// pointer is ordinary CPU-writable memory.
+    /// </summary>
+    [DllImport(LibVulkan)]
+    internal static extern VkResult vkMapMemory(
+        IntPtr device, ulong memory, ulong offset, ulong size, uint flags, out IntPtr data);
+
+    /// <summary>Unmaps previously mapped memory.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkUnmapMemory(IntPtr device, ulong memory);
+
     /// <summary>Retrieves the VkImage handles owned by the swapchain. Two-call idiom.</summary>
     [DllImport(LibVulkan)]
     internal static extern VkResult vkGetSwapchainImagesKHR(
@@ -278,6 +333,14 @@ internal static class VulkanNative
     [DllImport(LibVulkan)]
     internal static extern void vkCmdDraw(
         IntPtr commandBuffer, uint vertexCount, uint instanceCount, uint firstVertex, uint firstInstance);
+
+    /// <summary>
+    /// Binds vertex buffers to the pipeline's input bindings. Declared for a
+    /// single binding (buffer + start offset).
+    /// </summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkCmdBindVertexBuffers(
+        IntPtr commandBuffer, uint firstBinding, uint bindingCount, in ulong buffer, in ulong offset);
 
     // --- Synchronisation ---
 
@@ -391,8 +454,10 @@ internal enum VkStructureType
     DeviceQueueCreateInfo        = 2,
     DeviceCreateInfo             = 3,
     SubmitInfo                   = 4,
+    MemoryAllocateInfo           = 5,
     FenceCreateInfo              = 8,
     SemaphoreCreateInfo          = 9,
+    BufferCreateInfo             = 12,
     ImageViewCreateInfo          = 15,
     ShaderModuleCreateInfo       = 16,
     PipelineShaderStageCreateInfo         = 18,
@@ -542,12 +607,16 @@ internal enum VkQueueFlags : uint
     Transfer = 0x4,
 }
 
-/// <summary>Pixel formats (<c>VkFormat</c>). Subset — only the swapchain formats the engine prefers.</summary>
+/// <summary>Pixel/attribute formats (<c>VkFormat</c>). Subset — swapchain formats and vertex attribute layouts.</summary>
 internal enum VkFormat
 {
     Undefined    = 0,
     B8G8R8A8Unorm = 44,
     B8G8R8A8Srgb  = 50,
+    /// <summary>Two 32-bit floats — a <c>vec2</c> attribute (Vector2).</summary>
+    R32G32Sfloat    = 103,
+    /// <summary>Three 32-bit floats — a <c>vec3</c> attribute (Vector3).</summary>
+    R32G32B32Sfloat = 106,
 }
 
 /// <summary>Colour spaces (<c>VkColorSpaceKHR</c>). Subset.</summary>
@@ -1287,6 +1356,127 @@ internal struct VkGraphicsPipelineCreateInfo
     public uint Subpass;
     public ulong BasePipelineHandle;
     public int BasePipelineIndex;
+}
+
+/// <summary>Memory type properties (<c>VkMemoryPropertyFlagBits</c>). Subset.</summary>
+[Flags]
+internal enum VkMemoryPropertyFlags : uint
+{
+    /// <summary>Lives in VRAM — fastest for the GPU, not directly writable by the CPU.</summary>
+    DeviceLocal  = 0x1,
+    /// <summary>Mappable by the CPU (<c>vkMapMemory</c>).</summary>
+    HostVisible  = 0x2,
+    /// <summary>CPU writes reach the GPU without manual cache flushes.</summary>
+    HostCoherent = 0x4,
+}
+
+/// <summary>What a buffer may be used for (<c>VkBufferUsageFlagBits</c>). Subset.</summary>
+[Flags]
+internal enum VkBufferUsageFlags : uint
+{
+    VertexBuffer = 0x80,
+}
+
+/// <summary>Mirror of <c>VkMemoryType</c> — one allocation flavour: its properties and which heap backs it.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkMemoryType
+{
+    public VkMemoryPropertyFlags PropertyFlags;
+    public uint HeapIndex;
+}
+
+/// <summary>Mirror of <c>VkMemoryHeap</c> — one physical pool and its size in bytes.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkMemoryHeap
+{
+    public ulong Size;
+    public uint Flags;
+}
+
+/// <summary>Fixed-capacity array of <c>VK_MAX_MEMORY_TYPES</c> (32) memory types.</summary>
+[InlineArray(32)]
+internal struct VkMemoryTypeArray
+{
+    private VkMemoryType _element0;
+}
+
+/// <summary>Fixed-capacity array of <c>VK_MAX_MEMORY_HEAPS</c> (16) memory heaps.</summary>
+[InlineArray(16)]
+internal struct VkMemoryHeapArray
+{
+    private VkMemoryHeap _element0;
+}
+
+/// <summary>Mirror of <c>VkPhysicalDeviceMemoryProperties</c> — the GPU's memory map.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkPhysicalDeviceMemoryProperties
+{
+    public uint MemoryTypeCount;
+    public VkMemoryTypeArray MemoryTypes;
+    public uint MemoryHeapCount;
+    public VkMemoryHeapArray MemoryHeaps;
+}
+
+/// <summary>Mirror of <c>VkBufferCreateInfo</c> — a buffer description, storage excluded.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkBufferCreateInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public uint Flags;
+    /// <summary>Size in bytes.</summary>
+    public ulong Size;
+    public VkBufferUsageFlags Usage;
+    public VkSharingMode SharingMode;
+    public uint QueueFamilyIndexCount;
+    public IntPtr QueueFamilyIndices;
+}
+
+/// <summary>Mirror of <c>VkMemoryRequirements</c> — what backing a resource demands.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkMemoryRequirements
+{
+    public ulong Size;
+    public ulong Alignment;
+    /// <summary>Bit i set = memory type i can back this resource.</summary>
+    public uint MemoryTypeBits;
+}
+
+/// <summary>Mirror of <c>VkMemoryAllocateInfo</c> — parameters of <c>vkAllocateMemory</c>.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkMemoryAllocateInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public ulong AllocationSize;
+    public uint MemoryTypeIndex;
+}
+
+/// <summary>
+/// Mirror of <c>VkVertexInputBindingDescription</c> — one vertex data stream:
+/// its slot, the byte distance between consecutive vertices, and whether it
+/// advances per vertex (0) or per instance (1).
+/// </summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkVertexInputBindingDescription
+{
+    public uint Binding;
+    public uint Stride;
+    public uint InputRate;
+}
+
+/// <summary>
+/// Mirror of <c>VkVertexInputAttributeDescription</c> — one shader input: which
+/// <c>layout(location)</c> it feeds, from which binding, in which format, at
+/// which byte offset inside the vertex.
+/// </summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkVertexInputAttributeDescription
+{
+    public uint Location;
+    public uint Binding;
+    public VkFormat Format;
+    public uint Offset;
 }
 
 /// <summary>Mirror of <c>VkViewport</c> — the NDC→pixels mapping, depth range included.</summary>

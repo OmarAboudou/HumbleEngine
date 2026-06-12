@@ -96,6 +96,29 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
   pipeline déclarera son format d'attachment via `VkPipelineRenderingCreateInfo`
   chaînée — le résidu du contrat render pass, réduit à un champ.
 
+### La mémoire GPU (passe du Bloc 4)
+
+- **La géographie d'abord** — VRAM (rapide pour le GPU) vs RAM système (atteinte via
+  PCIe) ; Vulkan montre la carte au lieu de la cacher : des **heaps** (réservoirs
+  physiques) et des **types** étiquetés `DEVICE_LOCAL` / `HOST_VISIBLE`
+  (mappable par le CPU via `vkMapMemory`) / `HOST_COHERENT` (pas de flush manuel).
+- **Itinéraire direct retenu** — buffer `HOST_VISIBLE | HOST_COHERENT`, mappé,
+  copié, dessiné. Le **staging** (copie vers `DEVICE_LOCAL`) est différé avec son
+  client : les vrais assets. Une allocation par buffer pour apprendre ; la pratique
+  réelle (gros blocs sous-alloués, lib VMA, limite driver ~4096 allocations) est
+  notée hors périmètre.
+- **Buffer ≠ mémoire** — trois appels volontairement séparés : `vkCreateBuffer`
+  (l'objet : taille + usage), `vkAllocateMemory` (le stockage, choisi par la boucle
+  `FindMemoryType` croisant `vkGetBufferMemoryRequirements.memoryTypeBits` avec les
+  propriétés voulues), `vkBindBufferMemory` (le mariage). La séparation permet la
+  sous-allocation.
+- **Mathematics touche le GPU** — vertex C# = `Vector2` position + `Vector3` couleur
+  (stride 20, copie brute dans le buffer mappé — le payoff du layout vérifié de
+  Mathematics). Le pipeline déclare le contrat : 1 binding description (stride 20,
+  par sommet) + 2 attribute descriptions (loc 0 : `R32G32_SFLOAT` à 0 ; loc 1 :
+  `R32G32B32_SFLOAT` à 8). Le shader perd ses tableaux et `gl_VertexIndex` ; il
+  gagne `layout(location=N) in`. Nouvelle dépendance : HAL.Vulkan → Mathematics.
+
 ### Hors périmètre (volontairement)
 
 Intégration SceneGraph↔renderer, quads UI, textures, uniforms/descripteurs,
@@ -130,6 +153,23 @@ profondeur, multi-frames in flight — chacun viendra avec son client.
   dynamiques + `vkCmdDraw(3)` dans l'épisode. Triangle en dégradé confirmé au
   Sandbox, 14 tests verts, validation muette
 
-- [ ] **Bloc 4 — Vertex buffer** (avec sa passe de conception : heaps, types
-  mémoire, host-visible vs device-local, vertex input) — le même triangle, alimenté
-  par des données C#
+- [x] **Bloc 4 — Vertex buffer** ✅ — `VulkanBuffers.CreateVertexBuffer<T>`
+  (create → requirements → FindMemoryType → allocate → bind → map/copie/unmap,
+  host-visible direct), `TriangleVertex` = `Vector2` + `Vector3` de Mathematics en
+  copie brute (stride 20), vertex input déclaré au pipeline, shader sur
+  `layout(location) in`. Triangle strictement identique confirmé au Sandbox,
+  14 tests verts, validation muette. Dépendance nouvelle : HAL.Vulkan → Mathematics
+
+---
+
+## Résultat
+
+Le moteur sait dessiner : pipeline graphique complet en dynamic rendering (Vulkan 1.3,
+sans render pass), shaders GLSL versionnés et compilés en SPIR-V au build (embarqués
+en ressources), PSO avec viewport/scissor dynamiques (survit au resize), vertex
+buffer en mémoire host-visible nourri par les types Mathematics, validation layer
+active en Debug et muette sur tout le chemin. Prochaines briques (hors roadmap) :
+l'intégration SceneGraph↔renderer et la brique UI (quads, layout, bindings) — les
+deux sont maintenant débloquées ; voir le cap produit dans CLAUDE.md.
+
+*Tâche terminée*

@@ -54,10 +54,39 @@ internal static unsafe class VulkanPipeline
                     Name   = entryPoint,
                 };
 
-                // No vertex input: the vertex shader feeds itself (gl_VertexIndex).
+                // One stream of TriangleVertex: Vector2 position feeding
+                // location 0, Vector3 colour feeding location 1 — the typed
+                // contract matching the shader's `layout(location = N) in`.
+                var binding = new VkVertexInputBindingDescription
+                {
+                    Binding   = 0,
+                    Stride    = (uint)sizeof(TriangleVertex),
+                    InputRate = 0, // per vertex
+                };
+
+                var attributes = stackalloc VkVertexInputAttributeDescription[2];
+                attributes[0] = new VkVertexInputAttributeDescription
+                {
+                    Location = 0,
+                    Binding  = 0,
+                    Format   = VkFormat.R32G32Sfloat,
+                    Offset   = 0,
+                };
+                attributes[1] = new VkVertexInputAttributeDescription
+                {
+                    Location = 1,
+                    Binding  = 0,
+                    Format   = VkFormat.R32G32B32Sfloat,
+                    Offset   = (uint)sizeof(Vector2),
+                };
+
                 var vertexInput = new VkPipelineVertexInputStateCreateInfo
                 {
-                    SType = VkStructureType.PipelineVertexInputStateCreateInfo,
+                    SType                           = VkStructureType.PipelineVertexInputStateCreateInfo,
+                    VertexBindingDescriptionCount   = 1,
+                    VertexBindingDescriptions       = (IntPtr)(&binding),
+                    VertexAttributeDescriptionCount = 2,
+                    VertexAttributeDescriptions     = (IntPtr)attributes,
                 };
 
                 var inputAssembly = new VkPipelineInputAssemblyStateCreateInfo

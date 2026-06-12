@@ -8,7 +8,7 @@ HumbleEngine is a C# game engine built from scratch with the goal of understandi
 
 - Language: C# / .NET 10.0
 - IDE: Rider (`.idea/` present)
-- Current phase: **Triangle Vulkan** — voir `docs/roadmaps/06_vulkan_triangle.md` pour l'avancement
+- Current phase: **triangle Vulkan terminé** (`docs/roadmaps/06_vulkan_triangle.md` ✅) — prochain chantier au choix : brique UI ou intégration SceneGraph↔renderer
 
 ## Build & run commands
 
@@ -41,7 +41,7 @@ dotnet test --filter "FullyQualifiedName~TestMethodName"
 HumbleEngine.HAL/            — Abstractions uniquement (interfaces, classes abstraites). Aucune dépendance.
 HumbleEngine.HAL.X11/        — Backend fenêtrage X11 (P/Invoke libX11)
 HumbleEngine.HAL.Wayland/    — Backend fenêtrage Wayland (libdecor + fallback XDG brut)
-HumbleEngine.HAL.Vulkan/     — Backend graphique Vulkan — instance, fallback multi-GPU, surface, device, swapchain, cycle de frame (clear)
+HumbleEngine.HAL.Vulkan/     — Backend graphique Vulkan — instance (validation en Debug), fallback multi-GPU, swapchain, dynamic rendering, pipeline + shaders SPIR-V (compilés au build), vertex buffer
 HumbleEngine.HAL.OpenGL/     — Backend graphique OpenGL — GLX context, BeginFrame/EndFrame/Present
 HumbleEngine.HAL.Linux/      — Assembly de plateforme Linux (agrège X11, Wayland, Vulkan, OpenGL)
 HumbleEngine.Mathematics/    — Types mathématiques (Vector2, Rect, …) — autonome, aucune dépendance
@@ -64,7 +64,7 @@ docs/
 HAL                  → (aucune)
 HAL.X11              → HAL
 HAL.Wayland          → HAL
-HAL.Vulkan           → HAL + HAL.X11 + HAL.Wayland
+HAL.Vulkan           → HAL + HAL.X11 + HAL.Wayland + Mathematics
 HAL.OpenGL           → HAL + HAL.X11 + HAL.Wayland
 HAL.Linux            → HAL + HAL.X11 + HAL.Wayland + HAL.Vulkan + HAL.OpenGL
 HAL.Windows (futur)  → HAL + HAL.Win32 + HAL.Vulkan + HAL.D3D12

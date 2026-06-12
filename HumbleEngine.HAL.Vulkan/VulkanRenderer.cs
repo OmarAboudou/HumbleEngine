@@ -24,6 +24,8 @@ internal sealed class VulkanRenderer : IRenderer
     private ulong[] _imageViews = [];
     private ulong _pipeline;
     private ulong _pipelineLayout;
+    private ulong _vertexBuffer;
+    private ulong _vertexMemory;
 
     // Per-frame objects (single frame in flight).
     private readonly ulong  _commandPool;
@@ -78,6 +80,17 @@ internal sealed class VulkanRenderer : IRenderer
             CreateImageViews();
             (_pipeline, _pipelineLayout) = VulkanPipeline.CreateTrianglePipeline(device, imageFormat);
 
+            // Same triangle as before, but the data now lives in C# and crosses
+            // into GPU-visible memory as a raw copy of Mathematics structs.
+            ReadOnlySpan<TriangleVertex> vertices =
+            [
+                new(new Vector2( 0.0f, -0.5f), new Vector3(1f, 0f, 0f)),
+                new(new Vector2( 0.5f,  0.5f), new Vector3(0f, 1f, 0f)),
+                new(new Vector2(-0.5f,  0.5f), new Vector3(0f, 0f, 1f)),
+            ];
+            (_vertexBuffer, _vertexMemory) =
+                VulkanBuffers.CreateVertexBuffer(physicalDevice, device, vertices);
+
             var poolInfo = new VkCommandPoolCreateInfo
             {
                 SType            = VkStructureType.CommandPoolCreateInfo,
@@ -115,6 +128,7 @@ internal sealed class VulkanRenderer : IRenderer
         catch
         {
             DestroyFrameObjects();
+            DestroyVertexBuffer();
             DestroyPipeline();
             DestroyImageViews();
             throw;
@@ -205,6 +219,9 @@ internal sealed class VulkanRenderer : IRenderer
         var scissor = new VkRect2D { Extent = Extent };
         VulkanNative.vkCmdSetScissor(_commandBuffer, 0, 1, in scissor);
 
+        ulong offset = 0;
+        VulkanNative.vkCmdBindVertexBuffers(_commandBuffer, 0, 1, in _vertexBuffer, in offset);
+
         VulkanNative.vkCmdDraw(_commandBuffer, 3, 1, 0, 0);
     }
 
@@ -289,6 +306,7 @@ internal sealed class VulkanRenderer : IRenderer
 
         VulkanNative.vkDeviceWaitIdle(_device);
         DestroyFrameObjects();
+        DestroyVertexBuffer();
         DestroyPipeline();
         DestroyImageViews();
         VulkanNative.vkDestroySwapchainKHR(_device, _swapchain, IntPtr.Zero);
@@ -351,6 +369,17 @@ internal sealed class VulkanRenderer : IRenderer
             Check(VulkanNative.vkCreateImageView(_device, in createInfo, IntPtr.Zero, out _imageViews[i]),
                   "vkCreateImageView");
         }
+    }
+
+    /// <summary>Destroys the vertex buffer, then frees its memory (reverse of the bind order).</summary>
+    private void DestroyVertexBuffer()
+    {
+        if (_vertexBuffer != 0)
+            VulkanNative.vkDestroyBuffer(_device, _vertexBuffer, IntPtr.Zero);
+        if (_vertexMemory != 0)
+            VulkanNative.vkFreeMemory(_device, _vertexMemory, IntPtr.Zero);
+        _vertexBuffer = 0;
+        _vertexMemory = 0;
     }
 
     /// <summary>Destroys the pipeline and its layout.</summary>
