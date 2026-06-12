@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -26,6 +26,7 @@
     <ProjectReference Include="..\HumbleEngine.HAL.X11\HumbleEngine.HAL.X11.csproj" />
     <ProjectReference Include="..\HumbleEngine.HAL.OpenGL\HumbleEngine.HAL.OpenGL.csproj" />
     <ProjectReference Include="..\HumbleEngine.HAL.Wayland\HumbleEngine.HAL.Wayland.csproj" />
+    <ProjectReference Include="..\HumbleEngine.Reactive\HumbleEngine.Reactive.csproj" />
   </ItemGroup>
 
 </Project>
