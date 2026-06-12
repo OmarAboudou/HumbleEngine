@@ -6,69 +6,83 @@ OS.Register(new LinuxOS());
 
 var desktop = (DesktopOS)OS.Current;
 
-// Select backends from args: dotnet run -- [Wayland|X11] [Vulkan|OpenGL]
-var windowBackendName   = args.Length > 0 ? args[0] : "Wayland";
-var graphicsBackendName = args.Length > 1 ? args[1] : "Vulkan";
+// Two windowing backends side by side, one Vulkan backend serving both:
+// the trio "window ↔ renderer ↔ tree" instantiated twice (roadmap 09).
+var waylandBackend  = desktop.GetWindowBackend("Wayland");
+var x11Backend      = desktop.GetWindowBackend("X11");
+var graphicsBackend = desktop.GetGraphicsBackend("Vulkan");
 
-var windowBackend   = desktop.GetWindowBackend(windowBackendName);
-var graphicsBackend = desktop.GetGraphicsBackend(graphicsBackendName);
-
-windowBackend.Initialize();
-var window = windowBackend.CreateWindow(
-    new WindowDescription($"HumbleEngine — {windowBackendName} + {graphicsBackendName}", 800, 600));
+waylandBackend.Initialize();
+x11Backend.Initialize();
+var waylandWindow = waylandBackend.CreateWindow(new WindowDescription("HumbleEngine — Wayland + Vulkan", 800, 600));
+var x11Window     = x11Backend.CreateWindow(new WindowDescription("HumbleEngine — X11 + Vulkan", 800, 600));
 
 graphicsBackend.Initialize();
-var renderer = graphicsBackend.CreateRenderer(window);
+var waylandRenderer = graphicsBackend.CreateRenderer(waylandWindow);
+var x11Renderer     = graphicsBackend.CreateRenderer(x11Window);
 
-// The trio: this window's renderer pairs with this tree; the scene is a pure
-// template — its nodes acquire their GPU resources on entering the tree.
-var scene = new SandboxScene { Name = "Main" };
-var tree  = new SceneTree(renderer) { Root = scene };
+// Same scene template, two instances, two worlds — each tree owns its renderer,
+// each node acquires its GPU resources from the tree it enters.
+var waylandScene = new SandboxScene { Name = "Wayland" };
+var waylandTree  = new SceneTree(waylandRenderer) { Root = waylandScene };
+var x11Scene     = new SandboxScene { Name = "X11" };
+var x11Tree      = new SceneTree(x11Renderer) { Root = x11Scene };
 
 Console.WriteLine($"OS       : {OS.Current.Name}");
-Console.WriteLine($"Window   : {windowBackend.Name}");
+Console.WriteLine($"Windows  : {waylandBackend.Name} + {x11Backend.Name}");
 Console.WriteLine($"Graphics : {graphicsBackend.Name}");
-Console.WriteLine("Running. The triangle disappears after 5 s (QueueDispose demo). Close the window to exit.");
+Console.WriteLine("Running. Triangles disappear after 5 s. Close either window to exit.");
 
 var clock    = System.Diagnostics.Stopwatch.StartNew();
 var fpsClock = System.Diagnostics.Stopwatch.StartNew();
 var frames   = 0;
 
-window.Run(() =>
-{
-    // Bloc 3 roadmap 08 — a reactive value drives the screen: the panel slides
-    // over the triangle because its Position cell changes, nothing else.
-    var t = (float)clock.Elapsed.TotalSeconds;
-    scene.PanelPosition.Value = new Vector2(250f + 100f * MathF.Sin(t * 2f), 150f);
+// The loop policy is the application's, one Step per window in the condition:
+// each trio pumps its window then plays its own frame, and the loop leaves as
+// soon as either window asks to close. Delegates are created once, not per turn.
+Action waylandFrame = () => DriveTrio(waylandScene, waylandTree, waylandRenderer, phase: 1f);
+Action x11Frame     = () => DriveTrio(x11Scene, x11Tree, x11Renderer, phase: -1f);
 
-    // Bloc 4 — reactive layout: the middle tile breathes, the Column notices
-    // the Size change and restacks; the tile below slides on its own.
-    scene.BreathingSize.Value = new Vector2(150f, 60f + 40f * MathF.Sin(t * 3f));
+while (waylandWindow.Step(waylandFrame) && x11Window.Step(x11Frame))
+{
+    frames++;
+    if (fpsClock.Elapsed.TotalSeconds >= 1)
+    {
+        var fps = frames / fpsClock.Elapsed.TotalSeconds;
+        Console.WriteLine($"[fps] {fps:F0}");
+        waylandWindow.SetTitle($"HumbleEngine — Wayland + Vulkan — {fps:F0} fps");
+        x11Window.SetTitle($"HumbleEngine — X11 + Vulkan — {fps:F0} fps");
+        fpsClock.Restart();
+        frames = 0;
+    }
+}
+
+// Destruction in reverse creation order, trios first.
+x11Tree.Dispose();
+waylandTree.Dispose();
+x11Renderer.Dispose();
+waylandRenderer.Dispose();
+graphicsBackend.Dispose();
+x11Window.Dispose();
+waylandWindow.Dispose();
+x11Backend.Dispose();
+waylandBackend.Dispose();
+return;
+
+// One trio's frame: animate (phase keeps the two worlds visibly independent),
+// render, honour the 5 s triangle demo, flush the dispose queue.
+void DriveTrio(SandboxScene scene, SceneTree tree, IRenderer renderer, float phase)
+{
+    var t = (float)clock.Elapsed.TotalSeconds;
+    scene.PanelPosition.Value = new Vector2(250f + 100f * MathF.Sin(t * phase * 2f), 150f);
+    scene.BreathingSize.Value = new Vector2(150f, 60f + 40f * MathF.Sin(t * phase * 3f));
 
     renderer.BeginFrame();
     tree.Render();
     renderer.EndFrame();
     renderer.Present();
 
-    frames++;
-    if (fpsClock.Elapsed.TotalSeconds >= 1)
-    {
-        var fps = frames / fpsClock.Elapsed.TotalSeconds;
-        Console.WriteLine($"[fps] {fps:F0}");
-        window.SetTitle($"HumbleEngine — {windowBackendName} + {graphicsBackendName} — {fps:F0} fps");
-        fpsClock.Restart();
-        frames = 0;
-    }
-
-    if (clock.Elapsed.TotalSeconds >= 5)
+    if (t >= 5f)
         scene.DisposeTriangle(); // no-op once the triangle is gone
-
     tree.FlushDisposeQueue();
-});
-
-// Destruction in reverse creation order.
-tree.Dispose();
-renderer.Dispose();
-graphicsBackend.Dispose();
-window.Dispose();
-windowBackend.Dispose();
+}

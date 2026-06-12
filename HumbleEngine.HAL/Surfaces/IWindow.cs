@@ -33,6 +33,16 @@ public interface IWindow : IGraphicsSurface
     /// <summary>Fired when the window is resized; arguments are the new width and height in pixels.</summary>
     event Action<int, int>? OnResize;
 
+    /// <summary>
+    /// Drains this window's native event queue once — the loop primitive:
+    /// <see cref="IGraphicsSurface.Run"/> is literally
+    /// <c>while (!ShouldClose) { PollEvents(); onFrame(); }</c>, and a
+    /// multi-window application composes its own loop from this. <b>Must be
+    /// called on the main thread</b> (X11, Win32 and Cocoa mandate it) — a
+    /// documented contract, by design impossible to enforce structurally.
+    /// </summary>
+    void PollEvents();
+
     /// <summary>Creates a child window that shares the parent's display connection.</summary>
     IWindow CreateChildWindow(WindowDescription description);
 }

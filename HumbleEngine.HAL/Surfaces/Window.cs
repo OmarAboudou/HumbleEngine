@@ -1,9 +1,12 @@
 namespace HumbleEngine;
 
 /// <summary>
-/// Base implementation for desktop windows using the Template Method pattern.
-/// <see cref="Run"/> drives the main loop; subclasses implement <see cref="PollEvents"/>
-/// to process their native event queue.
+/// Base implementation for desktop windows. <see cref="PollEvents"/> is the
+/// pump primitive each backend implements; <see cref="Step"/> composes one
+/// loop iteration from it (pump, then frame); <c>Run</c> comes from the
+/// <see cref="IGraphicsSurface"/> contract. Applications with several windows
+/// write their own loop over <see cref="Step"/> — the loop policy (exit
+/// condition, frame order) is theirs, like everything else in the engine.
 /// </summary>
 public abstract class Window : IWindow
 {
@@ -29,20 +32,19 @@ public abstract class Window : IWindow
     public event Action<int, int>? OnResize;
 
     /// <inheritdoc/>
-    public void Run(Action onFrame)
+    public bool Step(Action onFrame)
     {
-        while (!ShouldClose)
-        {
-            PollEvents();
-            onFrame();
-        }
+        if (ShouldClose)
+            return false;
+        PollEvents();
+        if (ShouldClose)
+            return false;
+        onFrame();
+        return !ShouldClose;
     }
 
-    /// <summary>
-    /// Drains the backend's native event queue for one iteration.
-    /// Must run on the main thread (required by X11, Win32, and Cocoa).
-    /// </summary>
-    protected abstract void PollEvents();
+    /// <inheritdoc/>
+    public abstract void PollEvents();
 
     /// <inheritdoc/>
     public abstract void Show();

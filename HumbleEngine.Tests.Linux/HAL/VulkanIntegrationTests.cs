@@ -435,6 +435,7 @@ public sealed class VulkanIntegrationTests
     {
         public bool ShouldClose => false;
         public event Action? OnClose { add { } remove { } }
+        public bool Step(Action onFrame) => false;
         public void Run(Action onFrame) { }
         public void Dispose() { }
     }

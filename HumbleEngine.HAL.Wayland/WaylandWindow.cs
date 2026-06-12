@@ -307,7 +307,7 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
     // Event loop
     // =========================================================================
 
-    protected override void PollEvents()
+    public override void PollEvents()
     {
         if (_useLibdecor)
         {

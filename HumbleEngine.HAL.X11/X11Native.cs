@@ -37,6 +37,11 @@ internal static class X11Native
     [DllImport(Lib)] internal static extern int XChangeProperty(
         IntPtr display, ulong window, ulong property, ulong type,
         int format, int mode, ref MotifWmHints data, int nelements);
+
+    /// <summary>Byte-array overload — 8-bit format properties such as <c>_NET_WM_NAME</c> (UTF8_STRING).</summary>
+    [DllImport(Lib)] internal static extern int XChangeProperty(
+        IntPtr display, ulong window, ulong property, ulong type,
+        int format, int mode, byte[] data, int nelements);
 }
 
 /// <summary>

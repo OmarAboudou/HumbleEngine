@@ -13,8 +13,25 @@ public interface IGraphicsSurface : IDisposable
     event Action? OnClose;
 
     /// <summary>
-    /// Runs the main loop: calls <paramref name="onFrame"/> each iteration
-    /// until <see cref="ShouldClose"/> becomes true.
+    /// Advances this surface by one loop iteration: processes pending platform
+    /// events, then runs <paramref name="onFrame"/> — skipped when the platform
+    /// asked to close meanwhile. Returns <c>true</c> while the surface wants to
+    /// continue (the <c>IEnumerator.MoveNext</c> idiom), so a multi-window loop
+    /// is one <c>while</c> condition: <c>while (a.Step(fa) &amp;&amp; b.Step(fb))</c>.
+    /// Each surface family implements its own iteration (desktop pumps its
+    /// queue; a platform whose OS owns the loop overrides <see cref="Run"/> instead).
     /// </summary>
-    void Run(Action onFrame);
+    bool Step(Action onFrame);
+
+    /// <summary>
+    /// Runs the main loop until the platform asks to close — literally
+    /// <c>while (Step(onFrame))</c>: the single-surface convenience, composed
+    /// once here at the contract level.
+    /// </summary>
+    void Run(Action onFrame)
+    {
+        while (Step(onFrame))
+        {
+        }
+    }
 }

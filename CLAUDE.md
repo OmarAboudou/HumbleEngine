@@ -47,7 +47,7 @@ HumbleEngine.HAL.Linux/      — Assembly de plateforme Linux (agrège X11, Wayl
 HumbleEngine.Mathematics/    — Types mathématiques (Vector2, Rect, …) — autonome, aucune dépendance
 HumbleEngine.Reactive/       — Primitives réactives (Reactive&lt;T&gt;, ReactiveList&lt;T&gt;, bindings) — autonome, aucune dépendance
 HumbleEngine.SceneGraph/     — Node (fermé par défaut), VisualNode (OnDraw), UINode/Panel/Column/Row (pixels, layout réactif), SceneTree (hooks de cycle de vie, QueueDispose, Render), Scene, NodeSlot/NodeList observables, BindItemsFrom
-HumbleEngine.Sandbox/        — Projet exécutable de test — `dotnet run -- [Wayland|X11] [Vulkan|OpenGL]`
+HumbleEngine.Sandbox/        — Projet exécutable de test — démo bi-fenêtre : deux trios (Wayland + X11, un backend Vulkan), `dotnet run` sans argument
 HumbleEngine.Tests/          — Tests unitaires — FakeOS, aucune dépendance à un display
 HumbleEngine.Tests.Linux/    — Tests d'intégration — X11, GLX, Wayland, Vulkan, cycle frame complet
 docs/
@@ -136,7 +136,7 @@ if (renderer is ITileShadingCapability ts) ts.DispatchTileShader(desc);
 - `HAL` never references any backend directly — receives interfaces via injection.
 - Un backend graphique identifie le système de fenêtrage via `IWindow.Backend` (jamais par cast du type concret de la fenêtre) et appelle `INativeWindowHandle.NotifyRendererAttached()` après avoir créé un renderer.
 - Only the platform assembly (`HAL.Linux`, `HAL.Windows`, `HAL.macOS`) and the application entry point know all backends.
-- `PollEvents` must run on the main thread (X11, Win32, Cocoa mandate it) — enforced by `Window.Run`, hidden from `IWindow`.
+- Boucle en trois étages composables : `IWindow.PollEvents` (primitive de pompe, contrat documenté : main thread), `IGraphicsSurface.Step(onFrame)` (une itération, retourne true tant que la surface continue — idiome MoveNext), `Run` (sucre mono-surface, default interface method composée sur Step). Multi-fenêtre = un Step par fenêtre dans la condition du while, la politique de boucle appartient à l'application.
 - Backend compatibility (`CompatibleWindowBackends`) declared as `IReadOnlyList<Type>` sur `IGraphicsBackend` — `Supports(IWindowBackend)` a une implémentation par défaut dans l'interface, overridable si nécessaire.
 - New renderer capabilities use `is` pattern, not interface inheritance, so backends don't need to implement unused capabilities.
 - Pas d'`EngineContext` global — le cycle de vie est à la charge de l'application, ce qui permet plusieurs fenêtres avec des backends différents. Destruction dans l'ordre inverse de la création.

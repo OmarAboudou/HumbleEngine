@@ -51,6 +51,69 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
   overlays dans la même fenêtre (fin d'ordre du peintre) avant d'exiger de
   vraies fenêtres.
 
+### Les événements fenêtre (passe 2)
+
+- **Une couche d'abstraction, un canal unique** (validé 2026-06-13 — proposé
+  par Omar) : `IWindow.OnInput` (`event Action<InputEvent>`). Les backends *sont* la couche
+  de traduction : dialecte natif (`XEvent`, `wl_pointer`/`wl_keyboard`) →
+  vocabulaire HAL unique. Justification : **le routage est le client de
+  l'abstraction** — N événements typés sur la fenêtre imposeraient N chemins
+  de routage dans l'arbre (hit-test, capture, bubbling dupliqués) ; c'est la
+  vraie raison d'être de l'`InputEvent` de Godot (`_input(event)`, un tuyau).
+- **`InputEvent` = hiérarchie de records** (validé 2026-06-13 — proposé par
+  Omar, contre la struct union d'abord envisagée) : `InputEvent` abstrait →
+  `PointerEvent(Vector2 Position)` abstrait → records scellés précis
+  (`PointerMoved`, `PointerPressed(Button, Position)`, …). Achète : la
+  précision par type (un Moved n'a pas de champ Button), le pattern matching
+  (`e is PointerPressed { Button: Left }`), **l'étage intermédiaire dont le
+  routeur a besoin** (`e is PointerEvent p` → hit-test sur `p.Position`,
+  sans connaître le genre), l'égalité structurelle pour les tests, un record
+  de plus par genre futur. Coût re-mesuré et accepté : ~1000 evts/s × ~50 o
+  = bruit en Gen0 (WPF, Avalonia, Godot allouent pareil) ; pooling localisé
+  (backends + routeur) si un profil proteste un jour.
+- **Kinds** : pointeur complet d'abord — `PointerMoved/Pressed/Released/
+  Scrolled/Entered/Exited` (coordonnées pixel surface-local, origine
+  haut-gauche : déjà l'espace UI sur les deux backends) ; clavier ensuite en
+  **deux canaux conceptuels** — `KeyPressed/Released` (touche logique : enum
+  `Key` + `KeyModifiers`, pour flèches/raccourcis) et `TextInput` (caractère
+  composé : layout, touches mortes — ce que consommera le champ texte, jamais
+  les touches brutes).
+- **Réalités backend** : X11 facile (étendre le masque — `PointerMotionMask`
+  absent aujourd'hui —, des cases dans `HandleEvent`, `XLookupString`) ;
+  Wayland est le morceau — binder `wl_seat`, listeners pointer/keyboard,
+  **xkbcommon** à P/Invoke (keymap fd → état → keysym + UTF-8), et la
+  **répétition de touches à la charge du client** (le compositeur n'envoie
+  que `repeat_info`) — notée pour le bloc clavier (maintenir Backspace).
+- **Le confort typé au bon étage** : `UINode` dispatche depuis son entrée
+  unique vers des hooks de convenance typés (passe 3).
+- **Différés** : IME/composition (client : l'international), scale factor
+  HiDPI Wayland, hooks par type sur la fenêtre.
+
+### Hit-testing et routage (passe 3)
+
+- **L'application branche, symétrie avec le rendu** (validé 2026-06-13) :
+  `window.OnInput += e => tree.RouteInput(e)` — l'arbre ne connaît pas la
+  fenêtre, chaque fenêtre route vers son arbre (le bi-fenêtre du Sandbox
+  marche sans une ligne de plus).
+- **Hit-test = la traversée de `Render`, inversée** : derniers enfants
+  d'abord, profondeur d'abord, premier `GlobalRect.Contains` gagnant — la
+  convention demi-ouverte de `Rect.Contains` avait été écrite pour ce moment
+  (« no double hit »). Nœuds non-UI transparents, comme au rendu.
+- **Bubbling à retour booléen** : l'événement est offert à la cible puis
+  remonte les ancêtres `UINode` jusqu'à consommation —
+  `protected virtual bool OnInput(InputEvent e)`, `true` = consommé (les
+  records sont immuables : le retour est le signal, pas de `Handled`
+  mutable). Différés : la phase de capture à la WPF (client : drag-scroll
+  parental), les hooks de convenance typés (client : `Button`).
+- **Le routeur a trois états**, internes au `SceneTree` (même altitude que
+  la dispose queue ; API publique : `tree.RouteInput`) : la **capture
+  implicite du pointeur** (au `Pressed`, les `Moved`/`Released` vont au même
+  nœud jusqu'au `Released`, même hors de son rect — sans ça ni bouton correct
+  ni drag) ; le **hover synthétisé** (`Entered`/`Exited` *par nœud* dérivés
+  des `Moved` ; ceux de la fenêtre ne font que réinitialiser) ; le **focus
+  clavier** (principe : pas de hit-test, le focusé puis bubble — pris au
+  clic, donné par code ; détails au bloc clavier).
+
 ## Blocs
 
 - [x] **Bloc 1 — Le branchement** ✅ — `SceneTree(renderer)` (le trio typé) +
@@ -62,15 +125,43 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
   étranger → `ArgumentException` au lieu d'un crash Vulkan latent). Tests :
   cycle acquisition/libération/réacquisition, protocole nul hors arbre, garde
   inter-renderers (deux fenêtres réelles). Écran strictement identique,
-  210 + 50 tests verts, validation muette
+  210 + 50 tests verts, validation muette.
+  **Démo bi-trio au Sandbox** (demande d'Omar) : deux fenêtres Wayland + X11,
+  deux `SceneTree`, un seul backend Vulkan (l'instance activait déjà les deux
+  extensions de surface) — même template `SandboxScene` instancié deux fois,
+  animations en opposition de phase. Pièce moteur, en deux refactorings
+  proposés par Omar : **la boucle en trois étages composables** —
+  `IWindow.PollEvents` public (la primitive de pompe, desktop ; contrat
+  main-thread documenté, plus caché), **`IGraphicsSurface.Step(onFrame)`**
+  (une itération : pomper puis frame ; retourne true tant que la surface
+  continue — idiome `MoveNext` ; chaque famille de surface implémente la
+  sienne, une plateforme à boucle imposée par l'OS overridera `Run`), et
+  `Run` réduit à une **default interface method** : `while (Step(onFrame))`.
+  Multi-fenêtre = un `Step` par fenêtre dans la condition du `while` de
+  l'application. Un éphémère `Window.RunAll` essayé puis supprimé : sa
+  politique rigide et son cast vers `Window` signalaient la mauvaise altitude
 
-- [ ] **Bloc 2 — Conception input** (passes progressives, à mener après le
-  branchement)
-  - [ ] Passe 2 : les événements fenêtre — ce que les backends X11/Wayland
-    publient (souris, clavier), la forme HAL des événements
-  - [ ] Passe 3 : hit-testing et routage — qui traverse, dans quel ordre
-    (z inverse du peintre), capture/bubbling, focus
+- [x] **Bloc 2 — Conception input** ✅ (passes progressives)
+  - [x] Passe 2 : les événements fenêtre ✅ → section « Les événements
+    fenêtre » ci-dessus
+  - [x] Passe 3 : hit-testing et routage ✅ → section « Hit-testing et
+    routage » ci-dessus
 
-- [ ] **Blocs suivants** — découpés à l'issue des passes 2-3
+- [ ] **Bloc 3 — Les événements naissent** — `InputEvent` (hiérarchie de
+  records) dans HAL, canal `OnInput`, traduction pointeur X11 (masque +
+  cases) et Wayland (`wl_seat` + listeners pointer) ; démo : les événements
+  défilent en console depuis les deux fenêtres
+
+- [ ] **Bloc 4 — Le routage** — `tree.RouteInput`, hit-test inverse du
+  peintre, bubbling, capture implicite, hover synthétisé ; démo : les tuiles
+  de la colonne réagissent au survol, un clic en tue une (`QueueDispose`) et
+  la `Column` se resserre toute seule
+
+- [ ] **Bloc 5 — Le clavier** — enum `Key`/`KeyModifiers`, X11
+  (`XLookupString`), Wayland (xkbcommon), focus, `TextInput`, répétition
+  client-side ; démo : déplacer le panneau aux flèches
+
+- [ ] **Bloc 6 — Tests** — unitaires (routage sur arbre + FakeRenderer, sans
+  display) + intégration Linux, fin de roadmap
 
 *Tâche en cours*

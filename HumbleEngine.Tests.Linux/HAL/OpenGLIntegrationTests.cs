@@ -102,6 +102,7 @@ public sealed class OpenGLIntegrationTests
     {
         public bool ShouldClose => false;
         public event Action? OnClose { add { } remove { } }
+        public bool Step(Action onFrame) => false;
         public void Run(Action onFrame) { }
         public void Dispose() { }
     }
@@ -110,6 +111,7 @@ public sealed class OpenGLIntegrationTests
     {
         public bool ShouldClose => false;
         public event Action? OnClose { add { } remove { } }
+        public bool Step(Action onFrame) => false;
         public void Run(Action onFrame) { }
         public void Dispose() { }
     }

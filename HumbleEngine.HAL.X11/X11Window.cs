@@ -5,6 +5,8 @@ internal sealed class X11Window : Window, INativeWindowHandle
     private readonly IntPtr _display;
     private readonly ulong  _window;
     private readonly ulong  _wmDeleteWindow;
+    private readonly ulong  _netWmName;
+    private readonly ulong  _utf8String;
 
     internal X11Window(IWindowBackend backend, IntPtr display, WindowDescription desc)
         : base(backend)
@@ -35,6 +37,9 @@ internal sealed class X11Window : Window, INativeWindowHandle
         _wmDeleteWindow = X11Native.XInternAtom(display, "WM_DELETE_WINDOW", false);
         X11Native.XSetWMProtocols(display, _window, ref _wmDeleteWindow, 1);
 
+        _netWmName  = X11Native.XInternAtom(display, "_NET_WM_NAME", false);
+        _utf8String = X11Native.XInternAtom(display, "UTF8_STRING", false);
+
         if (desc.Borderless)
         {
             var hintsAtom = X11Native.XInternAtom(display, "_MOTIF_WM_HINTS", false);
@@ -42,11 +47,11 @@ internal sealed class X11Window : Window, INativeWindowHandle
             X11Native.XChangeProperty(display, _window, hintsAtom, hintsAtom, 32, 0, ref hints, 5);
         }
 
-        X11Native.XStoreName(display, _window, desc.Title);
+        SetTitle(desc.Title);
         X11Native.XMapWindow(display, _window);
     }
 
-    protected override void PollEvents()
+    public override void PollEvents()
     {
         while (X11Native.XPending(_display) > 0)
         {
@@ -81,8 +86,20 @@ internal sealed class X11Window : Window, INativeWindowHandle
     public override void Show()  => X11Native.XMapWindow(_display, _window);
     public override void Hide()  => X11Native.XUnmapWindow(_display, _window);
 
-    public override void SetTitle(string title) =>
+    /// <summary>
+    /// Sets both title properties: legacy <c>WM_NAME</c> (Latin-1 only — anything
+    /// beyond renders as boxes) and EWMH <c>_NET_WM_NAME</c> in UTF8_STRING,
+    /// which every modern window manager prefers.
+    /// </summary>
+    public override void SetTitle(string title)
+    {
         X11Native.XStoreName(_display, _window, title);
+        var utf8 = System.Text.Encoding.UTF8.GetBytes(title);
+        X11Native.XChangeProperty(
+            _display, _window, _netWmName, _utf8String,
+            8, 0 /* PropModeReplace */, utf8, utf8.Length);
+        X11Native.XFlush(_display);
+    }
 
     public override void Resize(int width, int height) =>
         X11Native.XResizeWindow(_display, _window, (uint)width, (uint)height);
