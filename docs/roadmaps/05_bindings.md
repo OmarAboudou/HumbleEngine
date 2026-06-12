@@ -180,7 +180,8 @@ chantier, indépendant.
 - [x] **Bloc 2 — `Reactive<T>` + bindings scalaires** ✅ (`BindFrom`, `BindTwoWayFrom`,
   `Unbind`, `IReadOnlyReactive<T>` — 146 tests unitaires verts au total)
 
-- [ ] **Bloc 3 — `ReactiveList<T>`** + tests
+- [x] **Bloc 3 — `ReactiveList<T>`** ✅ (`IReadOnlyReactiveList<T>`, narration exacte
+  Added/Removed, garde anti-mutation en handler — 161 tests unitaires verts au total)
 
 - [ ] **Bloc 4 — `BindItems` + registre item→nœud, convergence `NodeSlot`/`NodeList`** + tests
   (la partie qui vit côté SceneGraph)
