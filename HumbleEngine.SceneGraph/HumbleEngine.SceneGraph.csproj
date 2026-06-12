@@ -8,6 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\HumbleEngine.HAL\HumbleEngine.HAL.csproj" />
         <ProjectReference Include="..\HumbleEngine.Mathematics\HumbleEngine.Mathematics.csproj" />
         <ProjectReference Include="..\HumbleEngine.Reactive\HumbleEngine.Reactive.csproj" />
     </ItemGroup>

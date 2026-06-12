@@ -321,6 +321,19 @@ public abstract class Node : IDisposable
         Tree = null;
     }
 
+    /// <summary>
+    /// Recursively draws the living subtree, parents before children (painter's
+    /// order). No snapshot: structural mutation during a draw is a bug — fail
+    /// fast — and the legitimate need, destruction, goes through
+    /// <see cref="QueueDispose"/>, flushed at end of frame.
+    /// </summary>
+    internal void RenderSubtree(IRenderer renderer)
+    {
+        (this as VisualNode)?.Draw(renderer);
+        foreach (var child in _children)
+            child.RenderSubtree(renderer);
+    }
+
     /// <summary>Rejects a child that is this node itself or one of its ancestors.</summary>
     private void EnsureNotSelfOrAncestor(Node child)
     {

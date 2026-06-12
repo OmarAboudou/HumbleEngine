@@ -8,7 +8,7 @@ HumbleEngine is a C# game engine built from scratch with the goal of understandi
 
 - Language: C# / .NET 10.0
 - IDE: Rider (`.idea/` present)
-- Current phase: **triangle Vulkan terminé** (`docs/roadmaps/06_vulkan_triangle.md` ✅) — prochain chantier au choix : brique UI ou intégration SceneGraph↔renderer
+- Current phase: **intégration SceneGraph↔renderer terminée** (`docs/roadmaps/07_scenegraph_renderer.md` ✅) — prochain chantier : la brique UI (UINode, layout, quads)
 
 ## Build & run commands
 
@@ -38,15 +38,15 @@ dotnet test --filter "FullyQualifiedName~TestMethodName"
 ## Repository structure
 
 ```
-HumbleEngine.HAL/            — Abstractions uniquement (interfaces, classes abstraites). Aucune dépendance.
+HumbleEngine.HAL/            — Abstractions uniquement (interfaces, classes abstraites) + contrat de dessin (Vertex, IMesh). Dépend de Mathematics seulement.
 HumbleEngine.HAL.X11/        — Backend fenêtrage X11 (P/Invoke libX11)
 HumbleEngine.HAL.Wayland/    — Backend fenêtrage Wayland (libdecor + fallback XDG brut)
-HumbleEngine.HAL.Vulkan/     — Backend graphique Vulkan — instance (validation en Debug), fallback multi-GPU, swapchain, dynamic rendering, pipeline + shaders SPIR-V (compilés au build), vertex buffer
+HumbleEngine.HAL.Vulkan/     — Backend graphique Vulkan — instance (validation en Debug), fallback multi-GPU, swapchain, dynamic rendering, pipeline + shaders SPIR-V (compilés au build), meshes (CreateMesh/Draw)
 HumbleEngine.HAL.OpenGL/     — Backend graphique OpenGL — GLX context, BeginFrame/EndFrame/Present
 HumbleEngine.HAL.Linux/      — Assembly de plateforme Linux (agrège X11, Wayland, Vulkan, OpenGL)
 HumbleEngine.Mathematics/    — Types mathématiques (Vector2, Rect, …) — autonome, aucune dépendance
 HumbleEngine.Reactive/       — Primitives réactives (Reactive&lt;T&gt;, ReactiveList&lt;T&gt;, bindings) — autonome, aucune dépendance
-HumbleEngine.SceneGraph/     — Node (fermé par défaut), SceneTree (hooks de cycle de vie, QueueDispose), Scene, NodeSlot/NodeList observables, BindItemsFrom
+HumbleEngine.SceneGraph/     — Node (fermé par défaut), VisualNode (OnDraw), SceneTree (hooks de cycle de vie, QueueDispose, Render), Scene, NodeSlot/NodeList observables, BindItemsFrom
 HumbleEngine.Sandbox/        — Projet exécutable de test — `dotnet run -- [Wayland|X11] [Vulkan|OpenGL]`
 HumbleEngine.Tests/          — Tests unitaires — FakeOS, aucune dépendance à un display
 HumbleEngine.Tests.Linux/    — Tests d'intégration — X11, GLX, Wayland, Vulkan, cycle frame complet
@@ -61,7 +61,7 @@ docs/
 ## Dépendances entre projets
 
 ```
-HAL                  → (aucune)
+HAL                  → Mathematics
 HAL.X11              → HAL
 HAL.Wayland          → HAL
 HAL.Vulkan           → HAL + HAL.X11 + HAL.Wayland + Mathematics
@@ -71,7 +71,7 @@ HAL.Windows (futur)  → HAL + HAL.Win32 + HAL.Vulkan + HAL.D3D12
 HAL.macOS   (futur)  → HAL + HAL.Cocoa + HAL.Metal
 Mathematics          → (aucune)
 Reactive             → (aucune)
-SceneGraph           → Mathematics + Reactive
+SceneGraph           → HAL + Mathematics + Reactive
 ```
 
 L'assembly de plateforme (`HAL.Linux`, `HAL.Windows`, `HAL.macOS`) est le seul à connaître tous les backends. L'application ne référence que `HAL` + l'assembly de plateforme cible, et enregistre explicitement l'OS via `OS.Register(new LinuxOS())` au démarrage.

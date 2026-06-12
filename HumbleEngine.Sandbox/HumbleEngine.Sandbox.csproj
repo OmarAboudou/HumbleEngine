@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\HumbleEngine.HAL\HumbleEngine.HAL.csproj" />
     <ProjectReference Include="..\HumbleEngine.HAL.Linux\HumbleEngine.HAL.Linux.csproj" />
+    <ProjectReference Include="..\HumbleEngine.SceneGraph\HumbleEngine.SceneGraph.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

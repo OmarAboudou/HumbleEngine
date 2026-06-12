@@ -26,6 +26,7 @@
     <ProjectReference Include="..\HumbleEngine.HAL.OpenGL\HumbleEngine.HAL.OpenGL.csproj" />
     <ProjectReference Include="..\HumbleEngine.HAL.Wayland\HumbleEngine.HAL.Wayland.csproj" />
     <ProjectReference Include="..\HumbleEngine.HAL.Vulkan\HumbleEngine.HAL.Vulkan.csproj" />
+    <ProjectReference Include="..\HumbleEngine.SceneGraph\HumbleEngine.SceneGraph.csproj" />
   </ItemGroup>
 
 </Project>

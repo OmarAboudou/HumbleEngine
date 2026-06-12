@@ -281,8 +281,10 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
         _shmData = WaylandNative.mmap(IntPtr.Zero, new IntPtr(_shmSize),
             WaylandNative.PROT_READ_WRITE, WaylandNative.MAP_SHARED, _shmFd, 0);
 
+        // Black placeholder, like the X11 background: reads as "nothing rendered
+        // yet" where an arbitrary colour would read as a glitch.
         var pixels = new Span<uint>(_shmData.ToPointer(), width * height);
-        pixels.Fill(0xFF1E3A5F);
+        pixels.Fill(0xFF000000);
 
         var pool = WaylandNative.MarshalNewWithFdInt(
             _wlShm, Op.ShmCreatePool, ShmPoolIface, 1, IntPtr.Zero, _shmFd, _shmSize);

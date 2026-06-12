@@ -11,7 +11,6 @@ internal static class X11Native
     [DllImport(Lib)] internal static extern int    XDefaultScreen(IntPtr display);
     [DllImport(Lib)] internal static extern ulong  XRootWindow(IntPtr display, int screen);
     [DllImport(Lib)] internal static extern ulong  XBlackPixel(IntPtr display, int screen);
-    [DllImport(Lib)] internal static extern ulong  XWhitePixel(IntPtr display, int screen);
 
     [DllImport(Lib)] internal static extern ulong XCreateSimpleWindow(
         IntPtr display, ulong parent,

@@ -3,18 +3,6 @@ using System.Runtime.InteropServices;
 namespace HumbleEngine.Vulkan;
 
 /// <summary>
-/// Vertex of the triangle: a Mathematics <see cref="Vector2"/> position and
-/// <see cref="Vector3"/> colour, laid out exactly as the pipeline's vertex input
-/// declares them (stride 20, offsets 0 and 8) — the buffer upload is a raw copy.
-/// </summary>
-[StructLayout(LayoutKind.Sequential)]
-internal readonly struct TriangleVertex(Vector2 position, Vector3 color)
-{
-    public readonly Vector2 Position = position;
-    public readonly Vector3 Color = color;
-}
-
-/// <summary>
 /// Buffer creation on the direct route: HOST_VISIBLE | HOST_COHERENT memory,
 /// mapped once and written by the CPU — no staging, its client (real assets)
 /// has not arrived yet. One allocation per buffer: the learning unit; real

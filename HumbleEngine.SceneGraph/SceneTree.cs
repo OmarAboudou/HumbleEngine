@@ -5,10 +5,11 @@ namespace HumbleEngine;
 /// <see cref="Root"/> are "in tree" and receive the tree lifecycle hooks. Also
 /// hosts the deferred-dispose queue behind <see cref="Node.QueueDispose"/>.
 /// <para>
-/// The tree knows nothing about windows or rendering — wiring it to a surface and
-/// a frame loop is the application's business, one tree per driven surface.
-/// There is no global tree: the application owns the lifecycle, as everywhere else
-/// in the engine.
+/// The tree knows nothing about windows — wiring it to a surface and a frame
+/// loop is the application's business, one tree per driven surface. Rendering
+/// passes through <see cref="Render"/>: the renderer is handed in per call,
+/// never retained. There is no global tree: the application owns the lifecycle,
+/// as everywhere else in the engine.
 /// </para>
 /// </summary>
 public sealed class SceneTree : IDisposable
@@ -54,9 +55,26 @@ public sealed class SceneTree : IDisposable
     }
 
     /// <summary>
+    /// Draws the living tree: walks the root subtree, parents before children
+    /// (painter's order), letting every <see cref="VisualNode"/> submit its
+    /// draws. Call between the renderer's <see cref="IRenderer.BeginFrame"/>
+    /// and <see cref="IRenderer.EndFrame"/>. The renderer is not retained —
+    /// the tree holds no rendering state between frames.
+    /// </summary>
+    /// <exception cref="ObjectDisposedException">This tree is disposed.</exception>
+    public void Render(IRenderer renderer)
+    {
+        ArgumentNullException.ThrowIfNull(renderer);
+        ObjectDisposedException.ThrowIf(IsDisposed, this);
+        _root?.RenderSubtree(renderer);
+    }
+
+    /// <summary>
     /// Disposes every node queued by <see cref="Node.QueueDispose"/>, including
     /// nodes queued while flushing. This is the "safe point" of the deferred
-    /// destruction — later wired into the frame loop; called manually until then.
+    /// destruction — the application calls it at the end of each frame iteration,
+    /// after presenting, when no hook or handler is in flight: a node queued during
+    /// frame N still renders in N and is gone before N+1.
     /// </summary>
     public void FlushDisposeQueue()
     {

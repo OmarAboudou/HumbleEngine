@@ -34,6 +34,19 @@ internal sealed class OpenGLRenderer : IRenderer
     /// <summary>Swaps the front and back buffers, presenting the rendered frame.</summary>
     public void Present() => GLXNative.glXSwapBuffers(_display, _window);
 
+    /// <summary>
+    /// Not supported: the OpenGL backend stayed at the GLX-learning stage
+    /// (clear + present) and has no drawing path. Bringing it up to the mesh
+    /// contract is a separate project, if ever.
+    /// </summary>
+    /// <exception cref="NotSupportedException">Always.</exception>
+    public IMesh CreateMesh(ReadOnlySpan<Vertex> vertices) =>
+        throw new NotSupportedException("The OpenGL backend has no drawing path — use Vulkan.");
+
+    /// <inheritdoc cref="CreateMesh"/>
+    public void Draw(IMesh mesh) =>
+        throw new NotSupportedException("The OpenGL backend has no drawing path — use Vulkan.");
+
     /// <summary>Releases the GLX context and destroys it. Idempotent.</summary>
     public void Dispose()
     {

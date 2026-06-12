@@ -172,6 +172,152 @@ public sealed class VulkanIntegrationTests
         }
     }
 
+    // --- Bloc 4 roadmap 07 : meshes + dessin piloté par l'arbre ---
+
+    private static readonly Vertex[] Triangle =
+    [
+        new(new Vector2( 0.0f, -0.5f), new Vector3(1f, 0f, 0f)),
+        new(new Vector2( 0.5f,  0.5f), new Vector3(0f, 1f, 0f)),
+        new(new Vector2(-0.5f,  0.5f), new Vector3(0f, 0f, 1f)),
+    ];
+
+    [Test]
+    public void CreateMesh_ReturnsDisposableMesh()
+    {
+        using var windowBackend   = new X11WindowBackend();
+        using var graphicsBackend = new VulkanGraphicsBackend();
+
+        windowBackend.Initialize();
+        using var window = windowBackend.CreateWindow(new WindowDescription("Test", 100, 100));
+
+        graphicsBackend.Initialize();
+        using var renderer = graphicsBackend.CreateRenderer(window);
+
+        var mesh = renderer.CreateMesh(Triangle);
+        Assert.That(mesh, Is.Not.Null);
+        mesh.Dispose();
+        mesh.Dispose(); // idempotent
+    }
+
+    [Test]
+    public void Renderer_DrawsMesh_OverSeveralFrames()
+    {
+        using var windowBackend   = new X11WindowBackend();
+        using var graphicsBackend = new VulkanGraphicsBackend();
+
+        windowBackend.Initialize();
+        using var window = windowBackend.CreateWindow(new WindowDescription("Test", 100, 100));
+
+        graphicsBackend.Initialize();
+        using var renderer = graphicsBackend.CreateRenderer(window);
+        using var mesh = renderer.CreateMesh(Triangle);
+
+        for (int i = 0; i < 3; i++)
+        {
+            renderer.BeginFrame();
+            renderer.Draw(mesh);
+            renderer.EndFrame();
+            renderer.Present();
+        }
+    }
+
+    [Test]
+    public void Draw_OutsideFrame_Throws()
+    {
+        using var windowBackend   = new X11WindowBackend();
+        using var graphicsBackend = new VulkanGraphicsBackend();
+
+        windowBackend.Initialize();
+        using var window = windowBackend.CreateWindow(new WindowDescription("Test", 100, 100));
+
+        graphicsBackend.Initialize();
+        using var renderer = graphicsBackend.CreateRenderer(window);
+        using var mesh = renderer.CreateMesh(Triangle);
+
+        Assert.Throws<InvalidOperationException>(() => renderer.Draw(mesh));
+    }
+
+    [Test]
+    public void Draw_WithForeignMesh_Throws()
+    {
+        using var windowBackend   = new X11WindowBackend();
+        using var graphicsBackend = new VulkanGraphicsBackend();
+
+        windowBackend.Initialize();
+        using var window = windowBackend.CreateWindow(new WindowDescription("Test", 100, 100));
+
+        graphicsBackend.Initialize();
+        using var renderer = graphicsBackend.CreateRenderer(window);
+
+        renderer.BeginFrame();
+        try
+        {
+            Assert.Throws<ArgumentException>(() => renderer.Draw(new ForeignMesh()));
+        }
+        finally
+        {
+            renderer.EndFrame();
+            renderer.Present();
+        }
+    }
+
+    [Test]
+    public void Mesh_DisposedMidLoop_FramesKeepRendering()
+    {
+        using var windowBackend   = new X11WindowBackend();
+        using var graphicsBackend = new VulkanGraphicsBackend();
+
+        windowBackend.Initialize();
+        using var window = windowBackend.CreateWindow(new WindowDescription("Test", 100, 100));
+
+        graphicsBackend.Initialize();
+        using var renderer = graphicsBackend.CreateRenderer(window);
+        var mesh = renderer.CreateMesh(Triangle);
+
+        renderer.BeginFrame();
+        renderer.Draw(mesh);
+        renderer.EndFrame();
+        renderer.Present();
+
+        // The Sandbox scenario: the mesh dies between two frames, while its
+        // last draw may still be in flight — VulkanMesh waits the device idle.
+        mesh.Dispose();
+
+        renderer.BeginFrame();
+        renderer.EndFrame();
+        renderer.Present();
+    }
+
+    [Test]
+    public void SceneTree_DrivesTheVulkanRenderer_EndToEnd()
+    {
+        using var windowBackend   = new X11WindowBackend();
+        using var graphicsBackend = new VulkanGraphicsBackend();
+
+        windowBackend.Initialize();
+        using var window = windowBackend.CreateWindow(new WindowDescription("Test", 100, 100));
+
+        graphicsBackend.Initialize();
+        using var renderer = graphicsBackend.CreateRenderer(window);
+
+        var node = new MeshNode(renderer);
+        using var tree = new SceneTree { Root = node };
+
+        // Frame N: the tree submits the draw; the node then queues its death.
+        renderer.BeginFrame();
+        tree.Render(renderer);
+        renderer.EndFrame();
+        renderer.Present();
+        node.QueueDispose();
+        tree.FlushDisposeQueue();
+
+        // Frame N+1: empty tree, the mesh is gone, the frame still renders.
+        renderer.BeginFrame();
+        tree.Render(renderer);
+        renderer.EndFrame();
+        renderer.Present();
+    }
+
     [Test]
     public void Window_ReportsItsSize()
     {
@@ -184,6 +330,30 @@ public sealed class VulkanIntegrationTests
     }
 
     // --- Fakes ---
+
+    /// <summary>An <see cref="IMesh"/> that no Vulkan renderer ever created.</summary>
+    private sealed class ForeignMesh : IMesh
+    {
+        public void Dispose()
+        {
+        }
+    }
+
+    /// <summary>
+    /// The Sandbox triangle's shape, replayed against the real backend: mesh
+    /// created on the injected renderer, drawn by the traversal, disposed with
+    /// the node.
+    /// </summary>
+    private sealed class MeshNode : VisualNode
+    {
+        private readonly IMesh _mesh;
+
+        public MeshNode(IRenderer renderer) => _mesh = renderer.CreateMesh(Triangle);
+
+        protected override void OnDraw(IRenderer renderer) => renderer.Draw(_mesh);
+
+        protected override void OnDispose() => _mesh.Dispose();
+    }
 
     private sealed class FakeSurface : IGraphicsSurface
     {

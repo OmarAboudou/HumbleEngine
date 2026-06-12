@@ -7,6 +7,7 @@ namespace HumbleEngine.Vulkan;
 /// semaphores, fence). Single frame in flight:
 /// <see cref="BeginFrame"/> waits for the previous frame, acquires a swapchain
 /// image and opens a dynamic rendering episode (loadOp = clear);
+/// <see cref="Draw"/> records mesh draws into the open episode;
 /// <see cref="EndFrame"/> closes the episode and submits the command buffer;
 /// <see cref="Present"/> hands the image to the presentation engine.
 /// The swapchain is recreated transparently when the surface changes (resize).
@@ -24,8 +25,6 @@ internal sealed class VulkanRenderer : IRenderer
     private ulong[] _imageViews = [];
     private ulong _pipeline;
     private ulong _pipelineLayout;
-    private ulong _vertexBuffer;
-    private ulong _vertexMemory;
 
     // Per-frame objects (single frame in flight).
     private readonly ulong  _commandPool;
@@ -36,6 +35,7 @@ internal sealed class VulkanRenderer : IRenderer
 
     private uint _imageIndex;
     private bool _swapchainDirty;
+    private bool _frameOpen;
     private bool _disposed;
 
     /// <summary>The queue used for both command submission and presentation.</summary>
@@ -78,18 +78,7 @@ internal sealed class VulkanRenderer : IRenderer
         try
         {
             CreateImageViews();
-            (_pipeline, _pipelineLayout) = VulkanPipeline.CreateTrianglePipeline(device, imageFormat);
-
-            // Same triangle as before, but the data now lives in C# and crosses
-            // into GPU-visible memory as a raw copy of Mathematics structs.
-            ReadOnlySpan<TriangleVertex> vertices =
-            [
-                new(new Vector2( 0.0f, -0.5f), new Vector3(1f, 0f, 0f)),
-                new(new Vector2( 0.5f,  0.5f), new Vector3(0f, 1f, 0f)),
-                new(new Vector2(-0.5f,  0.5f), new Vector3(0f, 0f, 1f)),
-            ];
-            (_vertexBuffer, _vertexMemory) =
-                VulkanBuffers.CreateVertexBuffer(physicalDevice, device, vertices);
+            (_pipeline, _pipelineLayout) = VulkanPipeline.CreateMeshPipeline(device, imageFormat);
 
             var poolInfo = new VkCommandPoolCreateInfo
             {
@@ -128,7 +117,6 @@ internal sealed class VulkanRenderer : IRenderer
         catch
         {
             DestroyFrameObjects();
-            DestroyVertexBuffer();
             DestroyPipeline();
             DestroyImageViews();
             throw;
@@ -144,10 +132,10 @@ internal sealed class VulkanRenderer : IRenderer
 
     /// <summary>
     /// Waits for the previous frame to finish, acquires the next swapchain image,
-    /// transitions it to the colour-attachment layout, opens the dynamic
-    /// rendering episode — the clear to dark grey is its <c>loadOp</c> — and
-    /// records the triangle draw. Recreates the swapchain first when it is out
-    /// of date.
+    /// transitions it to the colour-attachment layout and opens the dynamic
+    /// rendering episode — the clear to dark grey is its <c>loadOp</c> — ready
+    /// for <see cref="Draw"/> calls. Recreates the swapchain first when it is
+    /// out of date.
     /// </summary>
     public unsafe void BeginFrame()
     {
@@ -219,10 +207,40 @@ internal sealed class VulkanRenderer : IRenderer
         var scissor = new VkRect2D { Extent = Extent };
         VulkanNative.vkCmdSetScissor(_commandBuffer, 0, 1, in scissor);
 
-        ulong offset = 0;
-        VulkanNative.vkCmdBindVertexBuffers(_commandBuffer, 0, 1, in _vertexBuffer, in offset);
+        _frameOpen = true;
+    }
 
-        VulkanNative.vkCmdDraw(_commandBuffer, 3, 1, 0, 0);
+    /// <summary>
+    /// Uploads the vertices into a host-visible buffer and wraps it as a mesh —
+    /// the expensive, rare half of the drawing contract.
+    /// </summary>
+    /// <exception cref="ObjectDisposedException">The renderer is disposed.</exception>
+    /// <exception cref="InvalidOperationException">Buffer creation failed.</exception>
+    public IMesh CreateMesh(ReadOnlySpan<Vertex> vertices)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var (buffer, memory) = VulkanBuffers.CreateVertexBuffer(_physicalDevice, _device, vertices);
+        return new VulkanMesh(_device, buffer, memory, (uint)vertices.Length);
+    }
+
+    /// <summary>
+    /// Records a draw of the mesh into the open rendering episode: bind its
+    /// vertex buffer, draw its vertices. The mesh pipeline is already bound.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">No frame is open.</exception>
+    /// <exception cref="ArgumentException">The mesh was not created by this renderer.</exception>
+    public void Draw(IMesh mesh)
+    {
+        ArgumentNullException.ThrowIfNull(mesh);
+        if (!_frameOpen)
+            throw new InvalidOperationException("Draw is only valid between BeginFrame and EndFrame.");
+        if (mesh is not VulkanMesh vulkanMesh)
+            throw new ArgumentException($"{mesh.GetType().Name} was not created by a Vulkan renderer.", nameof(mesh));
+
+        ulong buffer = vulkanMesh.Buffer;
+        ulong offset = 0;
+        VulkanNative.vkCmdBindVertexBuffers(_commandBuffer, 0, 1, in buffer, in offset);
+        VulkanNative.vkCmdDraw(_commandBuffer, vulkanMesh.VertexCount, 1, 0, 0);
     }
 
     /// <summary>
@@ -233,6 +251,7 @@ internal sealed class VulkanRenderer : IRenderer
     /// </summary>
     public unsafe void EndFrame()
     {
+        _frameOpen = false;
         VulkanNative.vkCmdEndRendering(_commandBuffer);
 
         TransitionImage(Images[_imageIndex],
@@ -306,7 +325,6 @@ internal sealed class VulkanRenderer : IRenderer
 
         VulkanNative.vkDeviceWaitIdle(_device);
         DestroyFrameObjects();
-        DestroyVertexBuffer();
         DestroyPipeline();
         DestroyImageViews();
         VulkanNative.vkDestroySwapchainKHR(_device, _swapchain, IntPtr.Zero);
@@ -369,17 +387,6 @@ internal sealed class VulkanRenderer : IRenderer
             Check(VulkanNative.vkCreateImageView(_device, in createInfo, IntPtr.Zero, out _imageViews[i]),
                   "vkCreateImageView");
         }
-    }
-
-    /// <summary>Destroys the vertex buffer, then frees its memory (reverse of the bind order).</summary>
-    private void DestroyVertexBuffer()
-    {
-        if (_vertexBuffer != 0)
-            VulkanNative.vkDestroyBuffer(_device, _vertexBuffer, IntPtr.Zero);
-        if (_vertexMemory != 0)
-            VulkanNative.vkFreeMemory(_device, _vertexMemory, IntPtr.Zero);
-        _vertexBuffer = 0;
-        _vertexMemory = 0;
     }
 
     /// <summary>Destroys the pipeline and its layout.</summary>

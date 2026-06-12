@@ -21,7 +21,7 @@ internal sealed class X11Window : Window, INativeWindowHandle
             (uint)desc.Width, (uint)desc.Height,
             1,
             X11Native.XBlackPixel(display, screen),
-            X11Native.XWhitePixel(display, screen));
+            X11Native.XBlackPixel(display, screen));
 
         X11Native.XSelectInput(display, _window,
             (long)(EventMask.ExposureMask        |

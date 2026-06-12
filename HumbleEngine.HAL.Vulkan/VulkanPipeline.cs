@@ -3,22 +3,22 @@ using System.Runtime.InteropServices;
 namespace HumbleEngine.Vulkan;
 
 /// <summary>
-/// Builds the triangle's graphics pipeline: the complete assembly-line
-/// configuration — shaders, topology, rasterizer, blending, dynamic state and
-/// the colour attachment format — baked once into an immutable PSO.
+/// Builds the mesh graphics pipeline: the complete assembly-line configuration
+/// — shaders, topology, rasterizer, blending, dynamic state and the colour
+/// attachment format — baked once into an immutable PSO.
 /// SPIR-V bytecode is loaded from embedded resources (compiled from
 /// <c>Shaders/*.vert|frag</c> at build time by glslangValidator).
 /// </summary>
 internal static unsafe class VulkanPipeline
 {
     /// <summary>
-    /// Creates the (empty) pipeline layout and the triangle pipeline targeting
+    /// Creates the (empty) pipeline layout and the mesh pipeline targeting
     /// the given colour format. Shader modules are destroyed before returning —
     /// once the pipeline is compiled, the bytecode containers serve no purpose.
     /// Viewport and scissor are dynamic: the pipeline survives window resizes.
     /// </summary>
     /// <exception cref="InvalidOperationException">A Vulkan object could not be created.</exception>
-    internal static (ulong Pipeline, ulong Layout) CreateTrianglePipeline(IntPtr device, VkFormat colorFormat)
+    internal static (ulong Pipeline, ulong Layout) CreateMeshPipeline(IntPtr device, VkFormat colorFormat)
     {
         var vertModule = CreateShaderModule(device, "Shaders/triangle.vert.spv");
         ulong fragModule = 0;
@@ -54,13 +54,13 @@ internal static unsafe class VulkanPipeline
                     Name   = entryPoint,
                 };
 
-                // One stream of TriangleVertex: Vector2 position feeding
+                // One stream of HAL Vertex: Vector2 position feeding
                 // location 0, Vector3 colour feeding location 1 — the typed
                 // contract matching the shader's `layout(location = N) in`.
                 var binding = new VkVertexInputBindingDescription
                 {
                     Binding   = 0,
-                    Stride    = (uint)sizeof(TriangleVertex),
+                    Stride    = (uint)sizeof(Vertex),
                     InputRate = 0, // per vertex
                 };
 
