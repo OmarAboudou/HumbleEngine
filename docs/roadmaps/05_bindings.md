@@ -209,3 +209,5 @@ convergence SceneGraph (conteneurs observables eager, durée de vie des bindings
 Prochaines briques (hors roadmap) : le triangle Vulkan, puis la brique UI (`UINode`,
 layout, `Switcher`/`ListPanel` consommant ces primitives) — voir le cap produit dans
 CLAUDE.md.
+
+*Tâche terminée*
