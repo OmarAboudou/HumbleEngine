@@ -65,6 +65,9 @@ internal enum EventMask : long
     KeyReleaseMask      = 1L << 1,
     ButtonPressMask     = 1L << 2,
     ButtonReleaseMask   = 1L << 3,
+    EnterWindowMask     = 1L << 4,
+    LeaveWindowMask     = 1L << 5,
+    PointerMotionMask   = 1L << 6,
     ExposureMask        = 1L << 15,
     StructureNotifyMask = 1L << 17,
 }
@@ -75,6 +78,9 @@ internal static class XEventType
     public const int KeyRelease      = 3;
     public const int ButtonPress     = 4;
     public const int ButtonRelease   = 5;
+    public const int MotionNotify    = 6;
+    public const int EnterNotify     = 7;
+    public const int LeaveNotify     = 8;
     public const int Expose          = 12;
     public const int DestroyNotify   = 17;
     public const int ConfigureNotify = 22;
@@ -90,6 +96,42 @@ internal struct XEvent
     [FieldOffset(0)] public int                 type;
     [FieldOffset(0)] public XClientMessageEvent xclient;
     [FieldOffset(0)] public XConfigureEvent     xconfigure;
+    [FieldOffset(0)] public XButtonEvent        xbutton;
+    [FieldOffset(0)] public XMotionEvent        xmotion;
+    [FieldOffset(0)] public XCrossingEvent      xcrossing;
+}
+
+/// <summary>XButtonEvent field offsets for 64-bit Linux. Buttons 4-7 are the scroll wheel.</summary>
+[StructLayout(LayoutKind.Explicit)]
+internal struct XButtonEvent
+{
+    [FieldOffset(0)]  public int   type;
+    [FieldOffset(56)] public ulong time;
+    [FieldOffset(64)] public int   x;
+    [FieldOffset(68)] public int   y;
+    [FieldOffset(80)] public uint  state;
+    [FieldOffset(84)] public uint  button;
+}
+
+/// <summary>XMotionEvent field offsets for 64-bit Linux.</summary>
+[StructLayout(LayoutKind.Explicit)]
+internal struct XMotionEvent
+{
+    [FieldOffset(0)]  public int   type;
+    [FieldOffset(56)] public ulong time;
+    [FieldOffset(64)] public int   x;
+    [FieldOffset(68)] public int   y;
+    [FieldOffset(80)] public uint  state;
+}
+
+/// <summary>XCrossingEvent (Enter/LeaveNotify) field offsets for 64-bit Linux.</summary>
+[StructLayout(LayoutKind.Explicit)]
+internal struct XCrossingEvent
+{
+    [FieldOffset(0)]  public int   type;
+    [FieldOffset(56)] public ulong time;
+    [FieldOffset(64)] public int   x;
+    [FieldOffset(68)] public int   y;
 }
 
 /// <summary>

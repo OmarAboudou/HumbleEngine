@@ -13,6 +13,15 @@ public interface IGraphicsSurface : IDisposable
     event Action? OnClose;
 
     /// <summary>
+    /// Single input channel: every platform event, translated by the backend
+    /// into the HAL vocabulary (<see cref="InputEvent"/> hierarchy), in
+    /// arrival order, raised while the surface pumps (main thread). One
+    /// channel because routing wants one pipe — the application typically
+    /// wires it straight to its tree: <c>surface.OnInput += tree.RouteInput</c>.
+    /// </summary>
+    event Action<InputEvent>? OnInput;
+
+    /// <summary>
     /// Advances this surface by one loop iteration: processes pending platform
     /// events, then runs <paramref name="onFrame"/> — skipped when the platform
     /// asked to close meanwhile. Returns <c>true</c> while the surface wants to

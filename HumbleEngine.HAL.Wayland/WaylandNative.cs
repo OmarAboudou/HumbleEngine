@@ -187,6 +187,8 @@ internal static class Op
     // xdg_toplevel
     internal const uint XdgToplevelDestroy  = 0;
     internal const uint XdgToplevelSetTitle = 2;
+    // wl_seat
+    internal const uint SeatGetPointer = 0;
     // zxdg_decoration_manager_v1
     internal const uint DecorationManagerGetToplevel = 1;
     // zxdg_toplevel_decoration_v1

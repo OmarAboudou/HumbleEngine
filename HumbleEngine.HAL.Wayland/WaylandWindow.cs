@@ -40,6 +40,16 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
     private static readonly IntPtr ShmIface        = WaylandNative.GetBuiltinInterface("wl_shm_interface");
     private static readonly IntPtr ShmPoolIface    = WaylandNative.GetBuiltinInterface("wl_shm_pool_interface");
     private static readonly IntPtr BufferIface     = WaylandNative.GetBuiltinInterface("wl_buffer_interface");
+    private static readonly IntPtr SeatIface       = WaylandNative.GetBuiltinInterface("wl_seat_interface");
+    private static readonly IntPtr PointerIface    = WaylandNative.GetBuiltinInterface("wl_pointer_interface");
+
+    // --- Input (wl_seat, bound at version 1: five pointer events, no frame batching) ---
+    private IntPtr _seat;
+    private IntPtr _pointer;
+    /// <summary>The pointer is over <b>our</b> surface — libdecor's decoration surfaces share the seat.</summary>
+    private bool   _pointerInside;
+    private double _pointerX;
+    private double _pointerY;
 
     // --- Decoration path selector ---
     private readonly bool _useLibdecor;
@@ -64,11 +74,20 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
     private readonly XdgSurfaceConfigure    _onSurfaceConfigure;
     private readonly XdgToplevelConfigure   _onToplevelConfigure;
     private readonly XdgToplevelClose       _onToplevelClose;
+    private readonly WlSeatCapabilities     _onSeatCapabilities;
+    private readonly WlSeatName             _onSeatName;
+    private readonly WlPointerEnter         _onPointerEnter;
+    private readonly WlPointerLeave         _onPointerLeave;
+    private readonly WlPointerMotion        _onPointerMotion;
+    private readonly WlPointerButton        _onPointerButton;
+    private readonly WlPointerAxis          _onPointerAxis;
 
     private GCHandle _registryListenerHandle;
     private GCHandle _wmBaseListenerHandle;
     private GCHandle _xdgSurfaceListenerHandle;
     private GCHandle _toplevelListenerHandle;
+    private GCHandle _seatListenerHandle;
+    private GCHandle _pointerListenerHandle;
 
     // Pending configure state (used by both paths)
     private uint _pendingSerial;
@@ -123,6 +142,13 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
         _onSurfaceConfigure  = OnXdgSurfaceConfigure;
         _onToplevelConfigure = OnXdgToplevelConfigure;
         _onToplevelClose     = OnXdgToplevelClose;
+        _onSeatCapabilities  = OnSeatCapabilities;
+        _onSeatName          = OnSeatName;
+        _onPointerEnter      = OnPointerEnter;
+        _onPointerLeave      = OnPointerLeave;
+        _onPointerMotion     = OnPointerMotion;
+        _onPointerButton     = OnPointerButton;
+        _onPointerAxis       = OnPointerAxis;
 
         // 1. Bind wl_registry and discover globals.
         _registry = WaylandNative.MarshalNew(display, Op.DisplayGetRegistry, RegistryIface, IntPtr.Zero);
@@ -427,9 +453,137 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
                 registry, Op.RegistryBind, DecorationInterfaces.Manager, 1u,
                 name, Marshal.ReadIntPtr(DecorationInterfaces.Manager, 0), 1u, IntPtr.Zero);
         }
+        else if (iface == "wl_seat" && _seat == IntPtr.Zero)
+        {
+            // Version 1 on purpose: exactly the five v1 pointer events, no
+            // frame batching, no discrete-axis variants — its listener below
+            // matches that contract.
+            _seat = WaylandNative.MarshalRegistryBind(
+                registry, Op.RegistryBind, SeatIface, 1u,
+                name, Marshal.ReadIntPtr(SeatIface, 0), 1u, IntPtr.Zero);
+            AddListener(_seat, [
+                Marshal.GetFunctionPointerForDelegate(_onSeatCapabilities),
+                Marshal.GetFunctionPointerForDelegate(_onSeatName),
+            ], out _seatListenerHandle);
+        }
     }
 
     private void OnRegistryGlobalRemove(IntPtr data, IntPtr registry, uint name) { }
+
+    // =========================================================================
+    // Input callbacks (wl_seat v1 + wl_pointer v1)
+    // =========================================================================
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void WlSeatCapabilities(IntPtr data, IntPtr seat, uint capabilities);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void WlSeatName(IntPtr data, IntPtr seat, IntPtr name);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void WlPointerEnter(IntPtr data, IntPtr pointer, uint serial, IntPtr surface, int surfaceX, int surfaceY);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void WlPointerLeave(IntPtr data, IntPtr pointer, uint serial, IntPtr surface);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void WlPointerMotion(IntPtr data, IntPtr pointer, uint time, int surfaceX, int surfaceY);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void WlPointerButton(IntPtr data, IntPtr pointer, uint serial, uint time, uint button, uint state);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void WlPointerAxis(IntPtr data, IntPtr pointer, uint time, uint axis, int value);
+
+    /// <summary>Acquires the wl_pointer once the seat declares the capability.</summary>
+    private void OnSeatCapabilities(IntPtr data, IntPtr seat, uint capabilities)
+    {
+        const uint pointerCapability = 1; // WL_SEAT_CAPABILITY_POINTER
+        if ((capabilities & pointerCapability) == 0 || _pointer != IntPtr.Zero)
+            return;
+
+        _pointer = WaylandNative.MarshalNew(_seat, Op.SeatGetPointer, PointerIface, IntPtr.Zero);
+        AddListener(_pointer, [
+            Marshal.GetFunctionPointerForDelegate(_onPointerEnter),
+            Marshal.GetFunctionPointerForDelegate(_onPointerLeave),
+            Marshal.GetFunctionPointerForDelegate(_onPointerMotion),
+            Marshal.GetFunctionPointerForDelegate(_onPointerButton),
+            Marshal.GetFunctionPointerForDelegate(_onPointerAxis),
+        ], out _pointerListenerHandle);
+    }
+
+    private void OnSeatName(IntPtr data, IntPtr seat, IntPtr name)
+    {
+    }
+
+    private void OnPointerEnter(IntPtr data, IntPtr pointer, uint serial, IntPtr surface, int surfaceX, int surfaceY)
+    {
+        // The seat is shared: with libdecor, decoration surfaces produce enter/
+        // leave too — only our content surface concerns the engine.
+        if (surface != _surface)
+            return;
+        _pointerInside = true;
+        _pointerX = WlFixedToDouble(surfaceX);
+        _pointerY = WlFixedToDouble(surfaceY);
+        RaiseInput(new PointerEntered(PointerPosition()));
+    }
+
+    private void OnPointerLeave(IntPtr data, IntPtr pointer, uint serial, IntPtr surface)
+    {
+        if (surface != _surface || !_pointerInside)
+            return;
+        _pointerInside = false;
+        RaiseInput(new PointerExited());
+    }
+
+    private void OnPointerMotion(IntPtr data, IntPtr pointer, uint time, int surfaceX, int surfaceY)
+    {
+        if (!_pointerInside)
+            return;
+        _pointerX = WlFixedToDouble(surfaceX);
+        _pointerY = WlFixedToDouble(surfaceY);
+        RaiseInput(new PointerMoved(PointerPosition()));
+    }
+
+    private void OnPointerButton(IntPtr data, IntPtr pointer, uint serial, uint time, uint button, uint state)
+    {
+        if (!_pointerInside)
+            return;
+
+        // Linux input event codes: BTN_LEFT, BTN_RIGHT, BTN_MIDDLE.
+        PointerButton? translated = button switch
+        {
+            0x110 => PointerButton.Left,
+            0x111 => PointerButton.Right,
+            0x112 => PointerButton.Middle,
+            _     => null,
+        };
+        if (translated is null)
+            return;
+
+        RaiseInput(state == 1
+            ? new PointerPressed(translated.Value, PointerPosition())
+            : new PointerReleased(translated.Value, PointerPosition()));
+    }
+
+    private void OnPointerAxis(IntPtr data, IntPtr pointer, uint time, uint axis, int value)
+    {
+        if (!_pointerInside)
+            return;
+
+        // Wayland axis values are continuous, ~15 units per wheel notch,
+        // positive towards bottom/right; our convention is +Y up, +X right.
+        var notches = (float)(WlFixedToDouble(value) / 15.0);
+        var delta = axis == 0 /* vertical */
+            ? new Vector2(0f, -notches)
+            : new Vector2(notches, 0f);
+        RaiseInput(new PointerScrolled(delta, PointerPosition()));
+    }
+
+    /// <summary>wl_fixed_t is signed 24.8 fixed point.</summary>
+    private static double WlFixedToDouble(int value) => value / 256.0;
+
+    private Vector2 PointerPosition() => new((float)_pointerX, (float)_pointerY);
 
     // =========================================================================
     // Raw XDG Shell callbacks
@@ -569,6 +723,9 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
         }
 
         DestroyShmBuffer();
+        // Seat and pointer were bound at version 1 (no destructor request): plain proxy destruction.
+        if (_pointer    != IntPtr.Zero) { WaylandNative.wl_proxy_destroy(_pointer);               _pointer    = IntPtr.Zero; }
+        if (_seat       != IntPtr.Zero) { WaylandNative.wl_proxy_destroy(_seat);                  _seat       = IntPtr.Zero; }
         if (_surface    != IntPtr.Zero) { WaylandNative.SendDestroy(_surface, Op.SurfaceDestroy); _surface    = IntPtr.Zero; }
         if (_wlShm      != IntPtr.Zero) { WaylandNative.wl_proxy_destroy(_wlShm);                 _wlShm      = IntPtr.Zero; }
         if (_compositor != IntPtr.Zero) { WaylandNative.wl_proxy_destroy(_compositor);            _compositor = IntPtr.Zero; }
@@ -577,6 +734,8 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
         WaylandNative.wl_display_flush(_display);
 
         _registryListenerHandle.Free();
+        if (_seatListenerHandle.IsAllocated)                _seatListenerHandle.Free();
+        if (_pointerListenerHandle.IsAllocated)             _pointerListenerHandle.Free();
         if (_wmBaseListenerHandle.IsAllocated)              _wmBaseListenerHandle.Free();
         if (_xdgSurfaceListenerHandle.IsAllocated)          _xdgSurfaceListenerHandle.Free();
         if (_toplevelListenerHandle.IsAllocated)            _toplevelListenerHandle.Free();

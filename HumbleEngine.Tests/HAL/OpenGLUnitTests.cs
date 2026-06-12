@@ -53,6 +53,7 @@ public sealed class OpenGLUnitTests
     {
         public bool ShouldClose => false;
         public event Action? OnClose { add { } remove { } }
+        public event Action<InputEvent>? OnInput { add { } remove { } }
         public bool Step(Action onFrame) => false;
         public void Run(Action onFrame) { }
         public void Dispose() { }

@@ -32,6 +32,9 @@ public abstract class Window : IWindow
     public event Action<int, int>? OnResize;
 
     /// <inheritdoc/>
+    public event Action<InputEvent>? OnInput;
+
+    /// <inheritdoc/>
     public bool Step(Action onFrame)
     {
         if (ShouldClose)
@@ -66,6 +69,9 @@ public abstract class Window : IWindow
 
     /// <summary>Raises <see cref="OnClose"/>.</summary>
     protected void RaiseClose() => OnClose?.Invoke();
+
+    /// <summary>Publishes a translated input event on the single channel.</summary>
+    protected void RaiseInput(InputEvent inputEvent) => OnInput?.Invoke(inputEvent);
 
     /// <summary>
     /// Updates <see cref="Width"/>/<see cref="Height"/> and raises <see cref="OnResize"/>

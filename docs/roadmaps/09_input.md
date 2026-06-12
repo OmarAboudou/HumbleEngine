@@ -86,8 +86,34 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
   que `repeat_info`) — notée pour le bloc clavier (maintenir Backspace).
 - **Le confort typé au bon étage** : `UINode` dispatche depuis son entrée
   unique vers des hooks de convenance typés (passe 3).
-- **Différés** : IME/composition (client : l'international), scale factor
-  HiDPI Wayland, hooks par type sur la fenêtre.
+- **Le canal vit sur `IGraphicsSurface`, pas `IWindow`** (amendé 2026-06-13,
+  question d'Omar sur l'unification desktop/mobile) : toute surface publie le
+  même vocabulaire — le modèle **W3C Pointer Events** : un « pointeur » est
+  tout ce qui pointe (souris, doigt, stylet) ; contre-exemple Godot, événements
+  séparés rafistolés par deux réglages d'émulation croisée. **Mêmes mots,
+  grammaires différentes** : souris = pointeur persistant (Moved sans contact,
+  hover) ; toucher = pointeur transitoire (né au Pressed, Moved = drag, mort
+  au Released — entre deux contacts, pas de position). Discipline gravée :
+  ne jamais supposer qu'un Moved/Entered précède un Pressed.
+- **Pas de second bouton au doigt** : les alternatives tactiles (appui long =
+  le clic droit du tactile, double-tap, pinch) sont des **gestes** — motifs
+  reconnus au-dessus du flux brut, couche universelle (le double-clic desktop
+  aussi) — différés avec leur client (modèle Flutter : recognizers + arène).
+- **Différés (ère mobile)** : `PointerId` (multi-touch — capture par
+  pointeur dans le routeur), `PointerDeviceKind` (mouse/touch/pen), pression
+  stylet, scroll cinétique synthétisé. Et toujours : IME/composition, scale
+  factor HiDPI Wayland.
+- **Multi-périphérique (discussion 2026-06-13)** : pas de dialectes parallèles
+  ni de double émission — le spécifique est un champ, un record de plus, ou un
+  événement *sémantique* d'étage supérieur (le « click » = press+release
+  interprété, vivra sur `Button`, famille des gestes). Si une identité de
+  périphérique devient nécessaire, **le pattern gravé est l'héritage d'Omar** :
+  `MouseMoved(Mouse, …) : PointerMoved(…)` — un seul événement instancié,
+  visible à deux altitudes, le routeur matche la base. Clients réels : souris/
+  claviers fusionnent au seat (jamais d'identité probable) ; doigts =
+  `PointerId` ; **manettes = la vraie branche multi** (ère 2D) — nouvelle
+  famille `Gamepad*` portant son périphérique nativement, et venant d'une
+  source OS, pas d'une surface (modèle SDL).
 
 ### Hit-testing et routage (passe 3)
 
@@ -147,10 +173,18 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
   - [x] Passe 3 : hit-testing et routage ✅ → section « Hit-testing et
     routage » ci-dessus
 
-- [ ] **Bloc 3 — Les événements naissent** — `InputEvent` (hiérarchie de
-  records) dans HAL, canal `OnInput`, traduction pointeur X11 (masque +
-  cases) et Wayland (`wl_seat` + listeners pointer) ; démo : les événements
-  défilent en console depuis les deux fenêtres
+- [x] **Bloc 3 — Les événements naissent** ✅ — hiérarchie `InputEvent` dans
+  `HAL/Input/` (base → `PointerEvent(Position)` → records scellés ; conventions
+  documentées : pixels surface-local, scroll +Y haut normalisé en crans,
+  grammaires souris/toucher), canal `OnInput` sur `IGraphicsSurface` +
+  `RaiseInput` sur `Window`. X11 : masque étendu (motion, enter/leave),
+  boutons 1-3, molette 4-7 (press seul). Wayland : `wl_seat` **bindé en v1
+  délibérée** (exactement les cinq événements pointer v1, pas de frame
+  batching), capability → `wl_pointer`, conversion `wl_fixed` 24.8,
+  **filtrage par surface** (libdecor partage le seat), proxys v1 détruits par
+  `wl_proxy_destroy` (pas de destructeur en v1). Démo : log des records des
+  deux fenêtres (Moved throttlés). Validé interactivement par Omar sur les
+  deux backends, 260 tests verts
 
 - [ ] **Bloc 4 — Le routage** — `tree.RouteInput`, hit-test inverse du
   peintre, bubbling, capture implicite, hover synthétisé ; démo : les tuiles

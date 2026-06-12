@@ -31,7 +31,10 @@ internal sealed class X11Window : Window, INativeWindowHandle
                    EventMask.KeyPressMask         |
                    EventMask.KeyReleaseMask       |
                    EventMask.ButtonPressMask      |
-                   EventMask.ButtonReleaseMask));
+                   EventMask.ButtonReleaseMask    |
+                   EventMask.PointerMotionMask    |
+                   EventMask.EnterWindowMask      |
+                   EventMask.LeaveWindowMask));
 
         // Without WM_DELETE_WINDOW the window manager kills the X connection abruptly on close.
         _wmDeleteWindow = X11Native.XInternAtom(display, "WM_DELETE_WINDOW", false);
@@ -79,6 +82,60 @@ internal sealed class X11Window : Window, INativeWindowHandle
 
             case XEventType.DestroyNotify:
                 ShouldClose = true;
+                break;
+
+            case XEventType.MotionNotify:
+                RaiseInput(new PointerMoved(new Vector2(ev.xmotion.x, ev.xmotion.y)));
+                break;
+
+            case XEventType.ButtonPress:
+            case XEventType.ButtonRelease:
+                TranslateButton(ref ev);
+                break;
+
+            case XEventType.EnterNotify:
+                RaiseInput(new PointerEntered(new Vector2(ev.xcrossing.x, ev.xcrossing.y)));
+                break;
+
+            case XEventType.LeaveNotify:
+                RaiseInput(new PointerExited());
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Translates an X button event: buttons 1-3 are real buttons; 4-7 are the
+    /// scroll wheel (one press+release pair per notch — translated on press
+    /// only, into our convention: +Y up, +X right).
+    /// </summary>
+    private void TranslateButton(ref XEvent ev)
+    {
+        var position = new Vector2(ev.xbutton.x, ev.xbutton.y);
+        var pressed  = ev.type == XEventType.ButtonPress;
+
+        switch (ev.xbutton.button)
+        {
+            case 1 or 2 or 3:
+                var button = ev.xbutton.button switch
+                {
+                    1 => PointerButton.Left,
+                    2 => PointerButton.Middle,
+                    _ => PointerButton.Right,
+                };
+                RaiseInput(pressed
+                    ? new PointerPressed(button, position)
+                    : new PointerReleased(button, position));
+                break;
+
+            case >= 4 and <= 7 when pressed:
+                var delta = ev.xbutton.button switch
+                {
+                    4 => new Vector2(0f, 1f),
+                    5 => new Vector2(0f, -1f),
+                    6 => new Vector2(-1f, 0f),
+                    _ => new Vector2(1f, 0f),
+                };
+                RaiseInput(new PointerScrolled(delta, position));
                 break;
         }
     }

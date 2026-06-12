@@ -28,6 +28,12 @@ var waylandTree  = new SceneTree(waylandRenderer) { Root = waylandScene };
 var x11Scene     = new SandboxScene { Name = "X11" };
 var x11Tree      = new SceneTree(x11Renderer) { Root = x11Scene };
 
+// Bloc 3 roadmap 09 — the single input channel, demonstrated raw: every event
+// logged as-is (record ToString), movements throttled to stay readable.
+var movedLogClock = System.Diagnostics.Stopwatch.StartNew();
+waylandWindow.OnInput += e => LogInput("Wayland", e);
+x11Window.OnInput     += e => LogInput("X11", e);
+
 Console.WriteLine($"OS       : {OS.Current.Name}");
 Console.WriteLine($"Windows  : {waylandBackend.Name} + {x11Backend.Name}");
 Console.WriteLine($"Graphics : {graphicsBackend.Name}");
@@ -68,6 +74,17 @@ waylandWindow.Dispose();
 x11Backend.Dispose();
 waylandBackend.Dispose();
 return;
+
+void LogInput(string source, InputEvent inputEvent)
+{
+    if (inputEvent is PointerMoved)
+    {
+        if (movedLogClock.ElapsedMilliseconds < 500)
+            return;
+        movedLogClock.Restart();
+    }
+    Console.WriteLine($"[input] {source}: {inputEvent}");
+}
 
 // One trio's frame: animate (phase keeps the two worlds visibly independent),
 // render, honour the 5 s triangle demo, flush the dispose queue.
