@@ -3,7 +3,7 @@ namespace HumbleEngine;
 /// <summary>
 /// Read-only view of a <see cref="ReactiveList{T}"/>: indexed access plus exact
 /// change narration, no mutation. The natural type for exposing an observable
-/// collection in a contract and for <c>BindItems</c> sources — a mapping only
+/// collection in a contract and for <c>BindItemsFrom</c> sources — a mapping only
 /// ever reads its source.
 /// <para>
 /// There is deliberately no "reset" event: every mutation narrates itself

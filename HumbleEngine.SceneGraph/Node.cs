@@ -28,6 +28,23 @@ public abstract class Node : IDisposable
     private readonly List<Node> _children = [];
 
     /// <summary>
+    /// Internal broadcast of every child departure — explicit detach, adoption by
+    /// another node and disposal all funnel through the owner's machinery, which
+    /// raises this. The slots and lists this node created subscribe at creation
+    /// and narrate removals at the moment they happen; the multicast delegate
+    /// itself is the registry.
+    /// </summary>
+    internal event Action<Node>? ChildDeparted;
+
+    /// <summary>
+    /// Internal broadcast of this node's death: cells and lists created by this
+    /// node subscribe their binding release here, so bindings live exactly as
+    /// long as their owner. Subscriber and owner share one lifetime — this wiring
+    /// can never leak.
+    /// </summary>
+    internal event Action? Disposing;
+
+    /// <summary>
     /// Optional label for debugging and tooling — never an identifier: dependencies
     /// are injected, never looked up by name or path. Not unique among siblings.
     /// </summary>
@@ -106,6 +123,7 @@ public abstract class Node : IDisposable
         _children.Remove(child);
         child.Parent = null;
         child.OnParentChanged(this, null);
+        ChildDeparted?.Invoke(child);
     }
 
     /// <summary>
@@ -139,6 +157,7 @@ public abstract class Node : IDisposable
         _children.Add(child);
         child.Parent = this;
         child.OnParentChanged(oldParent, this);
+        oldParent?.ChildDeparted?.Invoke(child);
         if (!sameTree && Tree is not null)
             child.EnterTree(Tree);
     }
@@ -149,13 +168,37 @@ public abstract class Node : IDisposable
     /// through a public property to open this part of the composition (containers);
     /// keep it private to stay closed (scenes).
     /// </summary>
-    protected NodeSlot<TChild> CreateChildSlot<TChild>() where TChild : Node => new(this);
+    protected NodeSlot<TChild> CreateChildSlot<TChild>() where TChild : Node
+    {
+        var slot = new NodeSlot<TChild>(this);
+        ChildDeparted += slot.OnChildDeparted;
+        return slot;
+    }
 
     /// <summary>
     /// Creates a typed children collection owned by this node, supporting C#
     /// collection initializers. Same closure rule as <see cref="CreateChildSlot{TChild}"/>.
     /// </summary>
-    protected NodeList<TChild> CreateChildList<TChild>() where TChild : Node => new(this);
+    protected NodeList<TChild> CreateChildList<TChild>() where TChild : Node
+    {
+        var list = new NodeList<TChild>(this);
+        ChildDeparted += list.OnChildDeparted;
+        Disposing += list.Unbind;
+        return list;
+    }
+
+    /// <summary>
+    /// Creates a reactive cell whose binding lifetime is tied to this node's:
+    /// disposing the node releases the cell's binding deterministically, so a
+    /// live source can never keep pushing into — and retaining — a dead subtree.
+    /// Only the death severs: a detached node stays alive and keeps synchronizing.
+    /// </summary>
+    protected Reactive<T> CreateReactive<T>(T initialValue)
+    {
+        var cell = new Reactive<T>(initialValue);
+        Disposing += cell.Unbind;
+        return cell;
+    }
 
     /// <summary>
     /// Called after this node's parent changed: attached (<paramref name="oldParent"/>
@@ -225,7 +268,9 @@ public abstract class Node : IDisposable
 
     /// <summary>
     /// Immediately disposes this node and its whole subtree, children first.
-    /// Detaches from the parent beforehand. Idempotent.
+    /// Detaches from the parent beforehand, and releases every binding held by
+    /// the node's cells and containers — bindings live exactly as long as their
+    /// owner. Idempotent.
     /// </summary>
     public void Dispose()
     {
@@ -237,6 +282,7 @@ public abstract class Node : IDisposable
         else if (Tree is not null)
             Tree.DetachRoot();
         IsDisposed = true;
+        Disposing?.Invoke();
         foreach (var child in _children.ToArray())
             child.Dispose();
         OnDispose();

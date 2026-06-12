@@ -46,7 +46,7 @@ HumbleEngine.HAL.OpenGL/     — Backend graphique OpenGL — GLX context, Begin
 HumbleEngine.HAL.Linux/      — Assembly de plateforme Linux (agrège X11, Wayland, Vulkan, OpenGL)
 HumbleEngine.Mathematics/    — Types mathématiques (Vector2, Rect, …) — autonome, aucune dépendance
 HumbleEngine.Reactive/       — Primitives réactives (Reactive&lt;T&gt;, ReactiveList&lt;T&gt;, bindings) — autonome, aucune dépendance
-HumbleEngine.SceneGraph/     — Node (fermé par défaut), SceneTree (hooks de cycle de vie, QueueDispose), Scene, NodeSlot/NodeList
+HumbleEngine.SceneGraph/     — Node (fermé par défaut), SceneTree (hooks de cycle de vie, QueueDispose), Scene, NodeSlot/NodeList observables, BindItemsFrom
 HumbleEngine.Sandbox/        — Projet exécutable de test — `dotnet run -- [Wayland|X11] [Vulkan|OpenGL]`
 HumbleEngine.Tests/          — Tests unitaires — FakeOS, aucune dépendance à un display
 HumbleEngine.Tests.Linux/    — Tests d'intégration — X11, GLX, Wayland, Vulkan, cycle frame complet
@@ -71,7 +71,7 @@ HAL.Windows (futur)  → HAL + HAL.Win32 + HAL.Vulkan + HAL.D3D12
 HAL.macOS   (futur)  → HAL + HAL.Cocoa + HAL.Metal
 Mathematics          → (aucune)
 Reactive             → (aucune)
-SceneGraph           → Mathematics
+SceneGraph           → Mathematics + Reactive
 ```
 
 L'assembly de plateforme (`HAL.Linux`, `HAL.Windows`, `HAL.macOS`) est le seul à connaître tous les backends. L'application ne référence que `HAL` + l'assembly de plateforme cible, et enregistre explicitement l'OS via `OS.Register(new LinuxOS())` au démarrage.

@@ -7,7 +7,7 @@ namespace HumbleEngine;
 /// never "something changed". Two events suffice for every operation:
 /// <see cref="Clear"/> is N removals from the end, replacing through the
 /// indexer is a removal followed by an insertion at the same index. Consumers
-/// (decoration, <c>BindItems</c> mirrors) only ever write the incremental path.
+/// (decoration, <c>BindItemsFrom</c> mirrors) only ever write the incremental path.
 /// <para>
 /// Duplicates are allowed — this is data, not nodes. Notifications are
 /// synchronous and single-threaded; between the two events of a replacement

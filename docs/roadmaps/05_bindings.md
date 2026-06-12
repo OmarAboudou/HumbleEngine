@@ -2,7 +2,7 @@
 
 Objectif : concevoir et implémenter la brique de réactivité du moteur — la cellule
 observable (`Reactive<T>`), les bindings scalaires (`BindFrom`), la liste
-observable (`ReactiveList<T>`) et le mapping réactif `BindItems(source, fabrique)`
+observable (`ReactiveList<T>`) et le mapping réactif `BindItemsFrom(source, fabrique)`
 avec son registre item→nœud (modèle `ItemContainerGenerator` de WPF/Avalonia).
 C'est la brique qui porte le principe « les mises à jour passent exclusivement par
 les bindings » du SceneGraph (principe 4 de `04_scenegraph.md`) — l'UI déclarée
@@ -26,7 +26,7 @@ Découpage en blocs — chaque bloc compile, est testé et validé avant de pass
   `NodeList<T>` sont des « observables + sémantique d'arbre » : la brique devra soit
   les rendre observables (événements d'ajout/retrait), soit les réécrire sur les
   primitives réactives. Cas client : une scène qui décore chaque enfant injecté à
-  l'insertion et défait la décoration au retrait = `BindItems`, pas un rebuild.
+  l'insertion et défait la décoration au retrait = `BindItemsFrom`, pas un rebuild.
 - **Durée de vie des bindings liée à la propriété par l'arbre** (décision actée en
   phase SceneGraph) — le mécanisme précis (qui se désabonne, quand) est l'objet de
   la passe 4 : un abonnement oublié est *la* fuite mémoire classique de WPF.
@@ -36,7 +36,7 @@ Position de la brique : **la cellule des signals, la déclaration explicite et t
 le push de Rx, le générateur d'items de WPF, et la paranoïa de WPF sur les durées de vie.**
 
 - **WPF/Avalonia** — on prend : le concept de binding (« reste », déclaré une fois),
-  le modèle `ItemContainerGenerator` (→ `BindItems`), la leçon des fuites mémoire
+  le modèle `ItemContainerGenerator` (→ `BindItemsFrom`), la leçon des fuites mémoire
   (un binding est un abonnement ; les *weak events* de WPF sont un correctif après coup).
   On rejette : chemins en string + réflexion (viole le principe 3 — le système de types
   C# est le seul registre) et `DataContext` implicite (lookup ambiant — viole le principe 2).
@@ -104,15 +104,15 @@ le push de Rx, le générateur d'items de WPF, et la paranoïa de WPF sur les du
   (l'item voyage dans l'événement — pour `Removed` il n'est plus lisible dans la liste).
   `Clear()` = N `Removed` de la fin vers le début (index stables pendant le démontage) ;
   `list[i] = x` = `Removed(i, ancien)` puis `Added(i, nouveau)` — état cohérent entre
-  les deux, et sémantiquement juste pour `BindItems` (autre item = autre nœud).
+  les deux, et sémantiquement juste pour `BindItemsFrom` (autre item = autre nœud).
 - **`Move` différé, les yeux ouverts** — son client réel (tri, drag-drop) arrive avec la
   brique UI ; sans lui, déplacer = détruire + recréer le nœud (perte d'état interne).
   Purement additif, ajouté avec son client.
 - **Doublons autorisés** — données ≠ nœuds (`NodeList` force l'unicité parce qu'un nœud
-  n'a qu'un parent ; une liste de données non). Conséquence : le registre de `BindItems`
+  n'a qu'un parent ; une liste de données non). Conséquence : le registre de `BindItemsFrom`
   sera positionnel, pas un `Dictionary<TItem, Node>`.
 - **`IReadOnlyReactiveList<T>`** — lecture + événements, sans mutation : le type des
-  sources de `BindItems` dans les contrats de scène.
+  sources de `BindItemsFrom` dans les contrats de scène.
 
 ### Durée de vie des bindings et convergence avec l'arbre (décidée en passe 4)
 
@@ -136,14 +136,18 @@ le push de Rx, le générateur d'items de WPF, et la paranoïa de WPF sur les du
   back-pointer sur l'enfant : tous les chemins de départ (adoption ailleurs, `Dispose`,
   `Detach` direct) passent déjà par la machinerie de détachement du **propriétaire**,
   et le propriétaire connaît ses conteneurs (`CreateChildSlot`/`CreateChildList` les
-  enregistrent, miroir de `CreateReactive`). Au détachement, il leur diffuse « X est
-  parti » ; le détenteur se met à jour et émet `Removed` immédiatement. `Prune`
-  disparaît, `Count` est exact à tout instant.
+  abonnent à sa création). Au détachement, il leur diffuse « X est parti » ; le
+  détenteur se met à jour et émet `Removed` immédiatement. `Prune` disparaît,
+  `Count` est exact à tout instant. *Raffiné après coup (revue d'Omar)* : la
+  diffusion s'exprime par deux **événements internes** de `Node` — `ChildDeparted`
+  (départs) et `Disposing` (déliage à la mort) — le delegate multicast de C# est
+  le registre, aucune interface ni liste maintenue à la main ; l'abonnement
+  propriétaire↔conteneur partage une seule durée de vie, donc ne peut pas fuir.
 - **`NodeSlot<T>` expose `IReadOnlyReactive<TChild?>`, `NodeList<T>` expose
   `IReadOnlyReactiveList<TChild>`** — « observable + sémantique d'arbre »,
   littéralement. Le cas client (scène qui décore ses enfants injectés) = s'abonner
   aux `Added`/`Removed` de sa propre liste.
-- **`BindItems(source, fabrique)` : le registre, c'est l'index** — miroir strictement
+- **`BindItemsFrom(source, fabrique)` : le registre, c'est l'index** — miroir strictement
   positionnel (`target[i]` ↔ `source[i]`), retombée directe de « doublons autorisés »
   + grain exact : pas de dictionnaire item→nœud (le générateur lourd de WPF sert la
   virtualisation/réutilisation — pas la v1). Occupe le slot de binding de la `NodeList`
@@ -159,7 +163,12 @@ le push de Rx, le générateur d'items de WPF, et la paranoïa de WPF sur les du
 
 La brique UI elle-même (`UINode`, layout, `Switcher`, `ListPanel`) — elle *consommera*
 ces primitives dans sa propre roadmap. Le rendu (triangle Vulkan) reste l'autre
-chantier, indépendant.
+chantier, indépendant. `ReactiveList.BindItemsFrom` (cible *données* d'un mapping —
+p. ex. projeter les noms d'une `NodeList` dans une `ReactiveList<string>`) est
+l'extension naturelle, différée jusqu'à son client (projections/filtres de la brique
+UI) ; ses membres étant des valeurs sans propriétaire, elle écraserait la cible au
+bind et remplacerait au re-bind, comme la cellule — l'exigence « liste vide » est
+une propriété de la `NodeList` (nœuds possédés), pas du binding de listes.
 
 ## Blocs
 
@@ -183,5 +192,20 @@ chantier, indépendant.
 - [x] **Bloc 3 — `ReactiveList<T>`** ✅ (`IReadOnlyReactiveList<T>`, narration exacte
   Added/Removed, garde anti-mutation en handler — 161 tests unitaires verts au total)
 
-- [ ] **Bloc 4 — `BindItems` + registre item→nœud, convergence `NodeSlot`/`NodeList`** + tests
-  (la partie qui vit côté SceneGraph)
+- [x] **Bloc 4 — Convergence `NodeSlot`/`NodeList` + `BindItemsFrom`** ✅ (mort du `Prune` —
+  diffusion eager via les événements internes `ChildDeparted`/`Disposing` de `Node` ;
+  `NodeSlot` = `IReadOnlyReactive<TChild?>`, `NodeList` = `IReadOnlyReactiveList<TChild>` ;
+  `CreateReactive<T>` + déliage au `Dispose` ; `BindItemsFrom` positionnel —
+  185 tests unitaires verts au total, les 161 préexistants inchangés)
+
+---
+
+## Résultat
+
+La brique réactive est complète : `HumbleEngine.Reactive` (la cellule `Reactive<T>`,
+`BindFrom`/`BindTwoWayFrom`/`Unbind`, `ReactiveList<T>` à narration exacte) et la
+convergence SceneGraph (conteneurs observables eager, durée de vie des bindings liée
+à la mort du nœud, `BindItemsFrom` miroir positionnel). 185 tests unitaires sans display.
+Prochaines briques (hors roadmap) : le triangle Vulkan, puis la brique UI (`UINode`,
+layout, `Switcher`/`ListPanel` consommant ces primitives) — voir le cap produit dans
+CLAUDE.md.
