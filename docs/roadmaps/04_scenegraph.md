@@ -123,9 +123,10 @@ le cap UI n'en a pas besoin ; le pattern d'invalidation (dirty flags) sera appri
   - [x] Trancher le reparentage → `Reparent()` + `OnParentChanged`, sémantique exacte (ci-dessus)
   - [x] Conception `Scene` + `SceneTree` + slots → section « Conception de la Scene et de l'arbre » ci-dessus
 
-- [ ] **Bloc 2 — HumbleEngine.Mathematics**
-  - `Vector2`, `Rect`, `Vector3`, `Vector4`, `Matrix4x4` + projection orthographique
-  - Tests unitaires (aucune dépendance à un display)
+- [x] **Bloc 2 — HumbleEngine.Mathematics** ✅ (65 tests unitaires verts au total)
+  - `Vector2`, `Rect`, `Vector3`, `Vector4`, `Matrix4x4` + projection orthographique (clip space Vulkan absorbé)
+  - Layout column-major vérifié par un test mémoire (`MemoryMarshal`) ; conventions du moteur
+    (main droite, `Forward = −Z`, composition droite-à-gauche) encodées et testées
 
 - [ ] **Bloc 3 — HumbleEngine.SceneGraph : Node + hiérarchie**
   - `Node` nu : parent/enfants, cycle de vie 4 hooks + `OnParentChanged`, `Dispose`/`QueueDispose`,
