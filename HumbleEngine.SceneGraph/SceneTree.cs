@@ -32,6 +32,14 @@ public sealed class SceneTree : IDisposable
     /// </summary>
     public IRenderer Renderer { get; }
 
+    /// <summary>
+    /// Clipboard the tree's nodes reach (a text field's copy/paste), injected by
+    /// the application from its window — <c>tree.Clipboard = window.Clipboard</c>,
+    /// the same wiring as the renderer and input. Null until set: copy/paste
+    /// quietly do nothing. The tree knows a clipboard capability, not a window.
+    /// </summary>
+    public IClipboard? Clipboard { get; set; }
+
     /// <summary>Creates a tree paired with the renderer of the surface it drives.</summary>
     public SceneTree(IRenderer renderer)
     {

@@ -153,6 +153,10 @@ public sealed class TextField : UINode
                 _blink.Restart();
                 return true;
 
+            case Key.C when ctrl: Copy(); return true;
+            case Key.X when ctrl: Cut(); return true;
+            case Key.V when ctrl: Paste(); return true;
+
             case Key.Backspace: return DeleteBack(ctrl);
             case Key.Delete:    return DeleteForward(ctrl);
 
@@ -191,6 +195,34 @@ public sealed class TextField : UINode
         if (end > _caret && end <= Text.Value.Length)
             DeleteRange(_caret, end);
         return true;
+    }
+
+    /// <summary>The selected substring (empty when there is no selection).</summary>
+    private string SelectedText => Text.Value[SelStart..SelEnd];
+
+    /// <summary>Copies the selection to the tree's clipboard.</summary>
+    private void Copy()
+    {
+        if (HasSelection)
+            Tree?.Clipboard?.SetText(SelectedText);
+    }
+
+    /// <summary>Copies the selection to the clipboard, then deletes it.</summary>
+    private void Cut()
+    {
+        if (!HasSelection)
+            return;
+        Tree?.Clipboard?.SetText(SelectedText);
+        DeleteRange(SelStart, SelEnd);
+    }
+
+    /// <summary>Pastes the clipboard text (newlines flattened — this is one line) over the selection or at the caret.</summary>
+    private void Paste()
+    {
+        var text = Tree?.Clipboard?.GetText();
+        if (string.IsNullOrEmpty(text))
+            return;
+        Type(text.Replace("\r", string.Empty).Replace('\n', ' '));
     }
 
     /// <summary>Replaces the current selection (or inserts at the caret) with <paramref name="inserted"/>.</summary>

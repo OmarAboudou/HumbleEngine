@@ -84,6 +84,16 @@ internal sealed class FakeTexture(int width, int height) : ITexture
     public void Dispose() => IsDisposed = true;
 }
 
+/// <summary><see cref="IClipboard"/> test double: an in-memory text cell.</summary>
+internal sealed class FakeClipboard : IClipboard
+{
+    public string? Text { get; private set; }
+
+    public void SetText(string text) => Text = text;
+
+    public string? GetText() => Text;
+}
+
 /// <summary>
 /// <see cref="IMesh"/> test double: remembers its vertex count and whether it
 /// was disposed — the assertion surface of the mesh-ownership tests.

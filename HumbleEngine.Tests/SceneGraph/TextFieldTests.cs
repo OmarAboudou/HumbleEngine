@@ -10,7 +10,7 @@ public sealed class TextFieldTests
 {
     private static (SceneTree Tree, TextField Field) Focused()
     {
-        var tree = new SceneTree(new FakeRenderer());
+        var tree = new SceneTree(new FakeRenderer()) { Clipboard = new FakeClipboard() };
         var field = new TextField();
         field.Size.Value = new Vector2(200f, 30f);
         tree.Root = field;
@@ -221,5 +221,64 @@ public sealed class TextFieldTests
         tree.RouteInput(new TextInput("X"));
 
         Assert.That(field.Text.Value, Is.EqualTo("foo Xbar"));
+    }
+
+    // --- Clipboard (bloc 6) ---
+
+    [Test]
+    public void CtrlC_CopiesTheSelection_ToTheClipboard()
+    {
+        var (tree, field) = Focused();
+        using var _ = tree;
+        tree.RouteInput(new TextInput("hello"));
+        tree.RouteInput(new KeyPressed(Key.Left, KeyModifiers.Shift));
+        tree.RouteInput(new KeyPressed(Key.Left, KeyModifiers.Shift)); // "lo" selected
+
+        tree.RouteInput(new KeyPressed(Key.C, KeyModifiers.Ctrl));
+
+        Assert.That(((FakeClipboard)tree.Clipboard!).Text, Is.EqualTo("lo"));
+        Assert.That(field.Text.Value, Is.EqualTo("hello")); // copy leaves the text
+    }
+
+    [Test]
+    public void CtrlX_CutsTheSelection()
+    {
+        var (tree, field) = Focused();
+        using var _ = tree;
+        tree.RouteInput(new TextInput("hello"));
+        tree.RouteInput(new KeyPressed(Key.Home, KeyModifiers.None));
+        tree.RouteInput(new KeyPressed(Key.Right, KeyModifiers.Shift));
+        tree.RouteInput(new KeyPressed(Key.Right, KeyModifiers.Shift)); // "he" selected
+
+        tree.RouteInput(new KeyPressed(Key.X, KeyModifiers.Ctrl));
+
+        Assert.That(((FakeClipboard)tree.Clipboard!).Text, Is.EqualTo("he"));
+        Assert.That(field.Text.Value, Is.EqualTo("llo"));
+    }
+
+    [Test]
+    public void CtrlV_PastesAtTheCaret_OverTheSelection()
+    {
+        var (tree, field) = Focused();
+        using var _ = tree;
+        tree.Clipboard!.SetText("ABC");
+        tree.RouteInput(new TextInput("hello"));
+        tree.RouteInput(new KeyPressed(Key.A, KeyModifiers.Ctrl)); // select all
+
+        tree.RouteInput(new KeyPressed(Key.V, KeyModifiers.Ctrl));
+
+        Assert.That(field.Text.Value, Is.EqualTo("ABC"));
+    }
+
+    [Test]
+    public void Paste_FlattensNewlines_OnOneLine()
+    {
+        var (tree, field) = Focused();
+        using var _ = tree;
+        tree.Clipboard!.SetText("a\r\nb");
+
+        tree.RouteInput(new KeyPressed(Key.V, KeyModifiers.Ctrl));
+
+        Assert.That(field.Text.Value, Is.EqualTo("a b"));
     }
 }

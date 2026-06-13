@@ -176,6 +176,43 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
 - **Différés** : sélection (shift+flèches, drag), multi-ligne, IME/composition,
   clipping/scroll du texte trop long.
 
+### Le presse-papiers + texte sélectionnable (bloc 6 — validé 2026-06-13)
+
+- **Contrat HAL** : `IClipboard { void SetText(string); string? GetText(); }`,
+  obtenu de la fenêtre (`IWindow.Clipboard` — elle a la connexion, la pompe
+  d'événements et le serial d'input). **Per-fenêtre** (le bi-fenêtre garde deux
+  clipboards distincts). `text/plain;charset=utf-8` seulement ; **CLIPBOARD**
+  seulement (PRIMARY / sélection-au-survol X11 différée).
+- **Accès depuis un nœud : injecté dans l'arbre** (validé 2026-06-13) — l'appli
+  pose `tree.Clipboard = window.Clipboard`, comme elle injecte le `Renderer` et
+  câble `window.OnInput → tree.RouteInput`. Le nœud lit `Tree.Clipboard`.
+  L'arbre connaît une *capacité* clipboard, pas la fenêtre — cohérent avec
+  « l'arbre ignore les fenêtres ».
+- **Paste synchrone, pompé borné** (validé 2026-06-13) : `GetText()` demande puis
+  pompe les événements jusqu'à la réponse (timeout court). Le code du champ reste
+  linéaire (Ctrl+V insère tout de suite) ; coût accepté : un micro-blocage de la
+  boucle au paste.
+- **Les deux protocoles** (asynchrones, événementiels — le vrai morceau) :
+  - **X11 sélections** : copier = `XSetSelectionOwner(CLIPBOARD)` + servir la
+    donnée sur `SelectionRequest` (property + `SelectionNotify`) ; coller =
+    `XConvertSelection` puis lire la property au `SelectionNotify` (pompé). De
+    nouveaux cas dans `HandleEvent`, des P/Invoke (`XSetSelectionOwner`,
+    `XConvertSelection`, `XGetWindowProperty`…), des atomes (`CLIPBOARD`, `TARGETS`).
+  - **Wayland data_device** : bind `wl_data_device_manager` + `wl_data_device`
+    pour le seat ; copier = `wl_data_source` (mime UTF-8) + `set_selection` avec
+    un **serial** d'input récent (anti-hijack), servir en écrivant sur un **fd**
+    au `send` ; coller = le `selection` annonce un `wl_data_offer`, on `receive`
+    (fd) et on lit.
+- **`SelectableText` extrait** : base commune `Label`/`TextField` — la sélection
+  (ancre/caret), la surbrillance, le hit-test/drag, la **copie** y montent.
+  `Label : SelectableText` devient **sélectionnable** (lecture seule + copier) ;
+  `TextField : SelectableText` ajoute l'édition + couper/coller (Ctrl+X/V). Le
+  partage est une **base**, pas une composition père-fils : caret et sélection
+  raisonnent sur une seule géométrie, ils veulent être un seul objet (modèle
+  Godot : `Label`/`LineEdit` distincts au-dessus d'un service de texte partagé,
+  ici `TextLayout`). **Différés** : annuler/rétablir, défilement du débordement,
+  finitions widget.
+
 ## Blocs
 
 - [ ] **Bloc 1 — Conception** — passe 1 (l'arc + hautes décisions) ✅ ci-dessus.
