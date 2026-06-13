@@ -30,6 +30,25 @@ internal static class Tracking
 
     /// <summary>Records that the running computation (if any) read <paramref name="source"/>.</summary>
     internal static void Track(IReactiveSource source) => _current?.AddDependency(source);
+
+    /// <summary>
+    /// Runs <paramref name="fn"/> with no current computation, so the reactive
+    /// reads inside it subscribe nothing — the engine behind <c>Reactive.Untrack</c>.
+    /// Restores the previous context afterwards (re-entrant inside a computation).
+    /// </summary>
+    internal static T RunUntracked<T>(Func<T> fn)
+    {
+        var previous = _current;
+        _current = null;
+        try
+        {
+            return fn();
+        }
+        finally
+        {
+            _current = previous;
+        }
+    }
 }
 
 /// <summary>

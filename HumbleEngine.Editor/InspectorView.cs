@@ -51,9 +51,17 @@ public sealed class InspectorView : UINode
         _rows.Spacing.Value = 2f;
         Attach(_rows);
 
-        // Rebuild the rows every time the selection changes.
-        // Reading Selection.Value auto-tracks: this effect re-runs on any change.
-        CreateEffect(() => Rebuild(editor.Selection.Value));
+        // Rebuild the rows every time the selection changes — and only then.
+        // Reading Selection.Value auto-tracks (the one intended dependency); the
+        // rebuild itself runs untracked, because building the rows reads the source
+        // values they bind to (e.g. a TextField's initial text). Without Untrack
+        // those reads would subscribe this effect, so editing a value would rebuild
+        // the rows mid-keystroke and steal the focus from the field being typed in.
+        CreateEffect(() =>
+        {
+            var selected = editor.Selection.Value;
+            Reactive.Untrack(() => Rebuild(selected));
+        });
 
         // Sync background + children sizes when this panel's own Size changes.
         CreateEffect(SyncLayout);

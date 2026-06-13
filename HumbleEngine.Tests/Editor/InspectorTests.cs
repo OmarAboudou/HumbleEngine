@@ -143,4 +143,26 @@ public sealed class InspectorTests
         // The old row must be disposed — no longer usable.
         Assert.That(oldRow.IsDisposed, Is.True);
     }
+
+    [Test]
+    public void InspectorView_DoesNotRebuild_WhenAnEditedValueChanges()
+    {
+        // Regression: editing a value (what a widget writes back) must not rebuild
+        // the rows. The rebuild effect depends only on the selection — not on the
+        // source values the rows read while binding. Otherwise the field being
+        // typed in is disposed mid-keystroke and the focus is lost.
+        var editor    = new EditorState();
+        var inspector = new InspectorView(editor);
+        var column    = new Column();   // exposes a writable Property<float> Spacing
+
+        editor.Selection.Value = column;
+        var rowsBefore = RowsColumn(inspector).Children.ToArray();
+
+        // Simulate the user editing a value through the inspector.
+        column.Spacing.Value = 42f;
+
+        var rowsAfter = RowsColumn(inspector).Children.ToArray();
+        Assert.That(rowsAfter, Is.EqualTo(rowsBefore));           // same instances, not recreated
+        Assert.That(rowsBefore.All(r => !r.IsDisposed), Is.True); // none disposed
+    }
 }
