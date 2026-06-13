@@ -29,4 +29,10 @@ internal sealed class ReadOnlyProperty<T> : IReadOnlyProperty<T>
         add    => _source.Changed += value;
         remove => _source.Changed -= value;
     }
+
+    /// <inheritdoc />
+    Type IObservableValue.ValueType => typeof(T);
+
+    /// <inheritdoc cref="IObservableValue.Value"/>
+    object? IObservableValue.Value => Value;
 }

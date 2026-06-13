@@ -18,6 +18,7 @@ namespace HumbleEngine;
 public sealed class ObservableList<T> : IReadOnlyObservableList<T>
 {
     private readonly List<T> _items = [];
+    private readonly SourceObservers _structure = new();
     private bool _notifying;
 
     /// <inheritdoc />
@@ -26,8 +27,19 @@ public sealed class ObservableList<T> : IReadOnlyObservableList<T>
     /// <inheritdoc />
     public event Action<int, T>? Removed;
 
-    /// <summary>Number of items currently in the list.</summary>
-    public int Count => _items.Count;
+    /// <summary>
+    /// Number of items currently in the list. Reading it inside an
+    /// <see cref="Effect"/>/<see cref="Computed{T}"/> subscribes to the list's
+    /// structure — any later add/remove re-runs the computation.
+    /// </summary>
+    public int Count
+    {
+        get
+        {
+            _structure.Track();
+            return _items.Count;
+        }
+    }
 
     /// <summary>
     /// Item at the given position. Setting replaces: <see cref="Removed"/> fires
@@ -38,7 +50,11 @@ public sealed class ObservableList<T> : IReadOnlyObservableList<T>
     /// </summary>
     public T this[int index]
     {
-        get => _items[index];
+        get
+        {
+            _structure.Track();
+            return _items[index];
+        }
         set
         {
             var current = _items[index];
@@ -108,7 +124,11 @@ public sealed class ObservableList<T> : IReadOnlyObservableList<T>
     public int IndexOf(T item) => _items.IndexOf(item);
 
     /// <inheritdoc />
-    public IEnumerator<T> GetEnumerator() => _items.GetEnumerator();
+    public IEnumerator<T> GetEnumerator()
+    {
+        _structure.Track();
+        return _items.GetEnumerator();
+    }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
@@ -121,12 +141,15 @@ public sealed class ObservableList<T> : IReadOnlyObservableList<T>
 
     private void Notify(Action<int, T>? handler, int index, T item)
     {
-        if (handler is null)
-            return;
         _notifying = true;
         try
         {
-            handler(index, item);
+            // Exact narration first (BindItemsFrom, decoration), then the structure
+            // signal (the layout-style computations that re-read the whole list) —
+            // both inside the notifying window, so either path mutating the list
+            // fails fast against the indices being narrated.
+            handler?.Invoke(index, item);
+            _structure.NotifyChanged();
         }
         finally
         {

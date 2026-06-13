@@ -15,11 +15,11 @@ namespace HumbleEngine;
 /// pure: read reactive values, do not write them.
 /// </para>
 /// </summary>
-public sealed class Computed<T> : IReadOnlyProperty<T>, IReactiveSource, IDisposable
+public sealed class Computed<T> : IReadOnlyProperty<T>, IDisposable
 {
     private readonly Func<T> _formula;
     private readonly Computation _computation;
-    private HashSet<Computation>? _observers;
+    private readonly SourceObservers _observers = new();
     private T _value = default!;
     private bool _hasValue;
 
@@ -41,7 +41,7 @@ public sealed class Computed<T> : IReadOnlyProperty<T>, IReactiveSource, IDispos
         get
         {
             // Reading inside a running Effect/Computed subscribes it to this derived value.
-            Tracking.Track(this);
+            _observers.Track();
             return _value;
         }
     }
@@ -61,23 +61,15 @@ public sealed class Computed<T> : IReadOnlyProperty<T>, IReactiveSource, IDispos
         if (hadValue)
         {
             Changed?.Invoke(next);
-            NotifyObservers();
+            _observers.NotifyChanged();
         }
     }
 
-    /// <summary>Re-runs the computations that read this derived value. Copied first: a re-run re-subscribes.</summary>
-    private void NotifyObservers()
-    {
-        if (_observers is null || _observers.Count == 0)
-            return;
-        foreach (var observer in _observers.ToArray())
-            observer.Invalidate();
-    }
+    /// <inheritdoc />
+    Type IObservableValue.ValueType => typeof(T);
 
-    void IReactiveSource.AddObserver(Computation observer) =>
-        (_observers ??= new HashSet<Computation>(ReferenceEqualityComparer.Instance)).Add(observer);
-
-    void IReactiveSource.RemoveObserver(Computation observer) => _observers?.Remove(observer);
+    /// <inheritdoc cref="IObservableValue.Value"/>
+    object? IObservableValue.Value => Value;
 
     /// <summary>Stops recomputing and unsubscribes from the formula's dependencies. Idempotent.</summary>
     public void Dispose() => _computation.Dispose();
