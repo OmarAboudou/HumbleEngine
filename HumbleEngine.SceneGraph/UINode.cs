@@ -25,6 +25,15 @@ public abstract class UINode : VisualNode
     /// <summary>Extent in pixels. The layout reads it; never writes it (this étage).</summary>
     public Property<Vector2> Size { get; }
 
+    /// <summary>
+    /// Whether the pointer hit-test can target this node. Default true. Set false to
+    /// make it transparent to picking — the click passes through to whatever sits
+    /// behind it (a decorative label over a clickable row). This is Godot's
+    /// <c>mouse_filter</c> IGNORE; <see cref="OnInput"/>'s bool still decides block
+    /// vs bubble for the nodes that <i>are</i> hit.
+    /// </summary>
+    public bool Hittable { get; set; } = true;
+
     protected UINode()
     {
         Position = CreateProperty(Vector2.Zero);

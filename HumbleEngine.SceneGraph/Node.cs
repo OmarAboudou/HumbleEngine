@@ -5,10 +5,13 @@ namespace HumbleEngine;
 /// lifecycle. The base node carries no transform — spatial models belong to
 /// specialized node types.
 /// <para>
-/// Composition is <b>closed by default</b>: children are managed through protected
-/// members, and each subclass decides whether to expose them publicly (containers
-/// do, scenes never do). Encapsulation is ultimately enforced by reference privacy —
-/// code that holds no reference to a node cannot reach it.
+/// Composition is <b>closed to writing, open to reading</b>: the children
+/// (<see cref="Children"/>) are a public read-only, observable view of the real
+/// subtree — any node can be introspected, which is what the editor's hierarchy
+/// reads — but <i>mutating</i> a composition goes only through the owner's own
+/// slots/lists, which each subclass decides to expose (containers do, scenes keep
+/// them private). Integrity is enforced by the type: the view has no write path, so
+/// the interior is readable, never writable, from the outside.
 /// </para>
 /// <para>
 /// Ownership follows the tree: disposing a node disposes its whole subtree,
@@ -26,15 +29,26 @@ namespace HumbleEngine;
 public abstract class Node : IDisposable
 {
     private readonly List<Node> _children = [];
+    private readonly SourceObservers _childrenStructure = new();
+    private ReadOnlyNodeList? _childrenView;
 
     /// <summary>
-    /// Internal broadcast of every child departure — explicit detach, adoption by
-    /// another node and disposal all funnel through the owner's machinery, which
-    /// raises this. The slots and lists this node created subscribe at creation
-    /// and narrate removals at the moment they happen; the multicast delegate
-    /// itself is the registry.
+    /// Internal broadcast of a child's arrival at the given index — the symmetric
+    /// counterpart of <see cref="ChildDeparted"/>. Raised once the child is fully
+    /// attached (parent set, tree entered), so observers see a coherent tree. The
+    /// public <see cref="Children"/> view relays it as an insertion.
     /// </summary>
-    internal event Action<Node>? ChildDeparted;
+    internal event Action<int, Node>? ChildInserted;
+
+    /// <summary>
+    /// Internal broadcast of a child's departure from the given index — explicit
+    /// detach, adoption elsewhere and disposal all funnel through the owner's
+    /// machinery, which raises this. Two audiences read it: the slots and lists this
+    /// node created (they ignore the index and locate the departing child in their
+    /// own partial view), and the exhaustive <see cref="Children"/> view (which uses
+    /// the index to narrate a removal). The multicast delegate is the registry.
+    /// </summary>
+    internal event Action<int, Node>? ChildDeparted;
 
     /// <summary>
     /// Internal broadcast of this node's death: cells and lists created by this
@@ -79,10 +93,21 @@ public abstract class Node : IDisposable
     public bool IsTreeRoot => Tree is not null && Parent is null;
 
     /// <summary>
-    /// Attached children, in attach order. Protected: each subclass decides whether
-    /// its composition is public (containers) or private (scenes).
+    /// Attached children, in attach order — a <b>read-only, observable</b> view of
+    /// the real subtree. Public and uniform for every node: the engine is "closed to
+    /// writing, open to reading". The view's structure is auto-tracked (an
+    /// <see cref="Effect"/> reading it re-runs on any membership change) and it
+    /// narrates insertions/removals exactly, so it is a ready <c>BindItemsFrom</c>
+    /// source — the machinery the editor's hierarchy panel reads. Writing stays
+    /// closed: a composition is mutated only through the owner's own slots/lists.
     /// </summary>
-    protected IReadOnlyList<Node> Children => _children;
+    public ReadOnlyNodeList Children => _childrenView ??= new ReadOnlyNodeList(this);
+
+    /// <summary>Raw children for the internal views — no auto-tracking. Outside the node, read <see cref="Children"/>.</summary>
+    internal IReadOnlyList<Node> ChildrenRaw => _children;
+
+    /// <summary>The structure signal of the children list, tracked by the <see cref="Children"/> view's reads.</summary>
+    internal SourceObservers ChildrenStructure => _childrenStructure;
 
     /// <summary>Attaches a parentless node as the last child of this node.</summary>
     /// <exception cref="InvalidOperationException">The node already has a parent
@@ -101,10 +126,12 @@ public abstract class Node : IDisposable
         EnsureNotSelfOrAncestor(child);
 
         _children.Add(child);
+        var index = _children.Count - 1;
         child.Parent = this;
         child.OnParentChanged(null, this);
         if (Tree is not null)
             child.EnterTree(Tree);
+        NarrateInserted(index, child); // once fully attached, so observers see a coherent tree
     }
 
     /// <summary>
@@ -120,10 +147,11 @@ public abstract class Node : IDisposable
 
         if (child.Tree is not null)
             child.ExitTree();
-        _children.Remove(child);
+        var index = _children.IndexOf(child);
+        _children.RemoveAt(index);
         child.Parent = null;
         child.OnParentChanged(this, null);
-        ChildDeparted?.Invoke(child);
+        NarrateRemoved(index, child);
     }
 
     /// <summary>
@@ -153,13 +181,30 @@ public abstract class Node : IDisposable
             child.ExitTree();
 
         var oldParent = child.Parent;
-        oldParent?._children.Remove(child);
+        var oldIndex = oldParent?._children.IndexOf(child) ?? -1;
+        oldParent?._children.RemoveAt(oldIndex);
         _children.Add(child);
+        var newIndex = _children.Count - 1;
         child.Parent = this;
         child.OnParentChanged(oldParent, this);
-        oldParent?.ChildDeparted?.Invoke(child);
+        oldParent?.NarrateRemoved(oldIndex, child);
         if (!sameTree && Tree is not null)
             child.EnterTree(Tree);
+        NarrateInserted(newIndex, child); // once fully attached, so observers see a coherent tree
+    }
+
+    /// <summary>Narrates a child's arrival (indexed) and invalidates the children structure signal.</summary>
+    private void NarrateInserted(int index, Node child)
+    {
+        ChildInserted?.Invoke(index, child);
+        _childrenStructure.NotifyChanged();
+    }
+
+    /// <summary>Narrates a child's departure (indexed) and invalidates the children structure signal.</summary>
+    private void NarrateRemoved(int index, Node child)
+    {
+        ChildDeparted?.Invoke(index, child);
+        _childrenStructure.NotifyChanged();
     }
 
     /// <summary>
@@ -372,7 +417,7 @@ public abstract class Node : IDisposable
             if (hit is not null)
                 return hit;
         }
-        return this is UINode ui && ui.GlobalRect.Contains(position) ? ui : null;
+        return this is UINode { Hittable: true } ui && ui.GlobalRect.Contains(position) ? ui : null;
     }
 
     /// <summary>Rejects a child that is this node itself or one of its ancestors.</summary>

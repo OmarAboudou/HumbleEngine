@@ -58,11 +58,19 @@ public sealed class NodeSlot<TChild> : IReadOnlyProperty<TChild?>
         }
     }
 
+    /// <inheritdoc />
+    Type IObservableValue.ValueType => typeof(TChild);
+
+    /// <inheritdoc cref="IObservableValue.Value"/>
+    object? IObservableValue.Value => Value;
+
     /// <summary>
     /// Owner broadcast (<see cref="Node.ChildDeparted"/>): a child of the owner
-    /// just left it — when it was the occupant, the slot empties and narrates.
+    /// just left it — when it was the occupant, the slot empties and narrates. The
+    /// index (the child's position among all the owner's children) is irrelevant to
+    /// a single-child slot.
     /// </summary>
-    internal void OnChildDeparted(Node child)
+    internal void OnChildDeparted(int _, Node child)
     {
         if (!ReferenceEquals(_value, child))
             return;

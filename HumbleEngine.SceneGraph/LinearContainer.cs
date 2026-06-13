@@ -6,12 +6,16 @@ namespace HumbleEngine;
 /// opens its composition (<see cref="Children"/>) — the engine rule: containers
 /// open, scenes close.
 /// <para>
-/// The layout is <b>reactive, not per frame</b>: children positions are
-/// recomputed when — and only when — an observable changes: the children list
-/// (add/remove, including departures behind the list's back), a child's
-/// <see cref="UINode.Size"/>, or <see cref="Spacing"/>. The layout writes
-/// <see cref="UINode.Position"/> and depends only on sizes and order, so no
-/// feedback loop is possible.
+/// The layout is <b>reactive, not per frame</b>: it is a single auto-tracking
+/// <see cref="Effect"/>. Restacking <i>reads</i> the children structure
+/// (<see cref="NodeList{TChild}.Count"/>, the indexer), each child's
+/// <see cref="UINode.Size"/>, and <see cref="Spacing"/> — so the effect
+/// re-subscribes to exactly those each run and re-runs when any changes, including
+/// children joining or leaving (the structure signal) and departures behind the
+/// list's back. No manual <c>.Changed</c>/<c>Added</c> bookkeeping, and no
+/// per-child subscription to maintain: the reads list the dependencies. The effect
+/// writes <see cref="UINode.Position"/>, which it never reads, so no feedback loop
+/// is possible.
 /// </para>
 /// </summary>
 public abstract class LinearContainer : UINode
@@ -26,9 +30,7 @@ public abstract class LinearContainer : UINode
     {
         Children = CreateChildList<UINode>();
         Spacing  = CreateProperty(0f);
-        Children.Added   += OnChildJoined;
-        Children.Removed += OnChildLeft;
-        Spacing.Changed  += _ => Relayout();
+        CreateEffect(Relayout);
     }
 
     /// <summary>Relative position of a child whose main-axis offset is <paramref name="mainOffset"/>.</summary>
@@ -39,7 +41,8 @@ public abstract class LinearContainer : UINode
 
     /// <summary>
     /// Restacks every child: walk in order, place each at the running offset,
-    /// advance by its main-axis extent plus the spacing.
+    /// advance by its main-axis extent plus the spacing. Run inside an
+    /// <see cref="Effect"/> — every reactive read here becomes a dependency.
     /// </summary>
     private void Relayout()
     {
@@ -51,20 +54,6 @@ public abstract class LinearContainer : UINode
             offset += MainExtent(child.Size.Value) + Spacing.Value;
         }
     }
-
-    private void OnChildJoined(int index, UINode child)
-    {
-        child.Size.Changed += OnChildSizeChanged;
-        Relayout();
-    }
-
-    private void OnChildLeft(int index, UINode child)
-    {
-        child.Size.Changed -= OnChildSizeChanged;
-        Relayout();
-    }
-
-    private void OnChildSizeChanged(Vector2 newSize) => Relayout();
 }
 
 /// <summary>

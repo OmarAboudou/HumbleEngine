@@ -27,6 +27,7 @@ public sealed class NodeList<TChild> : IReadOnlyObservableList<TChild>
 {
     private readonly Node _owner;
     private readonly List<TChild> _items = [];
+    private readonly SourceObservers _structure = new();
     private IDisposable? _binding;
     private bool _bindingWriting;
 
@@ -38,11 +39,30 @@ public sealed class NodeList<TChild> : IReadOnlyObservableList<TChild>
     /// <inheritdoc />
     public event Action<int, TChild>? Removed;
 
-    /// <summary>Number of members currently attached — exact at all times.</summary>
-    public int Count => _items.Count;
+    /// <summary>
+    /// Number of members currently attached — exact at all times. Reading it inside
+    /// an <see cref="Effect"/>/<see cref="Computed{T}"/> subscribes to the list's
+    /// structure: any later membership change re-runs the computation (this is how a
+    /// container's layout re-stacks when a child joins or leaves).
+    /// </summary>
+    public int Count
+    {
+        get
+        {
+            _structure.Track();
+            return _items.Count;
+        }
+    }
 
-    /// <summary>Member at the given position, in add order.</summary>
-    public TChild this[int index] => _items[index];
+    /// <summary>Member at the given position, in add order. Reading subscribes the running computation to the structure.</summary>
+    public TChild this[int index]
+    {
+        get
+        {
+            _structure.Track();
+            return _items[index];
+        }
+    }
 
     /// <summary>Whether this list is currently driven by a <see cref="BindItemsFrom{TItem}"/> mapping.</summary>
     public bool IsBound => _binding is not null;
@@ -122,17 +142,21 @@ public sealed class NodeList<TChild> : IReadOnlyObservableList<TChild>
     }
 
     /// <inheritdoc />
-    public IEnumerator<TChild> GetEnumerator() =>
-        ((IEnumerable<TChild>)_items.ToArray()).GetEnumerator();
+    public IEnumerator<TChild> GetEnumerator()
+    {
+        _structure.Track();
+        return ((IEnumerable<TChild>)_items.ToArray()).GetEnumerator();
+    }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     /// <summary>
     /// Owner broadcast (<see cref="Node.ChildDeparted"/>): a child of the owner
     /// just left it — when it was a member, the list updates and narrates, at the
-    /// moment it happens.
+    /// moment it happens. The owner-level index is ignored: this partial, typed view
+    /// locates the departing child by its own position.
     /// </summary>
-    internal void OnChildDeparted(Node child)
+    internal void OnChildDeparted(int _, Node child)
     {
         if (child is not TChild typed)
             return;
@@ -145,6 +169,7 @@ public sealed class NodeList<TChild> : IReadOnlyObservableList<TChild>
 
         _items.RemoveAt(index);
         Removed?.Invoke(index, typed);
+        _structure.NotifyChanged();
     }
 
     /// <summary>Adopts and inserts at an exact position — the shared path of <see cref="Add"/> and the mapping.</summary>
@@ -160,6 +185,7 @@ public sealed class NodeList<TChild> : IReadOnlyObservableList<TChild>
         _owner.Adopt(item);
         _items.Insert(index, item);
         Added?.Invoke(index, item);
+        _structure.NotifyChanged();
     }
 
     private void ThrowIfBound()
