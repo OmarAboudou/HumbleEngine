@@ -118,4 +118,108 @@ public sealed class TextFieldTests
         model.Value = "Bye";
         Assert.That(field.Text.Value, Is.EqualTo("Bye"));
     }
+
+    // --- Selection (bloc 5b) ---
+
+    [Test]
+    public void ShiftArrow_Selects_AndTypingReplaces()
+    {
+        var (tree, field) = Focused();
+        using var _ = tree;
+        tree.RouteInput(new TextInput("hello")); // caret at the end
+
+        tree.RouteInput(new KeyPressed(Key.Left, KeyModifiers.Shift));
+        tree.RouteInput(new KeyPressed(Key.Left, KeyModifiers.Shift)); // "lo" selected
+        tree.RouteInput(new TextInput("X"));
+
+        Assert.That(field.Text.Value, Is.EqualTo("helX"));
+    }
+
+    [Test]
+    public void Backspace_DeletesTheSelection_NotJustOneChar()
+    {
+        var (tree, field) = Focused();
+        using var _ = tree;
+        tree.RouteInput(new TextInput("hello"));
+        tree.RouteInput(new KeyPressed(Key.Home, KeyModifiers.None));
+        tree.RouteInput(new KeyPressed(Key.Right, KeyModifiers.Shift));
+        tree.RouteInput(new KeyPressed(Key.Right, KeyModifiers.Shift)); // "he" selected
+
+        tree.RouteInput(new KeyPressed(Key.Backspace, KeyModifiers.None));
+
+        Assert.That(field.Text.Value, Is.EqualTo("llo"));
+    }
+
+    [Test]
+    public void CtrlA_SelectsAll_AndTypingReplacesAll()
+    {
+        var (tree, field) = Focused();
+        using var _ = tree;
+        tree.RouteInput(new TextInput("hello"));
+
+        tree.RouteInput(new KeyPressed(Key.A, KeyModifiers.Ctrl));
+        tree.RouteInput(new TextInput("Z"));
+
+        Assert.That(field.Text.Value, Is.EqualTo("Z"));
+    }
+
+    [Test]
+    public void Drag_SelectsARange()
+    {
+        using var tree = new SceneTree(new FakeRenderer());
+        var field = new TextField();
+        field.Size.Value = new Vector2(200f, 30f);
+        tree.Root = field;
+        field.Text.Value = "Hello";
+
+        tree.RouteInput(new PointerPressed(PointerButton.Left, new Vector2(0f, 15f)));   // caret 0, drag begins
+        tree.RouteInput(new PointerMoved(new Vector2(190f, 15f)));                       // captured: extends to the end
+        tree.RouteInput(new TextInput("Z"));                                            // replaces the whole selection
+
+        Assert.That(field.Text.Value, Is.EqualTo("Z"));
+    }
+
+    [Test]
+    public void DoubleClick_SelectsTheWord()
+    {
+        using var tree = new SceneTree(new FakeRenderer());
+        var field = new TextField();
+        field.Size.Value = new Vector2(200f, 30f);
+        tree.Root = field;
+        field.Text.Value = "foo bar";
+
+        var atLeft = new Vector2(0f, 15f); // index 0, inside "foo"
+        tree.RouteInput(new PointerPressed(PointerButton.Left, atLeft));
+        tree.RouteInput(new PointerPressed(PointerButton.Left, atLeft)); // second click → word select
+        tree.RouteInput(new TextInput("X"));
+
+        Assert.That(field.Text.Value, Is.EqualTo("X bar"));
+    }
+
+    // --- Word operations (bloc 5b) ---
+
+    [Test]
+    public void CtrlBackspace_DeletesTheWordBeforeTheCaret()
+    {
+        var (tree, field) = Focused();
+        using var _ = tree;
+        tree.RouteInput(new TextInput("foo bar")); // caret at the end
+
+        tree.RouteInput(new KeyPressed(Key.Backspace, KeyModifiers.Ctrl));
+
+        Assert.That(field.Text.Value, Is.EqualTo("foo "));
+    }
+
+    [Test]
+    public void CtrlLeft_MovesByWord()
+    {
+        var (tree, field) = Focused();
+        using var _ = tree;
+        tree.RouteInput(new TextInput("foo bar")); // caret 7
+
+        tree.RouteInput(new KeyPressed(Key.Left, KeyModifiers.Ctrl)); // caret to start of "bar" (4)
+        tree.RouteInput(new TextInput("X"));
+
+        Assert.That(field.Text.Value, Is.EqualTo("foo Xbar"));
+    }
 }

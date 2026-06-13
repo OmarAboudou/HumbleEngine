@@ -248,4 +248,17 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
   des deux côtés). 240 unitaires + 53 intégration verts, 0 erreur de validation.
   **Validation interactive sur les deux backends en attente (Omar).**
 
-*Roadmap terminée — sous réserve de la validation interactive du bloc 5.*
+- [x] **Bloc 5b — L'édition riche** ✅ (demandé par Omar après essai du bloc 5) —
+  `TextField` gagne une **sélection** (ancre + caret, égaux = aucune) :
+  Shift+flèches, Shift+Home/End, **drag souris** (via la capture implicite du
+  routeur), **double-clic = mot**, **Ctrl+A** ; surbrillance derrière les glyphes ;
+  **taper/Backspace/Delete remplace la sélection**. **Opérations mot** :
+  Ctrl+←/→ (déplacer), Ctrl+Backspace/Delete (effacer le mot), Ctrl+Shift+flèches
+  (étendre) — frontières de mot partagées (whitespace vs non-whitespace). Pure
+  logique de nœud, zéro HAL. Tests : 7 unitaires de plus (14 au total sur le
+  champ). **247 unitaires + 53 intégration verts.** **Différés** (leur conception
+  propre) : **presse-papiers** (Ctrl+C/X/V — chantier HAL : sélections X11 /
+  `wl_data_device` Wayland), annuler/rétablir, défilement du débordement,
+  finitions widget (placeholder, longueur max, lecture seule, mot de passe).
+
+*Roadmap terminée — sous réserve de la validation interactive des blocs 5 / 5b.*
