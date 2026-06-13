@@ -1,14 +1,14 @@
 namespace HumbleEngine.Tests.Reactive;
 
 /// <summary>
-/// Unit tests for <see cref="ReactiveList{T}"/>: exact change narration on two
+/// Unit tests for <see cref="ObservableList{T}"/>: exact change narration on two
 /// events, no reset (Clear = N removals from the end, replace = remove + add),
 /// duplicates, and the in-handler mutation guard.
 /// </summary>
-public sealed class ReactiveListTests
+public sealed class ObservableListTests
 {
     /// <summary>Records every event as "verb:index:item" to assert exact narration.</summary>
-    private static List<string> Record(ReactiveList<string> list)
+    private static List<string> Record(ObservableList<string> list)
     {
         var log = new List<string>();
         list.Added += (i, item) => log.Add($"add:{i}:{item}");
@@ -19,7 +19,7 @@ public sealed class ReactiveListTests
     [Test]
     public void NewList_IsEmpty()
     {
-        var list = new ReactiveList<string>();
+        var list = new ObservableList<string>();
 
         Assert.That(list.Count, Is.EqualTo(0));
         Assert.That(list, Is.Empty);
@@ -28,7 +28,7 @@ public sealed class ReactiveListTests
     [Test]
     public void Add_Appends_AndNarratesIndexAndItem()
     {
-        var list = new ReactiveList<string>();
+        var list = new ObservableList<string>();
         var log = Record(list);
 
         list.Add("a");
@@ -41,7 +41,7 @@ public sealed class ReactiveListTests
     [Test]
     public void CollectionInitializer_Works()
     {
-        var list = new ReactiveList<int> { 1, 2, 3 };
+        var list = new ObservableList<int> { 1, 2, 3 };
 
         Assert.That(list, Is.EqualTo(new[] { 1, 2, 3 }));
     }
@@ -49,7 +49,7 @@ public sealed class ReactiveListTests
     [Test]
     public void Insert_ShiftsLaterItems()
     {
-        var list = new ReactiveList<string> { "a", "c" };
+        var list = new ObservableList<string> { "a", "c" };
         var log = Record(list);
 
         list.Insert(1, "b");
@@ -61,7 +61,7 @@ public sealed class ReactiveListTests
     [Test]
     public void Remove_NarratesOldIndex_AndCarriesTheItem()
     {
-        var list = new ReactiveList<string> { "a", "b", "c" };
+        var list = new ObservableList<string> { "a", "b", "c" };
         var log = Record(list);
 
         Assert.That(list.Remove("b"), Is.True);
@@ -73,7 +73,7 @@ public sealed class ReactiveListTests
     [Test]
     public void Remove_AbsentItem_ReturnsFalse_NoEvent()
     {
-        var list = new ReactiveList<string> { "a" };
+        var list = new ObservableList<string> { "a" };
         var log = Record(list);
 
         Assert.That(list.Remove("z"), Is.False);
@@ -83,7 +83,7 @@ public sealed class ReactiveListTests
     [Test]
     public void RemoveAt_RemovesByPosition()
     {
-        var list = new ReactiveList<string> { "a", "b" };
+        var list = new ObservableList<string> { "a", "b" };
         var log = Record(list);
 
         list.RemoveAt(0);
@@ -95,7 +95,7 @@ public sealed class ReactiveListTests
     [Test]
     public void Duplicates_AreAllowed_RemoveTakesFirstOccurrence()
     {
-        var list = new ReactiveList<string> { "x", "y", "x" };
+        var list = new ObservableList<string> { "x", "y", "x" };
         var log = Record(list);
 
         list.Remove("x");
@@ -107,7 +107,7 @@ public sealed class ReactiveListTests
     [Test]
     public void IndexerSet_IsRemoveThenAdd_AtTheSameIndex()
     {
-        var list = new ReactiveList<string> { "a", "old", "c" };
+        var list = new ObservableList<string> { "a", "old", "c" };
         var log = Record(list);
 
         list[1] = "new";
@@ -119,7 +119,7 @@ public sealed class ReactiveListTests
     [Test]
     public void IndexerSet_SameValue_DoesNothing()
     {
-        var list = new ReactiveList<string> { "a" };
+        var list = new ObservableList<string> { "a" };
         var log = Record(list);
 
         list[0] = "a";
@@ -130,7 +130,7 @@ public sealed class ReactiveListTests
     [Test]
     public void IndexerSet_ListIsConsistent_BetweenTheTwoEvents()
     {
-        var list = new ReactiveList<string> { "old" };
+        var list = new ObservableList<string> { "old" };
         var countDuringRemoved = -1;
         list.Removed += (_, _) => countDuringRemoved = list.Count;
 
@@ -142,7 +142,7 @@ public sealed class ReactiveListTests
     [Test]
     public void Clear_IsNRemovals_FromTheEndTowardsTheStart()
     {
-        var list = new ReactiveList<string> { "a", "b", "c" };
+        var list = new ObservableList<string> { "a", "b", "c" };
         var log = Record(list);
 
         list.Clear();
@@ -154,7 +154,7 @@ public sealed class ReactiveListTests
     [Test]
     public void MutatingFromOwnHandler_Throws()
     {
-        var list = new ReactiveList<string>();
+        var list = new ObservableList<string>();
         list.Added += (_, _) => list.Add("echo");
 
         Assert.Throws<InvalidOperationException>(() => list.Add("a"));
@@ -163,8 +163,8 @@ public sealed class ReactiveListTests
     [Test]
     public void MutatingAnotherList_FromAHandler_IsAllowed()
     {
-        var source = new ReactiveList<string>();
-        var mirror = new ReactiveList<string>();
+        var source = new ObservableList<string>();
+        var mirror = new ObservableList<string>();
         source.Added += (i, item) => mirror.Insert(i, item);
         source.Removed += (i, _) => mirror.RemoveAt(i);
 
@@ -178,8 +178,8 @@ public sealed class ReactiveListTests
     [Test]
     public void ReadOnlyView_ExposesReadsAndEvents()
     {
-        var list = new ReactiveList<string> { "a" };
-        IReadOnlyReactiveList<string> view = list;
+        var list = new ObservableList<string> { "a" };
+        IReadOnlyObservableList<string> view = list;
         var seen = "";
         view.Added += (_, item) => seen = item;
 

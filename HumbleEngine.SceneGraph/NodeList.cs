@@ -11,7 +11,7 @@ namespace HumbleEngine;
 /// detaches (the node stays alive). Only the owner can create its own lists
 /// (<see cref="Node.CreateChildList{TChild}"/>), so closed compositions stay closed.
 /// <para>
-/// The list is observable (<see cref="IReadOnlyReactiveList{T}"/>) — "observable
+/// The list is observable (<see cref="IReadOnlyObservableList{T}"/>) — "observable
 /// + tree semantics". Every membership change narrates itself <b>at the moment it
 /// happens</b>, including members leaving behind the list's back (adopted
 /// elsewhere, disposed): <see cref="Count"/> is exact at all times.
@@ -22,7 +22,7 @@ namespace HumbleEngine;
 /// creates a node per item and disposes it with its item ("the tree owns").
 /// </para>
 /// </summary>
-public sealed class NodeList<TChild> : IReadOnlyReactiveList<TChild>
+public sealed class NodeList<TChild> : IReadOnlyObservableList<TChild>
     where TChild : Node
 {
     private readonly Node _owner;
@@ -95,7 +95,7 @@ public sealed class NodeList<TChild> : IReadOnlyReactiveList<TChild>
     /// </summary>
     /// <exception cref="InvalidOperationException">The list is already bound, or
     /// not empty — a positional mirror starts from a clean slate.</exception>
-    public void BindItemsFrom<TItem>(IReadOnlyReactiveList<TItem> source, Func<TItem, TChild> factory)
+    public void BindItemsFrom<TItem>(IReadOnlyObservableList<TItem> source, Func<TItem, TChild> factory)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(factory);
@@ -178,11 +178,11 @@ public sealed class NodeList<TChild> : IReadOnlyReactiveList<TChild>
     private sealed class ItemsBinding<TItem> : IDisposable
     {
         private readonly NodeList<TChild> _target;
-        private readonly IReadOnlyReactiveList<TItem> _source;
+        private readonly IReadOnlyObservableList<TItem> _source;
         private readonly Func<TItem, TChild> _factory;
 
         internal ItemsBinding(
-            NodeList<TChild> target, IReadOnlyReactiveList<TItem> source, Func<TItem, TChild> factory)
+            NodeList<TChild> target, IReadOnlyObservableList<TItem> source, Func<TItem, TChild> factory)
         {
             _target = target;
             _source = source;

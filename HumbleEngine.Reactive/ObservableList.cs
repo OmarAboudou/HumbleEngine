@@ -15,7 +15,7 @@ namespace HumbleEngine;
 /// Structural mutation from inside a handler of the same list fails fast.
 /// </para>
 /// </summary>
-public sealed class ReactiveList<T> : IReadOnlyReactiveList<T>
+public sealed class ObservableList<T> : IReadOnlyObservableList<T>
 {
     private readonly List<T> _items = [];
     private bool _notifying;

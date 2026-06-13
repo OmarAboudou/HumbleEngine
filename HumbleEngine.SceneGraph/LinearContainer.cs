@@ -20,12 +20,12 @@ public abstract class LinearContainer : UINode
     public new NodeList<UINode> Children { get; }
 
     /// <summary>Gap in pixels between two consecutive children.</summary>
-    public Reactive<float> Spacing { get; }
+    public Property<float> Spacing { get; }
 
     private protected LinearContainer()
     {
         Children = CreateChildList<UINode>();
-        Spacing  = CreateReactive(0f);
+        Spacing  = CreateProperty(0f);
         Children.Added   += OnChildJoined;
         Children.Removed += OnChildLeft;
         Spacing.Changed  += _ => Relayout();

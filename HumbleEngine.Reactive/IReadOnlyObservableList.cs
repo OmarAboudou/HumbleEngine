@@ -1,7 +1,7 @@
 namespace HumbleEngine;
 
 /// <summary>
-/// Read-only view of a <see cref="ReactiveList{T}"/>: indexed access plus exact
+/// Read-only view of a <see cref="ObservableList{T}"/>: indexed access plus exact
 /// change narration, no mutation. The natural type for exposing an observable
 /// collection in a contract and for <c>BindItemsFrom</c> sources — a mapping only
 /// ever reads its source.
@@ -10,7 +10,7 @@ namespace HumbleEngine;
 /// exactly, so consumers never need a full-rebuild path.
 /// </para>
 /// </summary>
-public interface IReadOnlyReactiveList<T> : IReadOnlyList<T>
+public interface IReadOnlyObservableList<T> : IReadOnlyList<T>
 {
     /// <summary>
     /// Raised after an item was inserted: it now sits at the given index.

@@ -19,11 +19,11 @@ public sealed class TextField : SelectableText
     private readonly Stopwatch _blink = Stopwatch.StartNew();
 
     /// <summary>The box's fill colour.</summary>
-    public Reactive<Vector4> Background { get; }
+    public Property<Vector4> Background { get; }
 
     public TextField()
     {
-        Background = CreateReactive(new Vector4(0.14f, 0.14f, 0.18f, 1f));
+        Background = CreateProperty(new Vector4(0.14f, 0.14f, 0.18f, 1f));
     }
 
     /// <inheritdoc />

@@ -107,7 +107,7 @@ public sealed class TextFieldTests
     {
         var (tree, field) = Focused();
         using var _ = tree;
-        var model = new Reactive<string>(string.Empty);
+        var model = new Property<string>(string.Empty);
         field.Text.BindTwoWayFrom(model);
 
         // Editing the field reaches the model.

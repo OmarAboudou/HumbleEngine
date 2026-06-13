@@ -3,9 +3,9 @@ namespace HumbleEngine.Tests.SceneGraph;
 /// <summary>Node owning a reactive cell — exercises the binding-lifetime contract.</summary>
 internal sealed class StatNode : Node
 {
-    public Reactive<int> Health { get; }
+    public Property<int> Health { get; }
 
-    public StatNode() => Health = CreateReactive(100);
+    public StatNode() => Health = CreateProperty(100);
 }
 
 /// <summary>Container exposing its slot directly — the slot is itself a reactive cell.</summary>
@@ -146,7 +146,7 @@ public sealed class ObservableContainersTests
     public void NodeSlot_IsABindingSource()
     {
         var holder = new IconHolder();
-        var label = new Reactive<string>("");
+        var label = new Property<string>("");
         label.BindFrom(holder.Icon, icon => icon?.NodeName ?? "none");
 
         Assert.That(label.Value, Is.EqualTo("none"));
@@ -159,7 +159,7 @@ public sealed class ObservableContainersTests
     [Test]
     public void DisposingNode_ReleasesItsCellBindings()
     {
-        var external = new Reactive<int>(50);
+        var external = new Property<int>(50);
         var node = new StatNode();
         node.Health.BindFrom(external);
 
@@ -173,7 +173,7 @@ public sealed class ObservableContainersTests
     [Test]
     public void DisposingNode_ReleasesBothEndsOfItsTwoWayBinding()
     {
-        var external = new Reactive<int>(50);
+        var external = new Property<int>(50);
         var node = new StatNode();
         node.Health.BindTwoWayFrom(external);
 
@@ -187,7 +187,7 @@ public sealed class ObservableContainersTests
     [Test]
     public void DetachedNode_KeepsItsBindings()
     {
-        var external = new Reactive<int>(50);
+        var external = new Property<int>(50);
         var parent = new TestNode("parent");
         var node = new StatNode();
         parent.AttachChild(node);

@@ -16,7 +16,7 @@ internal interface IBinding : IDisposable
 /// <summary>
 /// Internal view of a cell for bind-time cycle detection: exposes the source of
 /// its current binding so the chain can be walked. Foreign
-/// <see cref="IReadOnlyReactive{T}"/> implementations end the walk — a divergence
+/// <see cref="IReadOnlyProperty{T}"/> implementations end the walk — a divergence
 /// escaping through one is still caught by the re-entrancy guard at runtime.
 /// </summary>
 internal interface IReactiveCell
@@ -32,12 +32,12 @@ internal interface IReactiveCell
 /// </summary>
 internal sealed class OneWayBinding<TSource, TTarget> : IBinding
 {
-    private readonly IReadOnlyReactive<TSource> _source;
-    private readonly Reactive<TTarget> _target;
+    private readonly IReadOnlyProperty<TSource> _source;
+    private readonly Property<TTarget> _target;
     private readonly Func<TSource, TTarget> _transform;
 
     internal OneWayBinding(
-        IReadOnlyReactive<TSource> source, Reactive<TTarget> target, Func<TSource, TTarget> transform)
+        IReadOnlyProperty<TSource> source, Property<TTarget> target, Func<TSource, TTarget> transform)
     {
         _source = source;
         _target = target;
@@ -65,13 +65,13 @@ internal sealed class OneWayBinding<TSource, TTarget> : IBinding
 /// </summary>
 internal sealed class TwoWayBinding<TA, TB>
 {
-    private readonly Reactive<TA> _a;
-    private readonly Reactive<TB> _b;
+    private readonly Property<TA> _a;
+    private readonly Property<TB> _b;
     private readonly Func<TA, TB> _aToB;
     private readonly Func<TB, TA> _bToA;
     private bool _propagating;
 
-    internal TwoWayBinding(Reactive<TA> a, Reactive<TB> b, Func<TA, TB> aToB, Func<TB, TA> bToA)
+    internal TwoWayBinding(Property<TA> a, Property<TB> b, Func<TA, TB> aToB, Func<TB, TA> bToA)
     {
         _a = a;
         _b = b;

@@ -7,7 +7,7 @@ namespace HumbleEngine.Tests.SceneGraph;
 /// </summary>
 public sealed class BindItemsFromTests
 {
-    private static TestPanel BoundPanel(ReactiveList<string> source, out List<TestNode> fabricated)
+    private static TestPanel BoundPanel(ObservableList<string> source, out List<TestNode> fabricated)
     {
         var panel = new TestPanel();
         var log = new List<TestNode>();
@@ -24,7 +24,7 @@ public sealed class BindItemsFromTests
     [Test]
     public void Bind_MirrorsExistingContent_Immediately()
     {
-        var source = new ReactiveList<string> { "a", "b" };
+        var source = new ObservableList<string> { "a", "b" };
 
         var panel = BoundPanel(source, out var fabricated);
 
@@ -38,7 +38,7 @@ public sealed class BindItemsFromTests
     [Test]
     public void SourceAdd_FabricatesAndAdopts()
     {
-        var source = new ReactiveList<string>();
+        var source = new ObservableList<string>();
         var panel = BoundPanel(source, out _);
 
         source.Add("row");
@@ -51,7 +51,7 @@ public sealed class BindItemsFromTests
     [Test]
     public void SourceInsert_MirrorsThePosition()
     {
-        var source = new ReactiveList<string> { "a", "c" };
+        var source = new ObservableList<string> { "a", "c" };
         var panel = BoundPanel(source, out _);
 
         source.Insert(1, "b");
@@ -62,7 +62,7 @@ public sealed class BindItemsFromTests
     [Test]
     public void SourceRemove_DisposesTheMirroredNode()
     {
-        var source = new ReactiveList<string> { "a", "b" };
+        var source = new ObservableList<string> { "a", "b" };
         var panel = BoundPanel(source, out var fabricated);
         var doomed = fabricated[0];
 
@@ -76,7 +76,7 @@ public sealed class BindItemsFromTests
     [Test]
     public void SourceReplace_DisposesOldNode_FabricatesNew()
     {
-        var source = new ReactiveList<string> { "old" };
+        var source = new ObservableList<string> { "old" };
         var panel = BoundPanel(source, out var fabricated);
         var old = fabricated[0];
 
@@ -90,7 +90,7 @@ public sealed class BindItemsFromTests
     [Test]
     public void BoundList_ManualMutations_Throw()
     {
-        var source = new ReactiveList<string> { "a" };
+        var source = new ObservableList<string> { "a" };
         var panel = BoundPanel(source, out _);
 
         Assert.Throws<InvalidOperationException>(() => panel.Children.Add(new TestNode("x")));
@@ -105,13 +105,13 @@ public sealed class BindItemsFromTests
         panel.Children.Add(new TestNode("manual"));
 
         Assert.Throws<InvalidOperationException>(
-            () => panel.Children.BindItemsFrom(new ReactiveList<string>(), item => new TestNode(item)));
+            () => panel.Children.BindItemsFrom(new ObservableList<string>(), item => new TestNode(item)));
     }
 
     [Test]
     public void Bind_Twice_Throws()
     {
-        var source = new ReactiveList<string>();
+        var source = new ObservableList<string>();
         var panel = BoundPanel(source, out _);
 
         Assert.Throws<InvalidOperationException>(
@@ -121,7 +121,7 @@ public sealed class BindItemsFromTests
     [Test]
     public void Unbind_LeavesTheNodes_AndRestoresManualWrites()
     {
-        var source = new ReactiveList<string> { "a" };
+        var source = new ObservableList<string> { "a" };
         var panel = BoundPanel(source, out var fabricated);
 
         panel.Children.Unbind();
@@ -136,7 +136,7 @@ public sealed class BindItemsFromTests
     [Test]
     public void OwnerDispose_ReleasesTheMapping()
     {
-        var source = new ReactiveList<string> { "a" };
+        var source = new ObservableList<string> { "a" };
         var panel = BoundPanel(source, out var fabricated);
 
         panel.Dispose();
@@ -149,7 +149,7 @@ public sealed class BindItemsFromTests
     [Test]
     public void DisposingAMirroredNode_Manually_Throws()
     {
-        var source = new ReactiveList<string> { "a" };
+        var source = new ObservableList<string> { "a" };
         _ = BoundPanel(source, out var fabricated);
 
         Assert.Throws<InvalidOperationException>(() => fabricated[0].Dispose());
@@ -179,7 +179,7 @@ public sealed class BindItemsFromTests
     [Test]
     public void BoundList_NarratesTheMirrorChanges()
     {
-        var source = new ReactiveList<string>();
+        var source = new ObservableList<string>();
         var panel = BoundPanel(source, out _);
         var log = new List<string>();
         panel.Children.Added += (i, n) => log.Add($"add:{i}:{n.NodeName}");

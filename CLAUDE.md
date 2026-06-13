@@ -8,7 +8,7 @@ HumbleEngine is a C# game engine built from scratch with the goal of understandi
 
 - Language: C# / .NET 10.0
 - IDE: Rider (`.idea/` present)
-- Current phase : **aucune en cours — prochaine à choisir.** Dernière terminée : **le texte** (`docs/roadmaps/10_texte.md`, 6 blocs : textures, glyphes/`HumbleEngine.Text`, `Label`, `TextField`, édition riche, presse-papiers/`SelectableText`/`IClipboard`). Candidates pour la suite : un runtime de signals (auto-tracking `Effect`/`Computed`, voir mémoire), l'éditeur (dogfooding), la 2D. **Différé** : le découplage pompe/rendu (`docs/roadmaps/11_boucle.md`) — le rendu Vulkan bloquant fige la boucle mono-thread quand une fenêtre est réduite ; ne touche que le bi-fenêtre mono-processus, donc le Sandbox a été réduit à une fenêtre et la refonte attend son client (éditeur / vrai multi-fenêtre).
+- Current phase : **les signals** (`docs/roadmaps/12_signals.md`) — « tout observable » à la React/Solid, le levier = l'auto-tracking. Conception passe 1 faite : renommage `Reactive<T>`→`Property<T>` (rôle vs mécanisme, aligné éditeur) + famille `Property`/`Computed`/`Effect` ; deux étages (renommage certain, auto-tracking selon curseur). Phase précédente terminée : **le texte** (`docs/roadmaps/10_texte.md`, 6 blocs). **Différé** : le découplage pompe/rendu (`docs/roadmaps/11_boucle.md`, attend l'éditeur / vrai multi-fenêtre ; Sandbox réduit à une fenêtre).
 
 ## Build & run commands
 

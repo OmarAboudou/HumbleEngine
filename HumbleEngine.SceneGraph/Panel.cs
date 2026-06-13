@@ -9,11 +9,11 @@ namespace HumbleEngine;
 public class Panel : UINode
 {
     /// <summary>RGBA colour of the filled rectangle. Opaque white by default.</summary>
-    public Reactive<Vector4> Color { get; }
+    public Property<Vector4> Color { get; }
 
     public Panel()
     {
-        Color = CreateReactive(new Vector4(1f, 1f, 1f, 1f));
+        Color = CreateProperty(new Vector4(1f, 1f, 1f, 1f));
     }
 
     /// <inheritdoc />

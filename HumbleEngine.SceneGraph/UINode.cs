@@ -7,7 +7,7 @@ namespace HumbleEngine;
 /// concrete UI nodes do.
 /// <para>
 /// Both properties are reactive cells (created through
-/// <see cref="Node.CreateReactive{T}"/>, so their bindings die with the node).
+/// <see cref="Node.CreateProperty{T}"/>, so their bindings die with the node).
 /// Reactivity is not what makes the panel move on screen — everything is
 /// redrawn every frame, <see cref="VisualNode.OnDraw"/> just reads the current
 /// values — the cells are the <b>binding surface</b> (wire a model to the UI)
@@ -20,15 +20,15 @@ public abstract class UINode : VisualNode
     /// Top-left corner in pixels, relative to the parent UI node (Y down).
     /// Written by layout containers; bindable by the application.
     /// </summary>
-    public Reactive<Vector2> Position { get; }
+    public Property<Vector2> Position { get; }
 
     /// <summary>Extent in pixels. The layout reads it; never writes it (this étage).</summary>
-    public Reactive<Vector2> Size { get; }
+    public Property<Vector2> Size { get; }
 
     protected UINode()
     {
-        Position = CreateReactive(Vector2.Zero);
-        Size     = CreateReactive(Vector2.Zero);
+        Position = CreateProperty(Vector2.Zero);
+        Size     = CreateProperty(Vector2.Zero);
     }
 
     /// <summary>

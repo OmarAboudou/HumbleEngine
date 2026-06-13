@@ -11,14 +11,14 @@ namespace HumbleEngine;
 /// (<see cref="Node.CreateChildSlot{TChild}"/>), so closed compositions stay closed.
 /// </para>
 /// <para>
-/// A slot is an observable cell (<see cref="IReadOnlyReactive{T}"/>) — "observable
+/// A slot is an observable cell (<see cref="IReadOnlyProperty{T}"/>) — "observable
 /// + tree semantics". It narrates every occupancy change <b>at the moment it
 /// happens</b>: a replacement is a departure (<see cref="Changed"/> with null)
 /// followed by an arrival, and an occupant leaving behind the slot's back —
 /// adopted elsewhere or disposed — narrates its departure immediately.
 /// </para>
 /// </summary>
-public sealed class NodeSlot<TChild> : IReadOnlyReactive<TChild?>
+public sealed class NodeSlot<TChild> : IReadOnlyProperty<TChild?>
     where TChild : Node
 {
     private readonly Node _owner;

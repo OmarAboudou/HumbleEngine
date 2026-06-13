@@ -35,19 +35,19 @@ public abstract class SelectableText : UINode
     private int _lastClickIndex;
 
     /// <summary>The text — changing it re-lays out the glyphs and clamps the selection.</summary>
-    public Reactive<string> Text { get; }
+    public Property<string> Text { get; }
 
     /// <summary>The glyph colour.</summary>
-    public Reactive<Vector4> Color { get; }
+    public Property<Vector4> Color { get; }
 
     /// <summary>The selection highlight colour, drawn behind the selected glyphs.</summary>
-    public Reactive<Vector4> Selection { get; }
+    public Property<Vector4> Selection { get; }
 
     protected SelectableText()
     {
-        Text      = CreateReactive(string.Empty);
-        Color     = CreateReactive(new Vector4(0.95f, 0.95f, 0.95f, 1f));
-        Selection = CreateReactive(new Vector4(0.25f, 0.45f, 0.9f, 0.6f));
+        Text      = CreateProperty(string.Empty);
+        Color     = CreateProperty(new Vector4(0.95f, 0.95f, 0.95f, 1f));
+        Selection = CreateProperty(new Vector4(0.25f, 0.45f, 0.9f, 0.6f));
         Text.Changed += _ => OnTextChanged();
     }
 

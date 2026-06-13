@@ -193,9 +193,9 @@ public abstract class Node : IDisposable
     /// live source can never keep pushing into — and retaining — a dead subtree.
     /// Only the death severs: a detached node stays alive and keeps synchronizing.
     /// </summary>
-    protected Reactive<T> CreateReactive<T>(T initialValue)
+    protected Property<T> CreateProperty<T>(T initialValue)
     {
-        var cell = new Reactive<T>(initialValue);
+        var cell = new Property<T>(initialValue);
         Disposing += cell.Unbind;
         return cell;
     }

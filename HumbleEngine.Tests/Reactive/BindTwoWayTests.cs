@@ -10,8 +10,8 @@ public sealed class BindTwoWayTests
     [Test]
     public void BindTwoWayFrom_InitialSync_TakesArgumentValue()
     {
-        var ui = new Reactive<string>("stale");
-        var model = new Reactive<string>("truth");
+        var ui = new Property<string>("stale");
+        var model = new Property<string>("truth");
 
         ui.BindTwoWayFrom(model);
 
@@ -23,8 +23,8 @@ public sealed class BindTwoWayTests
     [Test]
     public void TwoWay_PropagatesBothDirections()
     {
-        var ui = new Reactive<string>("");
-        var model = new Reactive<string>("a");
+        var ui = new Property<string>("");
+        var model = new Property<string>("a");
         ui.BindTwoWayFrom(model);
 
         model.Value = "from model";
@@ -37,8 +37,8 @@ public sealed class BindTwoWayTests
     [Test]
     public void TwoWay_ManualWrites_AllowedOnBothEnds()
     {
-        var a = new Reactive<int>(0);
-        var b = new Reactive<int>(1);
+        var a = new Property<int>(0);
+        var b = new Property<int>(1);
         a.BindTwoWayFrom(b);
 
         a.Value = 5;
@@ -51,8 +51,8 @@ public sealed class BindTwoWayTests
     [Test]
     public void TwoWay_AppliesTransformations()
     {
-        var celsius = new Reactive<double>(0);
-        var fahrenheit = new Reactive<double>(212);
+        var celsius = new Property<double>(0);
+        var fahrenheit = new Property<double>(212);
         celsius.BindTwoWayFrom(fahrenheit, f => (f - 32) * 5 / 9, c => c * 9 / 5 + 32);
 
         Assert.That(celsius.Value, Is.EqualTo(100));
@@ -64,8 +64,8 @@ public sealed class BindTwoWayTests
     [Test]
     public void TwoWay_NonInverseTransforms_MakeExactlyOneTrip()
     {
-        var a = new Reactive<int>(0);
-        var b = new Reactive<int>(0);
+        var a = new Property<int>(0);
+        var b = new Property<int>(0);
         var aToB = 0;
         var bToA = 0;
         a.BindTwoWayFrom(
@@ -86,10 +86,10 @@ public sealed class BindTwoWayTests
     [Test]
     public void TwoWay_RequiresBothSlotsFree()
     {
-        var source = new Reactive<int>(0);
-        var bound = new Reactive<int>(0);
+        var source = new Property<int>(0);
+        var bound = new Property<int>(0);
         bound.BindFrom(source);
-        var free = new Reactive<int>(0);
+        var free = new Property<int>(0);
 
         Assert.Throws<InvalidOperationException>(() => bound.BindTwoWayFrom(free));
         Assert.Throws<InvalidOperationException>(() => free.BindTwoWayFrom(bound));
@@ -98,7 +98,7 @@ public sealed class BindTwoWayTests
     [Test]
     public void TwoWay_Self_Throws()
     {
-        var cell = new Reactive<int>(0);
+        var cell = new Property<int>(0);
 
         Assert.Throws<InvalidOperationException>(() => cell.BindTwoWayFrom(cell));
     }
@@ -106,10 +106,10 @@ public sealed class BindTwoWayTests
     [Test]
     public void BindFrom_OnTwoWayEnd_Throws()
     {
-        var a = new Reactive<int>(0);
-        var b = new Reactive<int>(0);
+        var a = new Property<int>(0);
+        var b = new Property<int>(0);
         a.BindTwoWayFrom(b);
-        var other = new Reactive<int>(0);
+        var other = new Property<int>(0);
 
         Assert.Throws<InvalidOperationException>(() => a.BindFrom(other));
         Assert.Throws<InvalidOperationException>(() => b.BindFrom(other));
@@ -118,8 +118,8 @@ public sealed class BindTwoWayTests
     [Test]
     public void Unbind_EitherEnd_ReleasesBoth()
     {
-        var a = new Reactive<int>(0);
-        var b = new Reactive<int>(0);
+        var a = new Property<int>(0);
+        var b = new Property<int>(0);
         a.BindTwoWayFrom(b);
 
         b.Unbind();
@@ -135,10 +135,10 @@ public sealed class BindTwoWayTests
     [Test]
     public void ThirdParty_CanListenOnTwoWayEnd()
     {
-        var a = new Reactive<int>(0);
-        var b = new Reactive<int>(0);
+        var a = new Property<int>(0);
+        var b = new Property<int>(0);
         a.BindTwoWayFrom(b);
-        var mirror = new Reactive<int>(0);
+        var mirror = new Property<int>(0);
         mirror.BindFrom(a);
 
         b.Value = 7;
@@ -149,10 +149,10 @@ public sealed class BindTwoWayTests
     [Test]
     public void TwoWayPair_DoesNotTrapCycleWalk()
     {
-        var a = new Reactive<int>(0);
-        var b = new Reactive<int>(0);
+        var a = new Property<int>(0);
+        var b = new Property<int>(0);
         a.BindTwoWayFrom(b);
-        var observer = new Reactive<int>(0);
+        var observer = new Property<int>(0);
 
         observer.BindFrom(a);
         b.Value = 3;

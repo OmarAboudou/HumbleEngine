@@ -18,14 +18,14 @@ public sealed class SandboxScene : Scene
     /// Size of the column's middle panel — the Sandbox animates its height to
     /// show the reactive layout: the panel below slides on its own.
     /// </summary>
-    public Reactive<Vector2> BreathingSize => _breathing.Size;
+    public Property<Vector2> BreathingSize => _breathing.Size;
 
     /// <summary>
     /// Text of the reactive label (bloc 4): the Sandbox animates it to show the
     /// content sizing — the label re-measures and the marker tile beside it
     /// slides, no layout wiring.
     /// </summary>
-    public Reactive<string> LabelText => _label.Text;
+    public Property<string> LabelText => _label.Text;
 
     /// <summary>
     /// Builds the interior: a triangle, a panel over its heart, and a column

@@ -1,12 +1,12 @@
 namespace HumbleEngine;
 
 /// <summary>
-/// Read-only view of a <see cref="Reactive{T}"/> cell: current value plus change
+/// Read-only view of a <see cref="Property{T}"/> cell: current value plus change
 /// notification, no write access. The natural type for exposing observable state
 /// in a contract — the outside can watch, only the owner can write — and for
 /// binding sources, since a binding only ever reads its source.
 /// </summary>
-public interface IReadOnlyReactive<T>
+public interface IReadOnlyProperty<T>
 {
     /// <summary>Current value, readable at any time.</summary>
     T Value { get; }

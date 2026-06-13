@@ -3,7 +3,7 @@ namespace HumbleEngine;
 /// <summary>
 /// A reactive cell: a current value plus change notification — the spreadsheet
 /// cell of the engine. Write <see cref="Value"/> directly, or declare a formula
-/// once with <see cref="BindFrom{TSource}(IReadOnlyReactive{TSource}, Func{TSource, T})"/>
+/// once with <see cref="BindFrom{TSource}(IReadOnlyProperty{TSource}, Func{TSource, T})"/>
 /// and the system maintains it from then on.
 /// <para>
 /// A cell holds at most one binding — one formula — but can be listened to by any
@@ -13,14 +13,14 @@ namespace HumbleEngine;
 /// intermediate states, but the final value is always correct.
 /// </para>
 /// </summary>
-public sealed class Reactive<T> : IReadOnlyReactive<T>, IReactiveCell
+public sealed class Property<T> : IReadOnlyProperty<T>, IReactiveCell
 {
     private T _value;
     private IBinding? _binding;
     private bool _notifying;
 
     /// <summary>Creates a free cell holding the given initial value.</summary>
-    public Reactive(T initialValue) => _value = initialValue;
+    public Property(T initialValue) => _value = initialValue;
 
     /// <inheritdoc />
     public event Action<T>? Changed;
@@ -59,7 +59,7 @@ public sealed class Reactive<T> : IReadOnlyReactive<T>, IReactiveCell
     /// cycle (this cell is already upstream of the source), or this cell is an
     /// end of a two-way binding — replacing it silently would break the partner
     /// cell's contract, unbind explicitly first.</exception>
-    public void BindFrom<TSource>(IReadOnlyReactive<TSource> source, Func<TSource, T> transform)
+    public void BindFrom<TSource>(IReadOnlyProperty<TSource> source, Func<TSource, T> transform)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(transform);
@@ -73,8 +73,8 @@ public sealed class Reactive<T> : IReadOnlyReactive<T>, IReactiveCell
     }
 
     /// <summary>Identity overload: this cell mirrors the source as-is.</summary>
-    /// <inheritdoc cref="BindFrom{TSource}(IReadOnlyReactive{TSource}, Func{TSource, T})"/>
-    public void BindFrom(IReadOnlyReactive<T> source) => BindFrom(source, static v => v);
+    /// <inheritdoc cref="BindFrom{TSource}(IReadOnlyProperty{TSource}, Func{TSource, T})"/>
+    public void BindFrom(IReadOnlyProperty<T> source) => BindFrom(source, static v => v);
 
     /// <summary>
     /// Declares an explicit bidirectional contract with <paramref name="other"/> —
@@ -90,7 +90,7 @@ public sealed class Reactive<T> : IReadOnlyReactive<T>, IReactiveCell
     /// <exception cref="InvalidOperationException">Either cell already holds a
     /// binding (both slots must be free), or <paramref name="other"/> is this cell.</exception>
     public void BindTwoWayFrom<TOther>(
-        Reactive<TOther> other, Func<TOther, T> fromOther, Func<T, TOther> toOther)
+        Property<TOther> other, Func<TOther, T> fromOther, Func<T, TOther> toOther)
     {
         ArgumentNullException.ThrowIfNull(other);
         ArgumentNullException.ThrowIfNull(fromOther);
@@ -108,8 +108,8 @@ public sealed class Reactive<T> : IReadOnlyReactive<T>, IReactiveCell
     }
 
     /// <summary>Identity overload: both cells mirror each other as-is.</summary>
-    /// <inheritdoc cref="BindTwoWayFrom{TOther}(Reactive{TOther}, Func{TOther, T}, Func{T, TOther})"/>
-    public void BindTwoWayFrom(Reactive<T> other) =>
+    /// <inheritdoc cref="BindTwoWayFrom{TOther}(Property{TOther}, Func{TOther, T}, Func{T, TOther})"/>
+    public void BindTwoWayFrom(Property<T> other) =>
         BindTwoWayFrom(other, static v => v, static v => v);
 
     /// <summary>

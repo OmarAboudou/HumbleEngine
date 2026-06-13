@@ -75,7 +75,7 @@ public sealed class UINodeTests
     public void Position_IsABindingSurface()
     {
         var panel = MakePanel(0f, 0f, 10f, 10f);
-        var source = new Reactive<Vector2>(new Vector2(5f, 5f));
+        var source = new Property<Vector2>(new Vector2(5f, 5f));
 
         panel.Position.BindFrom(source);
         source.Value = new Vector2(30f, 40f);
@@ -87,7 +87,7 @@ public sealed class UINodeTests
     public void DisposingThePanel_ReleasesItsBindings()
     {
         var panel = MakePanel(0f, 0f, 10f, 10f);
-        var source = new Reactive<Vector2>(Vector2.Zero);
+        var source = new Property<Vector2>(Vector2.Zero);
         panel.Position.BindFrom(source);
 
         panel.Dispose();

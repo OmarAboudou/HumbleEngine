@@ -10,8 +10,8 @@ public sealed class BindFromTests
     [Test]
     public void BindFrom_PushesCurrentValueImmediately()
     {
-        var source = new Reactive<int>(21);
-        var target = new Reactive<int>(0);
+        var source = new Property<int>(21);
+        var target = new Property<int>(0);
 
         target.BindFrom(source, v => v * 2);
 
@@ -23,8 +23,8 @@ public sealed class BindFromTests
     [Test]
     public void BindFrom_PropagatesChanges_WithTransform()
     {
-        var health = new Reactive<int>(100);
-        var label = new Reactive<string>("");
+        var health = new Property<int>(100);
+        var label = new Property<string>("");
         label.BindFrom(health, hp => $"PV : {hp}");
 
         health.Value = 80;
@@ -35,8 +35,8 @@ public sealed class BindFromTests
     [Test]
     public void BindFrom_Identity_Propagates()
     {
-        var source = new Reactive<int>(1);
-        var target = new Reactive<int>(0);
+        var source = new Property<int>(1);
+        var target = new Property<int>(0);
         target.BindFrom(source);
 
         source.Value = 9;
@@ -47,8 +47,8 @@ public sealed class BindFromTests
     [Test]
     public void BoundTarget_ManualSet_Throws()
     {
-        var source = new Reactive<int>(1);
-        var target = new Reactive<int>(0);
+        var source = new Property<int>(1);
+        var target = new Property<int>(0);
         target.BindFrom(source);
 
         Assert.Throws<InvalidOperationException>(() => target.Value = 5);
@@ -58,8 +58,8 @@ public sealed class BindFromTests
     [Test]
     public void Unbind_RestoresManualWrites_AndStopsPropagation()
     {
-        var source = new Reactive<int>(1);
-        var target = new Reactive<int>(0);
+        var source = new Property<int>(1);
+        var target = new Property<int>(0);
         target.BindFrom(source);
 
         target.Unbind();
@@ -73,9 +73,9 @@ public sealed class BindFromTests
     [Test]
     public void Rebind_ReplacesPreviousBinding()
     {
-        var first = new Reactive<int>(1);
-        var second = new Reactive<int>(2);
-        var target = new Reactive<int>(0);
+        var first = new Property<int>(1);
+        var second = new Property<int>(2);
+        var target = new Property<int>(0);
         target.BindFrom(first);
 
         target.BindFrom(second);
@@ -91,7 +91,7 @@ public sealed class BindFromTests
     [Test]
     public void BindFrom_Self_Throws()
     {
-        var cell = new Reactive<int>(0);
+        var cell = new Property<int>(0);
 
         Assert.Throws<InvalidOperationException>(() => cell.BindFrom(cell));
     }
@@ -99,9 +99,9 @@ public sealed class BindFromTests
     [Test]
     public void BindFrom_ClosingACycle_ThrowsAtBindTime()
     {
-        var a = new Reactive<int>(0);
-        var b = new Reactive<int>(0);
-        var c = new Reactive<int>(0);
+        var a = new Property<int>(0);
+        var b = new Property<int>(0);
+        var c = new Property<int>(0);
         b.BindFrom(c);
         a.BindFrom(b);
 
@@ -112,8 +112,8 @@ public sealed class BindFromTests
     [Test]
     public void BindFrom_Mutual_ThrowsAtBindTime()
     {
-        var a = new Reactive<int>(0);
-        var b = new Reactive<int>(0);
+        var a = new Property<int>(0);
+        var b = new Property<int>(0);
         a.BindFrom(b);
 
         Assert.Throws<InvalidOperationException>(() => b.BindFrom(a));
@@ -122,9 +122,9 @@ public sealed class BindFromTests
     [Test]
     public void Source_RemainsListenableByThirdParties()
     {
-        var origin = new Reactive<int>(1);
-        var first = new Reactive<int>(0);
-        var second = new Reactive<int>(0);
+        var origin = new Property<int>(1);
+        var first = new Property<int>(0);
+        var second = new Property<int>(0);
         first.BindFrom(origin);
         second.BindFrom(origin, v => -v);
 
@@ -137,9 +137,9 @@ public sealed class BindFromTests
     [Test]
     public void Chain_PropagatesThrough()
     {
-        var a = new Reactive<int>(1);
-        var b = new Reactive<int>(0);
-        var c = new Reactive<int>(0);
+        var a = new Property<int>(1);
+        var b = new Property<int>(0);
+        var c = new Property<int>(0);
         b.BindFrom(a, v => v + 1);
         c.BindFrom(b, v => v * 10);
 
@@ -152,9 +152,9 @@ public sealed class BindFromTests
     [Test]
     public void BindFrom_AcceptsReadOnlyView()
     {
-        var source = new Reactive<int>(3);
-        IReadOnlyReactive<int> view = source;
-        var target = new Reactive<int>(0);
+        var source = new Property<int>(3);
+        IReadOnlyProperty<int> view = source;
+        var target = new Property<int>(0);
 
         target.BindFrom(view);
         source.Value = 8;
