@@ -64,6 +64,15 @@ public sealed class SandboxScene : Scene
         image.Size.Value     = new Vector2(180f, 180f);
         Attach(image);
 
+        // Two editable fields bound two-way (bloc 5): click one, type — the other
+        // follows. The first real client of BindTwoWayFrom. Held keys repeat.
+        var fieldA = MakeField(new Vector2(300f, 400f));
+        var fieldB = MakeField(new Vector2(300f, 440f));
+        fieldB.Text.BindTwoWayFrom(fieldA.Text);
+        fieldA.Text.Value = "type here";
+        Attach(fieldA);
+        Attach(fieldB);
+
         _breathing = MakeTile(new Vector4(0.3f, 0.8f, 0.4f, 1f));
         var column = new Column { Name = "Column" };
         column.Position.Value = new Vector2(620f, 40f);
@@ -72,6 +81,15 @@ public sealed class SandboxScene : Scene
         column.Children.Add(_breathing);
         column.Children.Add(MakeTile(new Vector4(0.95f, 0.8f, 0.3f, 1f)));
         Attach(column);
+    }
+
+    /// <summary>A 240×30 editable field at <paramref name="position"/>.</summary>
+    private static TextField MakeField(Vector2 position)
+    {
+        var field = new TextField { Name = "Field" };
+        field.Position.Value = position;
+        field.Size.Value     = new Vector2(240f, 30f);
+        return field;
     }
 
     /// <summary>A 150×60 interactive tile for the column (hover + click-to-dispose).</summary>

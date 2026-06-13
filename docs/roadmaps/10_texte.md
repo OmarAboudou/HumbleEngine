@@ -141,6 +141,41 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
   re-mesure, la colonne se ré-empile. Du texte *dans* l'UI réactive, pas posé à
   la main.
 
+### Le champ texte (bloc 5 — validé 2026-06-13)
+
+- **Répétition de touche dans le backend (HAL)** (validé 2026-06-13) : les
+  backends rendent le vocabulaire uniforme, comme partout. **Wayland**, dans
+  `PollEvents` (la boucle par-frame, pas de timerfd), **rejoue le dernier
+  `KeyPressed` + `TextInput` stockés** à la cadence après le délai, jusqu'au
+  relâchement ou à une autre touche. **Nuance v1** : `repeat_info` est un
+  événement **wl_keyboard v4** ; le seat est bindé en **v1 délibérée** (bloc 3),
+  donc la cadence est un **défaut raisonnable** (~400 ms délai, ~30 Hz) plutôt
+  que le taux configuré du compositeur — honorer `repeat_info` = passer le bind
+  en v4, **différé**. **X11** garde son auto-repeat natif (déjà accepté au bloc
+  clavier) — pas de double. Le `TextField` est **aveugle à la répétition** : il
+  ne voit que des `KeyPressed`/`TextInput` répétés. Cohérent avec « les backends
+  sont la couche de traduction » (bloc 3).
+- **`TextField : UINode`** dans `SceneGraph` : `Text` (`Reactive<string>` — **le
+  premier vrai client de `BindTwoWayFrom`**) + un **caret** (index plain dans la
+  chaîne, clampé sur `Text.Changed` pour survivre à un binding externe). Boîte à
+  **taille explicite** (pas de sizing par contenu comme `Label` — c'est un
+  champ). Atlas du `SceneTree.DefaultFontAtlas`, dessin via `TextLayout` +
+  `DrawGlyph` : fond + glyphes + barre du caret. **Clignotement** via un
+  `Stopwatch` interne lu dans `OnDraw` (chaque frame — pas besoin du hook
+  `OnFrame` différé). Débordement/clipping/scroll différés.
+- **Consommation** (le routeur n'envoie le clavier qu'au focusé) : `TextInput` →
+  insère au caret ; `KeyPressed` → `Backspace`/`Delete` (édition),
+  `Left`/`Right`/`Home`/`End` (navigation). `PointerPressed` → `GrabFocus` +
+  **caret positionné au clic** (validé : hit-test x → index le plus proche via
+  les advances — la mise en forme donne déjà les positions). Le **click-to-focus**
+  est introduit ici (noté au bloc clavier comme arrivant avec les widgets
+  focusables).
+- **Démo Sandbox** : deux champs (ou un champ ↔ un `Label`) liés en **two-way**
+  par `BindTwoWayFrom` — taper dans l'un met l'autre à jour. Le client réel du
+  binding bidirectionnel.
+- **Différés** : sélection (shift+flèches, drag), multi-ligne, IME/composition,
+  clipping/scroll du texte trop long.
+
 ## Blocs
 
 - [ ] **Bloc 1 — Conception** — passe 1 (l'arc + hautes décisions) ✅ ci-dessus.
@@ -198,9 +233,19 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
   paresseux et partagé, `Label` qui se mesure, content-sizing qui ré-empile le
   `Row`). 233 unitaires + 53 intégration verts, 0 erreur de validation.
 
-- [ ] **Bloc 5 — Le champ texte** — édition (caret, insertion/suppression via
-  `TextInput`), navigation clavier + **répétition de touche**, binding
-  bidirectionnel `Reactive<string>`. Le vrai client. *Sandbox : on tape dans un
-  champ lié à un label.*
+- [x] **Bloc 5 — Le champ texte** ✅ — `TextField : UINode` (boîte à taille
+  explicite) : `Text` réactif édité par `TextInput` (insertion au caret),
+  `KeyPressed` (Backspace/Delete, Left/Right/Home/End), `PointerPressed` →
+  `GrabFocus` + **caret positionné au clic** (hit-test x → index ; le
+  click-to-focus introduit ici). Caret clignotant (Stopwatch interne lu dans
+  `OnDraw`), dessin fond + glyphes + barre. **Répétition de touche dans le
+  backend** : Wayland rejoue le `KeyPressed`+`TextInput` stocké depuis
+  `PollEvents` (cadence par défaut, v1 préservé — `repeat_info`/v4 différé),
+  X11 natif ; le champ est aveugle à la répétition. **Two-way binding** : premier
+  vrai client de `BindTwoWayFrom`. *Sandbox : deux champs liés two-way, taper dans
+  l'un suit dans l'autre.* Tests : 7 unitaires (sans display — insertion,
+  Backspace/Delete, Home/Left navigation, focus-gating, caret au clic, two-way
+  des deux côtés). 240 unitaires + 53 intégration verts, 0 erreur de validation.
+  **Validation interactive sur les deux backends en attente (Omar).**
 
-*Tâche en cours : bloc 4 ✅ ; prochain — bloc 5 (le champ texte : caret, édition via `TextInput`, navigation + répétition de touche, binding bidirectionnel `Reactive<string>`).*
+*Roadmap terminée — sous réserve de la validation interactive du bloc 5.*

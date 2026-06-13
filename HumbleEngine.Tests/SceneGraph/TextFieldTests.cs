@@ -1,0 +1,121 @@
+namespace HumbleEngine.Tests.SceneGraph;
+
+/// <summary>
+/// Unit tests for <see cref="TextField"/> — no display: a <see cref="SceneTree"/>
+/// over a <see cref="FakeRenderer"/>, synthetic input routed in. Covers editing,
+/// caret navigation, click-to-place, focus gating and the two-way binding that is
+/// the field's reason to exist.
+/// </summary>
+public sealed class TextFieldTests
+{
+    private static (SceneTree Tree, TextField Field) Focused()
+    {
+        var tree = new SceneTree(new FakeRenderer());
+        var field = new TextField();
+        field.Size.Value = new Vector2(200f, 30f);
+        tree.Root = field;
+        field.GrabFocus();
+        return (tree, field);
+    }
+
+    [Test]
+    public void TextInput_InsertsAtTheCaret()
+    {
+        var (tree, field) = Focused();
+        using var _ = tree;
+
+        tree.RouteInput(new TextInput("H"));
+        tree.RouteInput(new TextInput("i"));
+
+        Assert.That(field.Text.Value, Is.EqualTo("Hi"));
+    }
+
+    [Test]
+    public void Backspace_DeletesBeforeTheCaret()
+    {
+        var (tree, field) = Focused();
+        using var _ = tree;
+        tree.RouteInput(new TextInput("Hi"));
+
+        tree.RouteInput(new KeyPressed(Key.Backspace, KeyModifiers.None));
+
+        Assert.That(field.Text.Value, Is.EqualTo("H"));
+    }
+
+    [Test]
+    public void HomeThenInsert_WritesAtTheStart()
+    {
+        var (tree, field) = Focused();
+        using var _ = tree;
+        tree.RouteInput(new TextInput("abc"));
+
+        tree.RouteInput(new KeyPressed(Key.Home, KeyModifiers.None));
+        tree.RouteInput(new TextInput("X"));
+
+        Assert.That(field.Text.Value, Is.EqualTo("Xabc"));
+    }
+
+    [Test]
+    public void LeftThenDelete_RemovesAtTheCaret()
+    {
+        var (tree, field) = Focused();
+        using var _ = tree;
+        tree.RouteInput(new TextInput("abc"));
+
+        tree.RouteInput(new KeyPressed(Key.Left, KeyModifiers.None)); // caret between b and c
+        tree.RouteInput(new KeyPressed(Key.Delete, KeyModifiers.None));
+
+        Assert.That(field.Text.Value, Is.EqualTo("ab"));
+    }
+
+    [Test]
+    public void Keyboard_DoesNothing_WhenNotFocused()
+    {
+        using var tree = new SceneTree(new FakeRenderer());
+        var field = new TextField { };
+        field.Size.Value = new Vector2(200f, 30f);
+        tree.Root = field; // never focused — keyboard routes to the focused node, which is null
+
+        tree.RouteInput(new TextInput("ignored"));
+
+        Assert.That(field.Text.Value, Is.Empty);
+    }
+
+    [Test]
+    public void Click_FocusesAndPlacesTheCaret()
+    {
+        using var tree = new SceneTree(new FakeRenderer());
+        var field = new TextField();
+        field.Size.Value = new Vector2(200f, 30f);
+        tree.Root = field;
+        field.Text.Value = "Hello";
+
+        // Click past the end → caret at the end; typing appends.
+        tree.RouteInput(new PointerPressed(PointerButton.Left, new Vector2(190f, 15f)));
+        Assert.That(tree.FocusedNode, Is.SameAs(field));
+        tree.RouteInput(new TextInput("!"));
+        Assert.That(field.Text.Value, Is.EqualTo("Hello!"));
+
+        // Click at the far left → caret at 0; typing prepends.
+        tree.RouteInput(new PointerPressed(PointerButton.Left, new Vector2(0f, 15f)));
+        tree.RouteInput(new TextInput("X"));
+        Assert.That(field.Text.Value, Is.EqualTo("XHello!"));
+    }
+
+    [Test]
+    public void TwoWayBinding_PropagatesBothWays()
+    {
+        var (tree, field) = Focused();
+        using var _ = tree;
+        var model = new Reactive<string>(string.Empty);
+        field.Text.BindTwoWayFrom(model);
+
+        // Editing the field reaches the model.
+        tree.RouteInput(new TextInput("Hi"));
+        Assert.That(model.Value, Is.EqualTo("Hi"));
+
+        // Writing the model reaches the field.
+        model.Value = "Bye";
+        Assert.That(field.Text.Value, Is.EqualTo("Bye"));
+    }
+}

@@ -65,6 +65,20 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
     private IntPtr _xkbKeymap;
     private IntPtr _xkbState;
 
+    // Client-side key repeat. Wayland v1 has no repeat_info (a v4 event), so the
+    // cadence is a sensible default rather than the compositor's configured rate
+    // (honouring repeat_info would need a v4 seat binding — deferred). The held
+    // key's events are stored and replayed from PollEvents after the delay, until
+    // it is released — X11 gets this from the server natively.
+    private const long RepeatDelayMs    = 400;
+    private const long RepeatIntervalMs = 33;
+    private uint   _repeatScancode;
+    private bool   _repeating;
+    private KeyboardKeyPressed? _repeatKey;
+    private string? _repeatText;
+    private readonly System.Diagnostics.Stopwatch _repeatClock = new();
+    private long _lastRepeatMs;
+
     // --- Decoration path selector ---
     private readonly bool _useLibdecor;
     private readonly int  _defaultWidth;
@@ -364,6 +378,7 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
         {
             // libdecor_dispatch handles flush + prepare_read + poll + dispatch_pending internally.
             LibDecorNative.libdecor_dispatch(_libdecorCtx, 0);
+            PumpKeyRepeat();
             return;
         }
 
@@ -384,6 +399,7 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
         }
 
         WaylandNative.wl_display_dispatch_pending(_display);
+        PumpKeyRepeat();
     }
 
     // =========================================================================
@@ -684,8 +700,10 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
 
     private void OnKeyboardLeave(IntPtr data, IntPtr keyboard, uint serial, IntPtr surface)
     {
-        if (surface == _surface)
-            _keyboardInside = false;
+        if (surface != _surface)
+            return;
+        _keyboardInside = false;
+        StopRepeat(); // a key held across a focus loss must not keep firing
     }
 
     /// <summary>
@@ -705,18 +723,66 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
         var modifiers = ReadModifiers();
         var pressed   = state == 1;
 
-        RaiseInput(pressed
-            ? new KeyboardKeyPressed(_keyboardDevice, logical, modifiers)
-            : new KeyboardKeyReleased(_keyboardDevice, logical, modifiers));
-
         if (!pressed)
+        {
+            RaiseInput(new KeyboardKeyReleased(_keyboardDevice, logical, modifiers));
+            if (key == _repeatScancode)
+                StopRepeat();
             return;
+        }
+
+        var keyEvent = new KeyboardKeyPressed(_keyboardDevice, logical, modifiers);
+        RaiseInput(keyEvent);
+
+        string? text = null;
         var count = XkbNative.xkb_state_key_get_utf8(_xkbState, keycode, _keyTextBuffer, (nuint)_keyTextBuffer.Length);
-        if (count <= 0)
+        if (count > 0)
+        {
+            var utf8 = System.Text.Encoding.UTF8.GetString(_keyTextBuffer, 0, count);
+            if (utf8.Length > 0 && !char.IsControl(utf8[0]))
+            {
+                text = utf8;
+                RaiseInput(new KeyboardTextInput(_keyboardDevice, text));
+            }
+        }
+
+        // Arm the repeat on this key — the most recent press wins.
+        _repeatScancode = key;
+        _repeatKey      = keyEvent;
+        _repeatText     = text;
+        _repeating      = true;
+        _lastRepeatMs   = 0;
+        _repeatClock.Restart();
+    }
+
+    /// <summary>Stops any pending key repeat.</summary>
+    private void StopRepeat()
+    {
+        _repeating = false;
+        _repeatScancode = 0;
+        _repeatKey = null;
+        _repeatText = null;
+    }
+
+    /// <summary>
+    /// Replays the held key after the delay, then every interval — called once per
+    /// PollEvents, so the cadence is quantized to the frame (fine for ~30 Hz).
+    /// </summary>
+    private void PumpKeyRepeat()
+    {
+        if (!_repeating || !_keyboardInside || _repeatKey is null)
             return;
-        var text = System.Text.Encoding.UTF8.GetString(_keyTextBuffer, 0, count);
-        if (text.Length > 0 && !char.IsControl(text[0]))
-            RaiseInput(new KeyboardTextInput(_keyboardDevice, text));
+
+        var elapsed = _repeatClock.ElapsedMilliseconds;
+        if (elapsed < RepeatDelayMs)
+            return;
+        if (_lastRepeatMs != 0 && elapsed - _lastRepeatMs < RepeatIntervalMs)
+            return;
+
+        _lastRepeatMs = elapsed;
+        RaiseInput(_repeatKey);
+        if (_repeatText is not null)
+            RaiseInput(new KeyboardTextInput(_keyboardDevice, _repeatText));
     }
 
     private void OnKeyboardModifiers(IntPtr data, IntPtr keyboard, uint serial,
