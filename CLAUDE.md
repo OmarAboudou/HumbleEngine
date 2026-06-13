@@ -8,7 +8,7 @@ HumbleEngine is a C# game engine built from scratch with the goal of understandi
 
 - Language: C# / .NET 10.0
 - IDE: Rider (`.idea/` present)
-- Current phase: **le texte** — le vrai client du two-way binding (champ texte) ; préalables : descriptors/uniform buffers + textures (mode 1+ de l'übershader), atlas de glyphes. Roadmap à créer (`docs/roadmaps/10_*.md`). Phase précédente terminée : input (`docs/roadmaps/09_input.md`, 6 blocs)
+- Current phase: **le texte** (`docs/roadmaps/10_texte.md`) — Bloc 1 conception (passe 1 faite) : arc en 4 blocs (textures → glyphes → mise en forme → champ texte), rastérisation FreeType en P/Invoke. Le vrai client du two-way binding. Phase précédente terminée : input (`docs/roadmaps/09_input.md`, 6 blocs)
 
 ## Build & run commands
 
