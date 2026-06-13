@@ -19,12 +19,17 @@ Découpage en blocs — chaque bloc compile, se voit (tests / Sandbox), validé 
   `DependencyProperty`, MVVM `[ObservableProperty]`) et avec la mémoire
   « ObservableProperty voulu ». Le léger télescopage avec le mot « property » de
   C# est accepté (WPF/MVVM vivent avec).
-- **`IReadOnlyReactive<T>` → `IReadOnlyProperty<T>`** : c'est **déjà** la
-  « ReadOnlyProperty » d'Omar — la **vue lecture seule observable**. Un
-  `Property<T>` exposé en `IReadOnlyProperty<T>` = lecture seule de l'extérieur,
-  le propriétaire garde l'écriture. **L'exposition éditeur s'applique à ces
-  propriétés** : `Property` éditable (lecture/écriture), `IReadOnlyProperty` et
-  `Computed` en lecture seule.
+- **`IReadOnlyReactive<T>` → `IReadOnlyProperty<T>`** : la **vue lecture seule
+  observable**. **L'exposition éditeur s'applique à ces propriétés** : `Property`
+  éditable, `IReadOnlyProperty`/`Computed` en lecture seule.
+- **`Property<T>.AsReadOnly()`** (ajouté — proposé par Omar) : rend un wrapper
+  `ReadOnlyProperty<T>` (interne) **non-castable** vers la cellule — lecture seule
+  *garantie par le type*, pas par convention (le raisonnement du `ReadOnlyCollection`
+  du BCL). **Caché** (le même wrapper réutilisé, mieux que `List.AsReadOnly`),
+  forwarde `Value`/`Changed` (donc l'auto-tracking traverse vers la source). Le
+  wrapper **n'est pas** `IReactiveSource` (il délègue) — d'où le fait que
+  `IReadOnlyProperty` n'hérite *pas* de `IReactiveSource` (en plus de la
+  visibilité : `IReactiveSource` est interne).
 - **Le projet `HumbleEngine.Reactive` reste** : c'est le **runtime de
   réactivité** (Property, Computed, Effect y vivent tous) — là, le nom-mécanisme
   est juste pour le *sous-système*, même si le type exposé est nommé par son rôle.

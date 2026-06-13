@@ -4,7 +4,7 @@ namespace HumbleEngine.Tests.Reactive;
 /// Unit tests for the bare <see cref="Property{T}"/> cell: value storage,
 /// push notification, equality gating and the re-entrancy guard.
 /// </summary>
-public sealed class ReactiveTests
+public sealed class PropertyTests
 {
     [Test]
     public void InitialValue_IsReadable()
@@ -84,5 +84,50 @@ public sealed class ReactiveTests
 
         Assert.That(a.Value, Is.EqualTo(3));
         Assert.That(b.Value, Is.EqualTo(3));
+    }
+
+    // --- AsReadOnly (the enforced read-only view) ---
+
+    [Test]
+    public void AsReadOnly_ForwardsValueAndChanges()
+    {
+        var cell = new Property<int>(1);
+        var view = cell.AsReadOnly();
+        var seen = new List<int>();
+        view.Changed += seen.Add;
+
+        cell.Value = 2;
+
+        Assert.That(view.Value, Is.EqualTo(2));
+        Assert.That(seen, Is.EqualTo(new[] { 2 }));
+    }
+
+    [Test]
+    public void AsReadOnly_CannotBeCastBackToTheWritableCell()
+    {
+        var cell = new Property<int>(0);
+
+        Assert.That(cell.AsReadOnly(), Is.Not.InstanceOf<Property<int>>());
+    }
+
+    [Test]
+    public void AsReadOnly_ReturnsTheSameCachedView()
+    {
+        var cell = new Property<int>(0);
+
+        Assert.That(cell.AsReadOnly(), Is.SameAs(cell.AsReadOnly()));
+    }
+
+    [Test]
+    public void AsReadOnly_TracksThroughToTheSource()
+    {
+        var cell = new Property<int>(0);
+        var view = cell.AsReadOnly();
+        var runs = 0;
+        using var effect = new Effect(() => { _ = view.Value; runs++; });
+
+        cell.Value = 5; // an effect reading the view re-runs when the source changes
+
+        Assert.That(runs, Is.EqualTo(2));
     }
 }

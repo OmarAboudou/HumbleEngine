@@ -19,6 +19,7 @@ public sealed class Property<T> : IReadOnlyProperty<T>, IReactiveCell, IReactive
     private IBinding? _binding;
     private bool _notifying;
     private HashSet<Computation>? _observers;
+    private ReadOnlyProperty<T>? _readOnly;
 
     /// <summary>Creates a free cell holding the given initial value.</summary>
     public Property(T initialValue) => _value = initialValue;
@@ -28,6 +29,14 @@ public sealed class Property<T> : IReadOnlyProperty<T>, IReactiveCell, IReactive
 
     /// <summary>Whether this cell is currently an end of a binding.</summary>
     public bool IsBound => _binding is not null;
+
+    /// <summary>
+    /// A read-only view of this cell — readable and observable, with no write path
+    /// and no cast back to the cell. Expose this (not the cell typed as an
+    /// interface) when the outside must only watch. The view is created once and
+    /// reused: the same reference every call.
+    /// </summary>
+    public IReadOnlyProperty<T> AsReadOnly() => _readOnly ??= new ReadOnlyProperty<T>(this);
 
     /// <summary>
     /// Current value. Setting notifies subscribers only when the value actually
