@@ -42,6 +42,9 @@ internal sealed class VulkanRenderer : IRenderer
     /// <summary>Descriptor-pool ceiling — growth past it is deferred (its client: hundreds of distinct textures).</summary>
     private const uint MaxTextures = 256;
 
+    /// <summary>How long a frame's image acquire may wait before the frame is skipped (16 ms ≈ one refresh — long enough that a visible window never skips, short enough that an occluded one keeps the loop pumping).</summary>
+    private const ulong AcquireTimeoutNs = 16_000_000;
+
     // Per-frame objects (single frame in flight).
     private readonly ulong  _commandPool;
     private readonly IntPtr _commandBuffer;
@@ -163,7 +166,7 @@ internal sealed class VulkanRenderer : IRenderer
     /// for <see cref="Draw"/> calls. Recreates the swapchain first when it is
     /// out of date.
     /// </summary>
-    public unsafe void BeginFrame()
+    public unsafe bool BeginFrame()
     {
         if (_swapchainDirty)
         {
@@ -171,18 +174,27 @@ internal sealed class VulkanRenderer : IRenderer
             RecreateSwapchain();
         }
 
+        // The fence is signalled when the previous frame's GPU work finishes —
+        // independent of presentation, so this never blocks on an occluded window.
         Check(VulkanNative.vkWaitForFences(_device, 1, in _inFlightFence, 1, ulong.MaxValue),
               "vkWaitForFences");
 
+        // The acquire is the one call that blocks when the compositor is not
+        // consuming images (minimised / fully occluded, FIFO). A bounded timeout
+        // turns that block into a skipped frame, whatever the reason — robust
+        // where compositor "suspended" signals are not (Wayland-app occlusion
+        // under Xwayland never raises an X VisibilityNotify, for instance).
         var result = VulkanNative.vkAcquireNextImageKHR(
-            _device, _swapchain, ulong.MaxValue, _imageAvailable, 0, out _imageIndex);
+            _device, _swapchain, AcquireTimeoutNs, _imageAvailable, 0, out _imageIndex);
 
         if (result == VkResult.ErrorOutOfDateKhr)
         {
             RecreateSwapchain();
             result = VulkanNative.vkAcquireNextImageKHR(
-                _device, _swapchain, ulong.MaxValue, _imageAvailable, 0, out _imageIndex);
+                _device, _swapchain, AcquireTimeoutNs, _imageAvailable, 0, out _imageIndex);
         }
+        if (result is VkResult.Timeout or VkResult.NotReady)
+            return false; // not presentable right now — skip this frame, keep pumping
         Check(result, "vkAcquireNextImageKHR");
 
         // Reset only after a successful acquire, otherwise a throw above would
@@ -246,6 +258,7 @@ internal sealed class VulkanRenderer : IRenderer
             QuadPush.MatrixOffset, QuadPush.MatrixSize, (IntPtr)(&projection));
 
         _frameOpen = true;
+        return true;
     }
 
     /// <summary>

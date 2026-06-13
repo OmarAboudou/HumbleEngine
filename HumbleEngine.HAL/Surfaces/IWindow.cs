@@ -51,4 +51,12 @@ public interface IWindow : IGraphicsSurface
     /// hands it to a scene tree (<c>tree.Clipboard = window.Clipboard</c>).
     /// </summary>
     IClipboard Clipboard { get; }
+
+    /// <summary>
+    /// True when the compositor is not showing the window (minimised, fully
+    /// occluded): rendering it would block on a present that never completes, so
+    /// the loop should keep <b>pumping</b> its events (input, clipboard) but skip
+    /// the <b>render</b>. The pump must never be hostage to a blocking present.
+    /// </summary>
+    bool IsSuspended { get; }
 }

@@ -190,6 +190,18 @@ internal static class Op
     // wl_seat
     internal const uint SeatGetPointer  = 0;
     internal const uint SeatGetKeyboard = 1;
+    // wl_data_device_manager
+    internal const uint DataDeviceManagerCreateDataSource = 0;
+    internal const uint DataDeviceManagerGetDataDevice    = 1;
+    // wl_data_device
+    internal const uint DataDeviceSetSelection = 1;
+    internal const uint DataDeviceRelease      = 2;
+    // wl_data_source
+    internal const uint DataSourceOffer   = 0;
+    internal const uint DataSourceDestroy  = 1;
+    // wl_data_offer
+    internal const uint DataOfferReceive = 1;
+    internal const uint DataOfferDestroy = 2;
     // zxdg_decoration_manager_v1
     internal const uint DecorationManagerGetToplevel = 1;
     // zxdg_toplevel_decoration_v1
@@ -296,6 +308,16 @@ internal static class WaylandNative
     [DllImport("libc", EntryPoint = "close", CallingConvention = CallingConvention.Cdecl)]
     internal static extern int close(int fd);
 
+    // --- Pipe for clipboard data transfer (the source writes, the requestor reads) ---
+    [DllImport("libc", EntryPoint = "pipe2", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern int pipe2(int[] fds, int flags);
+
+    [DllImport("libc", EntryPoint = "read", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern nint read(int fd, byte[] buffer, nint count);
+
+    [DllImport("libc", EntryPoint = "write", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern nint write(int fd, byte[] buffer, nint count);
+
     // --- Get interface pointers for built-in Wayland objects ---
     internal static IntPtr GetBuiltinInterface(string symbolName)
     {
@@ -391,4 +413,17 @@ internal static class LibDecorNative
     [return: MarshalAs(UnmanagedType.I1)]
     internal static extern bool libdecor_configuration_get_content_size(
         IntPtr configuration, IntPtr frame, out int width, out int height);
+
+    /// <summary>
+    /// Reads the window-state bitmask of a configuration. <c>SUSPENDED</c> (1 &lt;&lt; 7,
+    /// libdecor ≥ 0.2 over xdg-shell v6) means the compositor is not showing the
+    /// window — returns <c>false</c> on libdecor versions that lack the call.
+    /// </summary>
+    [DllImport(Lib)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static extern bool libdecor_configuration_get_window_state(
+        IntPtr configuration, out uint windowState);
+
+    /// <summary><c>LIBDECOR_WINDOW_STATE_SUSPENDED</c> — the surface is not visible.</summary>
+    internal const uint WindowStateSuspended = 1u << 7;
 }

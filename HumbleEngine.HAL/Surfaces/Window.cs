@@ -35,6 +35,15 @@ public abstract class Window : IWindow
     public event Action<InputEvent>? OnInput;
 
     /// <inheritdoc/>
+    /// <remarks>Backends with a suspend signal (Wayland, X11) override this; the default is never suspended.</remarks>
+    public virtual bool IsSuspended => false;
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Always pumps events; renders only when not suspended — a minimised or fully
+    /// occluded window would otherwise block on a present that never completes,
+    /// freezing the whole loop (and with it every other window's input and clipboard).
+    /// </remarks>
     public bool Step(Action onFrame)
     {
         if (ShouldClose)
@@ -42,7 +51,8 @@ public abstract class Window : IWindow
         PollEvents();
         if (ShouldClose)
             return false;
-        onFrame();
+        if (!IsSuspended)
+            onFrame();
         return !ShouldClose;
     }
 

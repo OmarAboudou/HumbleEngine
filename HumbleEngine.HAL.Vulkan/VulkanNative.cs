@@ -535,6 +535,10 @@ internal static class VkExtensionNames
 internal enum VkResult
 {
     Success                  = 0,
+    /// <summary>A fence/query is not yet signalled, or an acquire with a timeout found no image in time.</summary>
+    NotReady                 = 1,
+    /// <summary>A wait reached its timeout — here a bounded <c>vkAcquireNextImageKHR</c> for an unpresentable surface.</summary>
+    Timeout                  = 2,
     /// <summary>A returned array was too small for the full result — the data is truncated, not invalid.</summary>
     Incomplete               = 5,
     /// <summary>The swapchain still works but no longer matches the surface exactly (e.g. after a resize).</summary>

@@ -24,9 +24,9 @@ var x11Renderer     = graphicsBackend.CreateRenderer(x11Window);
 // Same scene template, two instances, two worlds — each tree owns its renderer,
 // each node acquires its GPU resources from the tree it enters.
 var waylandScene = new SandboxScene { Name = "Wayland" };
-var waylandTree  = new SceneTree(waylandRenderer) { Root = waylandScene };
+var waylandTree  = new SceneTree(waylandRenderer) { Root = waylandScene, Clipboard = waylandWindow.Clipboard };
 var x11Scene     = new SandboxScene { Name = "X11" };
-var x11Tree      = new SceneTree(x11Renderer) { Root = x11Scene };
+var x11Tree      = new SceneTree(x11Renderer) { Root = x11Scene, Clipboard = x11Window.Clipboard };
 
 // Bloc 3 roadmap 09 — the single input channel, demonstrated raw: every event
 // logged as-is (record ToString), movements throttled to stay readable.
@@ -68,6 +68,12 @@ while (waylandWindow.Step(waylandFrame) && x11Window.Step(x11Frame))
         fpsClock.Restart();
         frames = 0;
     }
+
+    // Both windows suspended (fully occluded): nothing renders to throttle the
+    // loop — yield so a backgrounded engine does not spin a core while it keeps
+    // pumping events (input, clipboard).
+    if (waylandWindow.IsSuspended && x11Window.IsSuspended)
+        System.Threading.Thread.Sleep(10);
 }
 
 // Destruction in reverse creation order, trios first.
@@ -105,10 +111,14 @@ void DriveTrio(SandboxScene scene, SceneTree tree, IRenderer renderer, float pha
     const string phrase = "Humble Engine — éàç 0123";
     scene.LabelText.Value = phrase[..(1 + (int)(t * 6f) % phrase.Length)];
 
-    renderer.BeginFrame();
-    tree.Render();
-    renderer.EndFrame();
-    renderer.Present();
+    // Skip the whole render when no frame could be acquired (window not
+    // presentable): the loop keeps pumping events and the clipboard keeps serving.
+    if (renderer.BeginFrame())
+    {
+        tree.Render();
+        renderer.EndFrame();
+        renderer.Present();
+    }
 
     if (t >= 5f)
         scene.DisposeTriangle(); // no-op once the triangle is gone

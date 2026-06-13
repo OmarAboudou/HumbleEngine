@@ -3,8 +3,15 @@ namespace HumbleEngine;
 /// <summary>Renderer bound to a graphics surface — manages the per-frame render cycle.</summary>
 public interface IRenderer : IDisposable
 {
-    /// <summary>Prepares the backend to render the current frame.</summary>
-    void BeginFrame();
+    /// <summary>
+    /// Prepares the backend to render the current frame, returning <c>true</c>
+    /// when a frame was begun. Returns <c>false</c> when no frame could be
+    /// acquired in time (the surface is not presentable — minimised or fully
+    /// occluded): the caller then <b>skips</b> drawing, <see cref="EndFrame"/>
+    /// and <see cref="Present"/> for this iteration and keeps looping, so the
+    /// event pump is never hostage to a blocking present.
+    /// </summary>
+    bool BeginFrame();
 
     /// <summary>Finalises rendering of the current frame.</summary>
     void EndFrame();

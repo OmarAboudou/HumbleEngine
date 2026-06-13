@@ -15,6 +15,9 @@ internal sealed class X11Window : Window, INativeWindowHandle, IClipboard
     private readonly ulong _clipboardProperty;
     private string? _ownedText;
 
+    /// <summary>True while the window is fully obscured — the loop pumps but skips rendering.</summary>
+    private bool _suspended;
+
     /// <summary>One pointing source per window — X11 core events erase physical provenance.</summary>
     private readonly Mouse _mouse = new();
 
@@ -48,7 +51,8 @@ internal sealed class X11Window : Window, INativeWindowHandle, IClipboard
                    EventMask.ButtonReleaseMask    |
                    EventMask.PointerMotionMask    |
                    EventMask.EnterWindowMask      |
-                   EventMask.LeaveWindowMask));
+                   EventMask.LeaveWindowMask      |
+                   EventMask.VisibilityChangeMask));
 
         // Without WM_DELETE_WINDOW the window manager kills the X connection abruptly on close.
         _wmDeleteWindow = X11Native.XInternAtom(display, "WM_DELETE_WINDOW", false);
@@ -131,6 +135,10 @@ internal sealed class X11Window : Window, INativeWindowHandle, IClipboard
             case XEventType.SelectionClear:
                 _ownedText = null; // another application took the clipboard
                 break;
+
+            case XEventType.VisibilityNotify:
+                _suspended = ev.xvisibility.state == XVisibilityEvent.FullyObscured;
+                break;
         }
     }
 
@@ -209,6 +217,9 @@ internal sealed class X11Window : Window, INativeWindowHandle, IClipboard
 
     public override void Show()  => X11Native.XMapWindow(_display, _window);
     public override void Hide()  => X11Native.XUnmapWindow(_display, _window);
+
+    /// <inheritdoc/>
+    public override bool IsSuspended => _suspended;
 
     /// <summary>
     /// Sets both title properties: legacy <c>WM_NAME</c> (Latin-1 only — anything

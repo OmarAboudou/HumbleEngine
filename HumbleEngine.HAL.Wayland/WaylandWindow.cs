@@ -18,7 +18,7 @@ namespace HumbleEngine.Wayland;
 ///   </description></item>
 /// </list>
 /// </summary>
-internal sealed class WaylandWindow : Window, INativeWindowHandle
+internal sealed class WaylandWindow : Window, INativeWindowHandle, IClipboard
 {
     // --- Common Wayland objects ---
     private readonly IntPtr _display;
@@ -43,6 +43,10 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
     private static readonly IntPtr SeatIface       = WaylandNative.GetBuiltinInterface("wl_seat_interface");
     private static readonly IntPtr PointerIface    = WaylandNative.GetBuiltinInterface("wl_pointer_interface");
     private static readonly IntPtr KeyboardIface   = WaylandNative.GetBuiltinInterface("wl_keyboard_interface");
+    private static readonly IntPtr DataDeviceManagerIface = WaylandNative.GetBuiltinInterface("wl_data_device_manager_interface");
+    private static readonly IntPtr DataDeviceIface = WaylandNative.GetBuiltinInterface("wl_data_device_interface");
+    private static readonly IntPtr DataSourceIface = WaylandNative.GetBuiltinInterface("wl_data_source_interface");
+    private static readonly IntPtr DataOfferIface  = WaylandNative.GetBuiltinInterface("wl_data_offer_interface");
 
     // --- Input (wl_seat, bound at version 1: five pointer events, no frame batching) ---
     /// <summary>One pointing source per window — the Wayland seat aggregates physical devices.</summary>
@@ -79,6 +83,20 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
     private readonly System.Diagnostics.Stopwatch _repeatClock = new();
     private long _lastRepeatMs;
 
+    // --- Clipboard (wl_data_device) ---
+    private const string ClipboardMime = "text/plain;charset=utf-8";
+    private IntPtr _dataDeviceManager;
+    private IntPtr _dataDevice;
+    private IntPtr _dataSource;     // the source we own while holding the clipboard
+    private IntPtr _currentOffer;   // the offer the compositor advertises for pasting
+    private uint   _lastSerial;     // the most recent input serial — set_selection needs it
+    private string? _clipboardText; // the text our source serves
+    private GCHandle _dataDeviceListenerHandle;
+    private GCHandle _dataSourceListenerHandle;
+
+    /// <summary>True while the compositor reports the surface suspended — the loop pumps but skips rendering.</summary>
+    private bool _suspended;
+
     // --- Decoration path selector ---
     private readonly bool _useLibdecor;
     private readonly int  _defaultWidth;
@@ -114,6 +132,15 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
     private readonly WlKeyboardLeave        _onKeyboardLeave;
     private readonly WlKeyboardKey          _onKeyboardKey;
     private readonly WlKeyboardModifiers    _onKeyboardModifiers;
+    private readonly WlDataDeviceDataOffer  _onDataOffer;
+    private readonly WlDataDeviceEnter      _onDataEnter;
+    private readonly WlDataDeviceLeave      _onDataLeave;
+    private readonly WlDataDeviceMotion     _onDataMotion;
+    private readonly WlDataDeviceDrop       _onDataDrop;
+    private readonly WlDataDeviceSelection  _onDataSelection;
+    private readonly WlDataSourceTarget     _onSourceTarget;
+    private readonly WlDataSourceSend       _onSourceSend;
+    private readonly WlDataSourceCancelled  _onSourceCancelled;
 
     private GCHandle _registryListenerHandle;
     private GCHandle _wmBaseListenerHandle;
@@ -188,6 +215,15 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
         _onKeyboardLeave     = OnKeyboardLeave;
         _onKeyboardKey       = OnKeyboardKey;
         _onKeyboardModifiers = OnKeyboardModifiers;
+        _onDataOffer         = OnDataOffer;
+        _onDataEnter         = OnDataEnter;
+        _onDataLeave         = OnDataLeave;
+        _onDataMotion        = OnDataMotion;
+        _onDataDrop          = OnDataDrop;
+        _onDataSelection     = OnDataSelection;
+        _onSourceTarget      = OnSourceTarget;
+        _onSourceSend        = OnSourceSend;
+        _onSourceCancelled   = OnSourceCancelled;
 
         // 1. Bind wl_registry and discover globals.
         _registry = WaylandNative.MarshalNew(display, Op.DisplayGetRegistry, RegistryIface, IntPtr.Zero);
@@ -506,7 +542,33 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
                 Marshal.GetFunctionPointerForDelegate(_onSeatCapabilities),
                 Marshal.GetFunctionPointerForDelegate(_onSeatName),
             ], out _seatListenerHandle);
+            TryCreateDataDevice();
         }
+        else if (iface == "wl_data_device_manager")
+        {
+            _dataDeviceManager = WaylandNative.MarshalRegistryBind(
+                registry, Op.RegistryBind, DataDeviceManagerIface, 1u,
+                name, Marshal.ReadIntPtr(DataDeviceManagerIface, 0), 1u, IntPtr.Zero);
+            TryCreateDataDevice();
+        }
+    }
+
+    /// <summary>Creates the seat's data device once both the manager and the seat are bound (clipboard plumbing).</summary>
+    private void TryCreateDataDevice()
+    {
+        if (_dataDevice != IntPtr.Zero || _dataDeviceManager == IntPtr.Zero || _seat == IntPtr.Zero)
+            return;
+
+        _dataDevice = WaylandNative.MarshalNewWithObj(
+            _dataDeviceManager, Op.DataDeviceManagerGetDataDevice, DataDeviceIface, 1u, IntPtr.Zero, _seat);
+        AddListener(_dataDevice, [
+            Marshal.GetFunctionPointerForDelegate(_onDataOffer),
+            Marshal.GetFunctionPointerForDelegate(_onDataEnter),
+            Marshal.GetFunctionPointerForDelegate(_onDataLeave),
+            Marshal.GetFunctionPointerForDelegate(_onDataMotion),
+            Marshal.GetFunctionPointerForDelegate(_onDataDrop),
+            Marshal.GetFunctionPointerForDelegate(_onDataSelection),
+        ], out _dataDeviceListenerHandle);
     }
 
     private void OnRegistryGlobalRemove(IntPtr data, IntPtr registry, uint name) { }
@@ -602,6 +664,7 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
 
     private void OnPointerButton(IntPtr data, IntPtr pointer, uint serial, uint time, uint button, uint state)
     {
+        _lastSerial = serial; // set_selection needs a recent input serial
         if (!_pointerInside)
             return;
 
@@ -714,6 +777,7 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
     /// </summary>
     private void OnKeyboardKey(IntPtr data, IntPtr keyboard, uint serial, uint time, uint key, uint state)
     {
+        _lastSerial = serial; // a copy (Ctrl+C) sets the selection with this serial
         if (!_keyboardInside || _xkbState == IntPtr.Zero)
             return;
 
@@ -815,6 +879,159 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
     }
 
     // =========================================================================
+    // Clipboard (wl_data_device / wl_data_source / wl_data_offer)
+    // =========================================================================
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void WlDataDeviceDataOffer(IntPtr data, IntPtr device, IntPtr id);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void WlDataDeviceEnter(IntPtr data, IntPtr device, uint serial, IntPtr surface, int x, int y, IntPtr id);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void WlDataDeviceLeave(IntPtr data, IntPtr device);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void WlDataDeviceMotion(IntPtr data, IntPtr device, uint time, int x, int y);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void WlDataDeviceDrop(IntPtr data, IntPtr device);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void WlDataDeviceSelection(IntPtr data, IntPtr device, IntPtr id);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void WlDataSourceTarget(IntPtr data, IntPtr source, IntPtr mime);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void WlDataSourceSend(IntPtr data, IntPtr source, IntPtr mime, int fd);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void WlDataSourceCancelled(IntPtr data, IntPtr source);
+
+    // A new offer is introduced before the selection event names it; we ask for
+    // text/plain directly, so the offer's mime list is of no interest — only the
+    // selection event's id matters. Drag-and-drop events are ignored.
+    private void OnDataOffer(IntPtr data, IntPtr device, IntPtr id) { }
+    private void OnDataEnter(IntPtr data, IntPtr device, uint serial, IntPtr surface, int x, int y, IntPtr id) { }
+    private void OnDataLeave(IntPtr data, IntPtr device) { }
+    private void OnDataMotion(IntPtr data, IntPtr device, uint time, int x, int y) { }
+    private void OnDataDrop(IntPtr data, IntPtr device) { }
+
+    /// <summary>The clipboard changed: keep the new offer for pasting, destroying the previous one.</summary>
+    private void OnDataSelection(IntPtr data, IntPtr device, IntPtr id)
+    {
+        if (_currentOffer != IntPtr.Zero)
+            WaylandNative.SendDestroy(_currentOffer, Op.DataOfferDestroy);
+        _currentOffer = id; // null when the clipboard was cleared
+    }
+
+    private void OnSourceTarget(IntPtr data, IntPtr source, IntPtr mime) { }
+
+    /// <summary>Another client (or us) is pasting our clipboard: write the text to the fd and close it.</summary>
+    private void OnSourceSend(IntPtr data, IntPtr source, IntPtr mime, int fd)
+    {
+        if (_clipboardText is not null)
+        {
+            var bytes = System.Text.Encoding.UTF8.GetBytes(_clipboardText);
+            WaylandNative.write(fd, bytes, bytes.Length);
+        }
+        WaylandNative.close(fd);
+    }
+
+    /// <summary>We lost the clipboard to another source — drop ours.</summary>
+    private void OnSourceCancelled(IntPtr data, IntPtr source)
+    {
+        if (source == _dataSource)
+        {
+            WaylandNative.SendDestroy(_dataSource, Op.DataSourceDestroy);
+            _dataSource = IntPtr.Zero;
+            _clipboardText = null;
+        }
+    }
+
+    /// <inheritdoc/>
+    public override bool IsSuspended => _suspended;
+
+    /// <inheritdoc/>
+    public override IClipboard Clipboard => this;
+
+    /// <summary>Offers <paramref name="text"/> as the clipboard selection (served on demand via the source's send event).</summary>
+    public void SetText(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        _clipboardText = text;
+        if (_dataDevice == IntPtr.Zero)
+            return;
+
+        if (_dataSource != IntPtr.Zero)
+            WaylandNative.SendDestroy(_dataSource, Op.DataSourceDestroy);
+        if (_dataSourceListenerHandle.IsAllocated)
+            _dataSourceListenerHandle.Free();
+
+        _dataSource = WaylandNative.MarshalNew(
+            _dataDeviceManager, Op.DataDeviceManagerCreateDataSource, DataSourceIface, IntPtr.Zero);
+        AddListener(_dataSource, [
+            Marshal.GetFunctionPointerForDelegate(_onSourceTarget),
+            Marshal.GetFunctionPointerForDelegate(_onSourceSend),
+            Marshal.GetFunctionPointerForDelegate(_onSourceCancelled),
+        ], out _dataSourceListenerHandle);
+
+        var mime = Marshal.StringToHGlobalAnsi(ClipboardMime);
+        try
+        {
+            WaylandNative.SendArgs(_dataSource, Op.DataSourceOffer, [WlArgument.Ptr(mime)]);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(mime);
+        }
+
+        WaylandNative.SendArgs(_dataDevice, Op.DataDeviceSetSelection,
+            [WlArgument.Ptr(_dataSource), WlArgument.Uint(_lastSerial)]);
+        WaylandNative.wl_display_flush(_display);
+    }
+
+    /// <summary>
+    /// Reads the clipboard: ask the current offer to write text/plain into a pipe,
+    /// pump the display (so our own source can answer), then read the pipe bounded.
+    /// </summary>
+    public string? GetText()
+    {
+        if (_currentOffer == IntPtr.Zero)
+            return null;
+
+        var fds = new int[2];
+        if (WaylandNative.pipe2(fds, 0) != 0)
+            return null;
+
+        var mime = Marshal.StringToHGlobalAnsi(ClipboardMime);
+        try
+        {
+            WaylandNative.SendArgs(_currentOffer, Op.DataOfferReceive,
+                [WlArgument.Ptr(mime), WlArgument.Int(fds[1])]);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(mime);
+        }
+
+        WaylandNative.close(fds[1]); // we only read; the writer holds the other end
+        WaylandNative.wl_display_flush(_display);
+        WaylandNative.wl_display_roundtrip(_display); // let our own source answer, if we own it
+
+        var collected = new List<byte>();
+        var buffer = new byte[4096];
+        var pfd = new WaylandNative.PollFd { fd = fds[0], events = WaylandNative.Pollin };
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        while (clock.ElapsedMilliseconds < 500)
+        {
+            if (WaylandNative.Poll(ref pfd, 1, 100) <= 0)
+                break; // timeout or error — give up
+            var read = WaylandNative.read(fds[0], buffer, buffer.Length);
+            if (read <= 0)
+                break; // EOF or error
+            collected.AddRange(buffer[..(int)read]);
+        }
+        WaylandNative.close(fds[0]);
+
+        return collected.Count == 0 ? null : System.Text.Encoding.UTF8.GetString(collected.ToArray());
+    }
+
+    // =========================================================================
     // Raw XDG Shell callbacks
     // =========================================================================
 
@@ -885,6 +1102,18 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
         _pendingWidth  = w;
         _pendingHeight = h;
 
+        // The compositor reports suspension here (libdecor ≥ 0.2 over xdg-shell v6);
+        // older libdecor lacks the call — stay non-suspended then.
+        try
+        {
+            if (LibDecorNative.libdecor_configuration_get_window_state(config, out var windowState))
+                _suspended = (windowState & LibDecorNative.WindowStateSuspended) != 0;
+        }
+        catch (EntryPointNotFoundException)
+        {
+            // libdecor too old for window-state: leave _suspended as is.
+        }
+
         if (!_rendererOwnsSurface)
         {
             // Always recreate the buffer (initial call or resize).
@@ -953,6 +1182,11 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
 
         DestroyShmBuffer();
         DestroyXkb();
+        // Clipboard objects.
+        if (_currentOffer       != IntPtr.Zero) { WaylandNative.SendDestroy(_currentOffer, Op.DataOfferDestroy);   _currentOffer       = IntPtr.Zero; }
+        if (_dataSource         != IntPtr.Zero) { WaylandNative.SendDestroy(_dataSource, Op.DataSourceDestroy);    _dataSource         = IntPtr.Zero; }
+        if (_dataDevice         != IntPtr.Zero) { WaylandNative.wl_proxy_destroy(_dataDevice);                     _dataDevice         = IntPtr.Zero; }
+        if (_dataDeviceManager  != IntPtr.Zero) { WaylandNative.wl_proxy_destroy(_dataDeviceManager);              _dataDeviceManager  = IntPtr.Zero; }
         // Seat, pointer and keyboard were bound at version 1 (no destructor request): plain proxy destruction.
         if (_keyboard   != IntPtr.Zero) { WaylandNative.wl_proxy_destroy(_keyboard);              _keyboard   = IntPtr.Zero; }
         if (_pointer    != IntPtr.Zero) { WaylandNative.wl_proxy_destroy(_pointer);               _pointer    = IntPtr.Zero; }
@@ -973,6 +1207,8 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
         if (_toplevelListenerHandle.IsAllocated)            _toplevelListenerHandle.Free();
         if (_libdecorContextListenerHandle.IsAllocated)     _libdecorContextListenerHandle.Free();
         if (_libdecorFrameListenerHandle.IsAllocated)       _libdecorFrameListenerHandle.Free();
+        if (_dataDeviceListenerHandle.IsAllocated)          _dataDeviceListenerHandle.Free();
+        if (_dataSourceListenerHandle.IsAllocated)          _dataSourceListenerHandle.Free();
     }
 
     // =========================================================================

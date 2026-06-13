@@ -119,6 +119,7 @@ internal enum EventMask : long
     LeaveWindowMask     = 1L << 5,
     PointerMotionMask   = 1L << 6,
     ExposureMask        = 1L << 15,
+    VisibilityChangeMask = 1L << 16,
     StructureNotifyMask = 1L << 17,
 }
 
@@ -132,6 +133,7 @@ internal static class XEventType
     public const int EnterNotify     = 7;
     public const int LeaveNotify     = 8;
     public const int Expose          = 12;
+    public const int VisibilityNotify = 15;
     public const int DestroyNotify   = 17;
     public const int ConfigureNotify = 22;
     public const int SelectionClear   = 29;
@@ -155,6 +157,18 @@ internal struct XEvent
     [FieldOffset(0)] public XKeyEvent           xkey;
     [FieldOffset(0)] public XSelectionRequestEvent xselectionrequest;
     [FieldOffset(0)] public XSelectionEvent     xselection;
+    [FieldOffset(0)] public XVisibilityEvent    xvisibility;
+}
+
+/// <summary>XVisibilityEvent — how much of the window is visible — 64-bit Linux offsets.</summary>
+[StructLayout(LayoutKind.Explicit)]
+internal struct XVisibilityEvent
+{
+    [FieldOffset(0)]  public int   type;
+    [FieldOffset(40)] public int   state; // 0 Unobscured, 1 PartiallyObscured, 2 FullyObscured
+
+    /// <summary>The window is completely covered — rendering would block.</summary>
+    public const int FullyObscured = 2;
 }
 
 /// <summary>XSelectionRequestEvent (someone asks us to serve the selection) — 64-bit Linux offsets.</summary>

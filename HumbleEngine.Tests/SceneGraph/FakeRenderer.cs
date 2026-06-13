@@ -25,9 +25,7 @@ internal sealed class FakeRenderer : IRenderer
     /// <summary>Glyphs received by <see cref="DrawGlyph"/>, in submission order.</summary>
     public List<(Rect Rect, ITexture Atlas, Rect UvSubRect, Vector4 Color)> Glyphs { get; } = [];
 
-    public void BeginFrame()
-    {
-    }
+    public bool BeginFrame() => true;
 
     public void EndFrame()
     {

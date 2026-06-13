@@ -21,11 +21,12 @@ internal sealed class OpenGLRenderer : IRenderer
     /// <summary>
     /// Makes the GLX context current and clears the colour and depth buffers.
     /// </summary>
-    public void BeginFrame()
+    public bool BeginFrame()
     {
         GLXNative.glXMakeCurrent(_display, _window, _context);
         GLXNative.glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         GLXNative.glClear(GLMask.ColorBuffer | GLMask.DepthBuffer);
+        return true;
     }
 
     /// <summary>Flushes pending GL commands.</summary>
