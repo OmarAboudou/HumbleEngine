@@ -48,6 +48,25 @@ public sealed class LabelTests
     }
 
     [Test]
+    public void Label_IsSelectable_AndCopiesToTheClipboard()
+    {
+        var clipboard = new FakeClipboard();
+        using var tree = new SceneTree(new FakeRenderer()) { Clipboard = clipboard };
+        var label = new Label();
+        tree.Root = label;
+        label.Text.Value = "hello";
+
+        // A read-only label still selects (Ctrl+A) and copies (Ctrl+C) — the shared
+        // SelectableText machinery, no editing.
+        label.GrabFocus();
+        tree.RouteInput(new KeyPressed(Key.A, KeyModifiers.Ctrl));
+        tree.RouteInput(new KeyPressed(Key.C, KeyModifiers.Ctrl));
+
+        Assert.That(clipboard.Text, Is.EqualTo("hello"));
+        Assert.That(label.Text.Value, Is.EqualTo("hello")); // unchanged — read-only
+    }
+
+    [Test]
     public void Label_ContentSizing_RestacksItsRow()
     {
         using var tree = new SceneTree(new FakeRenderer());

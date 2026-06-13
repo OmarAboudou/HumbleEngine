@@ -298,4 +298,29 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
   `wl_data_device` Wayland), annuler/rétablir, défilement du débordement,
   finitions widget (placeholder, longueur max, lecture seule, mot de passe).
 
-*Roadmap terminée — sous réserve de la validation interactive des blocs 5 / 5b.*
+- [x] **Bloc 6 — Le presse-papiers + texte sélectionnable** ✅ — contrat HAL
+  `IClipboard` (`SetText`/`GetText`, UTF-8, CLIPBOARD) obtenu de `IWindow.Clipboard`,
+  injecté dans `SceneTree.Clipboard` (comme le renderer). **X11** : sélections
+  (`XSetSelectionOwner`, servir `SelectionRequest` en UTF8_STRING + TARGETS,
+  `XConvertSelection` + pompe bornée). **Wayland** : `wl_data_device`
+  (`data_source` + `set_selection` au serial, service par fd au `send` ;
+  `data_offer` + `receive` + lecture pipe bornée). `TextField` : Ctrl+C/X/V.
+  **`SelectableText`** : base commune extraite — sélection (ancre/caret),
+  surbrillance, hit-test/drag, copie ; `Label : SelectableText` devient
+  **sélectionnable** (lecture seule + Ctrl+C), `TextField : SelectableText`
+  ajoute édition + couper/coller. 252 unitaires + 54 intégration verts ;
+  presse-papiers **validé fonctionnellement** (logs : propriété système, pont
+  Xwayland, service de la bonne donnée).
+  - **Limite connue, renvoyée à une roadmap dédiée** : le presse-papiers (et le
+    multi-fenêtre) se fige/laggue quand une fenêtre est réduite/occultée — la
+    **boucle mono-thread** où le rendu Vulkan bloquant (acquire/present/
+    `vkDeviceWaitIdle` au recreate) cadence la pompe d'événements. Acquire borné
+    + `BeginFrame→bool` + `IsSuspended` = mitigation partielle seulement. C'est
+    le bug **déjà différé en roadmap 09** (« croisera la refonte de pompe »).
+    **N'affecte que le bi-fenêtre dans un seul processus** (le Sandbox) ; une
+    appli mono-fenêtre ne le rencontre jamais. → **Prochaine roadmap : le
+    découplage pompe/rendu** (boucle pilotée par les fd / pompe découplée).
+
+*Roadmap 10 terminée — sous réserve de la validation interactive des blocs 5/5b
+et du presse-papiers (le cœur est prouvé ; le reliquat de réactivité en
+arrière-plan est la refonte de boucle, sa propre roadmap).*
