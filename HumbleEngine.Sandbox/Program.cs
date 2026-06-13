@@ -6,7 +6,7 @@ using HumbleEngine.Sandbox;
 //   dotnet run -- [--os Linux] [--windowing Wayland|X11] [--graphics Vulkan|OpenGL]
 if (args.Contains("--help") || args.Contains("-h"))
 {
-    Console.WriteLine("Usage: HumbleEngine.Sandbox [--os Linux] [--windowing Wayland|X11] [--graphics Vulkan|OpenGL]");
+    Console.WriteLine("Usage: HumbleEngine.Sandbox [--os Linux] [--windowing Wayland|X11] [--graphics Vulkan|OpenGL] [--demo sandbox|hierarchy]");
     return;
 }
 
@@ -51,13 +51,19 @@ catch (Exception ex)
 
 windowBackend.Initialize();
 var window = windowBackend.CreateWindow(
-    new WindowDescription($"HumbleEngine — {windowBackend.Name} + {graphicsBackend.Name}", 800, 600));
+    new WindowDescription($"HumbleEngine — {windowBackend.Name} + {graphicsBackend.Name}", 1100, 700));
 
 graphicsBackend.Initialize();
 var renderer = graphicsBackend.CreateRenderer(window);
 
-var scene = new SandboxScene { Name = "Sandbox" };
-var tree  = new SceneTree(renderer) { Root = scene, Clipboard = window.Clipboard };
+// The root scene depends on the demo: the default Sandbox, or the editor hierarchy
+// panel (roadmap 13, bloc 2) over a sample tree. Only the Sandbox animates per frame.
+var demoName = ArgValue("--demo", "sandbox");
+var sandbox  = demoName.Equals("hierarchy", StringComparison.OrdinalIgnoreCase)
+    ? null
+    : new SandboxScene { Name = "Sandbox" };
+Node rootScene = sandbox ?? (Node)new HierarchyDemoScene { Name = "HierarchyDemo" };
+var tree = new SceneTree(renderer) { Root = rootScene, Clipboard = window.Clipboard };
 
 // The single input channel, demonstrated raw (every event logged, moves throttled),
 // then wired into the tree — the symmetric of rendering.
@@ -68,8 +74,10 @@ window.OnInput += tree.RouteInput;
 Console.WriteLine($"OS       : {OS.Current.Name}");
 Console.WriteLine($"Windowing: {windowBackend.Name}");
 Console.WriteLine($"Graphics : {graphicsBackend.Name}");
-Console.WriteLine("Running. Triangle disappears after 5 s; arrows move the blue panel (Shift = faster);");
-Console.WriteLine("hover/click the column tiles; type, select and copy in the fields. Close the window to exit.");
+Console.WriteLine(sandbox is not null
+    ? "Running (sandbox). Triangle disappears after 5 s; arrows move the blue panel (Shift = faster); "
+      + "hover/click the column tiles; type, select and copy in the fields. Close the window to exit."
+    : "Running (hierarchy+inspector+viewport). Click a row to select — inspector shows live properties; the viewport renders the scene. Close the window to exit.");
 
 var clock    = System.Diagnostics.Stopwatch.StartNew();
 var fpsClock = System.Diagnostics.Stopwatch.StartNew();
@@ -123,12 +131,15 @@ void LogInput(InputEvent inputEvent)
 void Frame()
 {
     var t = (float)clock.Elapsed.TotalSeconds;
-    scene.BreathingSize.Value = new Vector2(150f, 60f + 40f * MathF.Sin(t * 3f));
+    if (sandbox is not null)
+    {
+        sandbox.BreathingSize.Value = new Vector2(150f, 60f + 40f * MathF.Sin(t * 3f));
 
-    // Typewriter: the label's text grows then resets — it re-measures and the
-    // marker tile beside it slides (content sizing through the reactive layout).
-    const string phrase = "Humble Engine — éàç 0123";
-    scene.LabelText.Value = phrase[..(1 + (int)(t * 6f) % phrase.Length)];
+        // Typewriter: the label's text grows then resets — it re-measures and the
+        // marker tile beside it slides (content sizing through the reactive layout).
+        const string phrase = "Humble Engine — éàç 0123";
+        sandbox.LabelText.Value = phrase[..(1 + (int)(t * 6f) % phrase.Length)];
+    }
 
     if (renderer.BeginFrame())
     {
@@ -137,7 +148,7 @@ void Frame()
         renderer.Present();
     }
 
-    if (t >= 5f)
-        scene.DisposeTriangle(); // no-op once the triangle is gone
+    if (sandbox is not null && t >= 5f)
+        sandbox.DisposeTriangle(); // no-op once the triangle is gone
     tree.FlushDisposeQueue();
 }

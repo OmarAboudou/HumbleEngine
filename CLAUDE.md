@@ -8,7 +8,7 @@ HumbleEngine is a C# game engine built from scratch with the goal of understandi
 
 - Language: C# / .NET 10.0
 - IDE: Rider (`.idea/` present)
-- Current phase : **aucune en cours — prochaine à choisir.** Dernière terminée : **les signals** (`docs/roadmaps/12_signals.md`) — `Reactive<T>`→`Property<T>` (rôle vs mécanisme), `AsReadOnly` (lecture seule garantie par le type), auto-tracking `Effect`/`Computed` (les lectures listent leurs dépendances), intégration nœud `CreateEffect`/`CreateComputed`. Suivi noté : les collections réactives (rebrancher le `LinearContainer`). Candidates suite : l'éditeur (dogfooding), la 2D. **Différé** : le découplage pompe/rendu (`docs/roadmaps/11_boucle.md`, attend l'éditeur / vrai multi-fenêtre ; Sandbox réduit à une fenêtre). Avant les signals : **le texte** (`docs/roadmaps/10_texte.md`, 6 blocs).
+- Current phase : **l'éditeur — dogfooding** (`docs/roadmaps/13_editeur.md`). Cadrage : mono-fenêtre à panneaux dockés, MVP éditeur de scène construit par le bas (collections réactives → hiérarchie → inspecteur → viewport). **Bloc 1 terminé** : collections réactives — `ObservableList`/`NodeList` deviennent des sources auto-trackées (lectures `Count`/indexeur/énumération → `Track`, mutations → invalidation), via la primitive publique `SourceObservers` composée aussi par `Property`/`Computed` ; `LinearContainer` rebranché en un `CreateEffect` (câblage manuel supprimé). **Bloc 2 terminé** (panneau hiérarchie + sélection ; démo `--demo hierarchy` validée) : 2a (doctrine « fermé à l'écriture, ouvert à la lecture », `Node.Children` en `public ReadOnlyNodeList` observable), 2b (`EditorState.Selection`), 2c (`HierarchyView`/`HierarchyRow`, mirroir live récursif via `BindItemsFrom`), 2d (clic → sélection + surbrillance ; flag `UINode.Hittable`), 2e (démo Sandbox). **Blocs 1, 2, 3 et 4 terminés** : collections réactives, hiérarchie/sélection, inspecteur (`IObservableValue`, `NodeInspector`, `InspectorRow`/`InspectorView`), viewport (`ViewportNode` — `NodeSlot<Node>` + `Background` + rendu naturel par traversée d'arbre). Démo `--demo hierarchy` : 3 panneaux (hiérarchie + inspecteur + viewport, 1100×700). **Roadmap 13 MVP accompli.** Prochain : à décider (sizing-par-contenu `LinearContainer` noté, `WindowNode` complet noté). Dernière terminée : **les signals** (`docs/roadmaps/12_signals.md`). **Différé** : découplage pompe/rendu (`docs/roadmaps/11_boucle.md`).
 
 ## Build & run commands
 
@@ -45,18 +45,18 @@ HumbleEngine.HAL.Vulkan/     — Backend graphique Vulkan — instance (validati
 HumbleEngine.HAL.OpenGL/     — Backend graphique OpenGL — GLX context, BeginFrame/EndFrame/Present
 HumbleEngine.HAL.Linux/      — Assembly de plateforme Linux (agrège X11, Wayland, Vulkan, OpenGL)
 HumbleEngine.Mathematics/    — Types mathématiques (Vector2, Rect, …) — autonome, aucune dépendance
-HumbleEngine.Reactive/       — Runtime de réactivité (Property&lt;T&gt; + AsReadOnly, ObservableList&lt;T&gt;, bindings, auto-tracking : Effect/Computed) — autonome, aucune dépendance
-HumbleEngine.SceneGraph/     — Node (fermé par défaut), VisualNode (OnDraw), UINode/Panel/Column/Row (pixels, layout réactif), SelectableText (sélection/copie partagées) → Label (se mesure → sizing par contenu, sélectionnable) et TextField (champ éditable : caret, édition, couper/coller, two-way binding), SceneTree (hooks de cycle de vie, QueueDispose, Render, DefaultFontAtlas + Clipboard injectés), Scene, NodeSlot/NodeList observables, BindItemsFrom
+HumbleEngine.Reactive/       — Runtime de réactivité (Property<T> + AsReadOnly, ObservableList&lt;T&gt;, bindings, auto-tracking : Effect/Computed, sources composables : SourceObservers — collections auto-trackées par leur structure ; Reactive.Untrack : lire sans s'abonner) — autonome, aucune dépendance
+HumbleEngine.SceneGraph/     — Node (fermé à l'écriture, ouvert à la lecture : Children = vue publique observable lecture seule ReadOnlyNodeList → arbre introspectable), VisualNode (OnDraw), UINode/Panel/Column/Row (pixels, layout réactif ; `Hittable` = transparence au hit-test, mouse_filter IGNORE de Godot), SelectableText (sélection/copie partagées) → Label (se mesure → sizing par contenu, sélectionnable) et TextField (champ éditable : caret, édition, couper/coller, two-way binding), SceneTree (hooks de cycle de vie, QueueDispose, Render, DefaultFontAtlas + Clipboard injectés), Scene, NodeSlot/NodeList observables, BindItemsFrom
 HumbleEngine.Text/           — Rendu de texte — FreeType en P/Invoke (FreeTypeNative), Font (face mémoire, rastérisation, métriques), GlyphAtlas (pré-cuit, R8, shelf-packing), Glyph, TextLayout (mise en forme une ligne). Police DejaVu Sans embarquée. Dépend de HAL + Mathematics
-HumbleEngine.Sandbox/        — Projet exécutable de test — démo mono-fenêtre (Wayland + Vulkan) : un trio, triangle/panneaux/colonne/texte/champs éditables, `dotnet run` sans argument. (Le multi-fenêtre attend le découplage pompe/rendu, roadmap 11 différée.)
+HumbleEngine.Editor/         — L'éditeur (dogfooding), roadmap 13 en cours — panneau hiérarchie, sélection, inspecteur, viewport (en construction). Dépend de SceneGraph + Reactive + Mathematics
+HumbleEngine.Sandbox/        — Projet exécutable de test — démo mono-fenêtre (Wayland + Vulkan) : un trio, triangle/panneaux/colonne/texte/champs éditables, et l'hôte de la démo de l'éditeur (façon « démo ImGui »), `dotnet run` sans argument. (Le multi-fenêtre attend le découplage pompe/rendu, roadmap 11 différée.)
 HumbleEngine.Tests/          — Tests unitaires — FakeOS, aucune dépendance à un display
 HumbleEngine.Tests.Linux/    — Tests d'intégration — X11, GLX, Wayland, Vulkan, cycle frame complet
 docs/
-  roadmap_general.md              — Progression d'apprentissage par phase
   roadmaps/01_hal_implementation.md   — Vue d'ensemble HAL (statuts projets)
   roadmaps/02_extraction_x11_wayland.md — Historique : extraction X11/Wayland ✅
   roadmaps/03_vulkan_implementation.md  — Historique : implémentation Vulkan en 3 blocs ✅
-  revisions/phase{1-5}_fiche_revision.md — Notes d'apprentissage (ne pas modifier)
+  artefacts/                          — Artefacts générés par Claude.ai, historique figé (ne pas maintenir ni relire) : roadmap_general.md (progression par phase), phase{1-5}_fiche_revision.md (notes d'apprentissage)
 ```
 
 ## Dépendances entre projets
@@ -74,6 +74,7 @@ Mathematics          → (aucune)
 Reactive             → (aucune)
 SceneGraph           → HAL + Mathematics + Reactive + Text
 Text                 → HAL + Mathematics
+Editor               → SceneGraph + Reactive + Mathematics
 ```
 
 L'assembly de plateforme (`HAL.Linux`, `HAL.Windows`, `HAL.macOS`) est le seul à connaître tous les backends. L'application ne référence que `HAL` + l'assembly de plateforme cible, et enregistre explicitement l'OS via `OS.Register(new LinuxOS())` au démarrage.

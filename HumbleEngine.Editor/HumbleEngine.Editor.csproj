@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>HumbleEngine</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\HumbleEngine.SceneGraph\HumbleEngine.SceneGraph.csproj" />
+        <ProjectReference Include="..\HumbleEngine.Reactive\HumbleEngine.Reactive.csproj" />
+        <ProjectReference Include="..\HumbleEngine.Mathematics\HumbleEngine.Mathematics.csproj" />
+    </ItemGroup>
+
+</Project>

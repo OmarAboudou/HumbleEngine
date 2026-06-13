@@ -28,6 +28,7 @@
     <ProjectReference Include="..\HumbleEngine.HAL.OpenGL\HumbleEngine.HAL.OpenGL.csproj" />
     <ProjectReference Include="..\HumbleEngine.HAL.Wayland\HumbleEngine.HAL.Wayland.csproj" />
     <ProjectReference Include="..\HumbleEngine.Reactive\HumbleEngine.Reactive.csproj" />
+    <ProjectReference Include="..\HumbleEngine.Editor\HumbleEngine.Editor.csproj" />
   </ItemGroup>
 
 </Project>
