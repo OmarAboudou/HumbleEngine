@@ -42,6 +42,7 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
     private static readonly IntPtr BufferIface     = WaylandNative.GetBuiltinInterface("wl_buffer_interface");
     private static readonly IntPtr SeatIface       = WaylandNative.GetBuiltinInterface("wl_seat_interface");
     private static readonly IntPtr PointerIface    = WaylandNative.GetBuiltinInterface("wl_pointer_interface");
+    private static readonly IntPtr KeyboardIface   = WaylandNative.GetBuiltinInterface("wl_keyboard_interface");
 
     // --- Input (wl_seat, bound at version 1: five pointer events, no frame batching) ---
     /// <summary>One pointing source per window — the Wayland seat aggregates physical devices.</summary>
@@ -52,6 +53,17 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
     private bool   _pointerInside;
     private double _pointerX;
     private double _pointerY;
+
+    // --- Keyboard (wl_keyboard v1 + xkbcommon: the compositor sends scancodes
+    // --- and a keymap fd; keysyms, UTF-8 and modifiers are the client's job) ---
+    /// <summary>One keying source per window — the seat merges physical keyboards.</summary>
+    private readonly Keyboard _keyboardDevice = new();
+    private readonly byte[]   _keyTextBuffer  = new byte[32];
+    private IntPtr _keyboard;
+    private bool   _keyboardInside;
+    private IntPtr _xkbContext;
+    private IntPtr _xkbKeymap;
+    private IntPtr _xkbState;
 
     // --- Decoration path selector ---
     private readonly bool _useLibdecor;
@@ -83,6 +95,11 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
     private readonly WlPointerMotion        _onPointerMotion;
     private readonly WlPointerButton        _onPointerButton;
     private readonly WlPointerAxis          _onPointerAxis;
+    private readonly WlKeyboardKeymap       _onKeyboardKeymap;
+    private readonly WlKeyboardEnter        _onKeyboardEnter;
+    private readonly WlKeyboardLeave        _onKeyboardLeave;
+    private readonly WlKeyboardKey          _onKeyboardKey;
+    private readonly WlKeyboardModifiers    _onKeyboardModifiers;
 
     private GCHandle _registryListenerHandle;
     private GCHandle _wmBaseListenerHandle;
@@ -90,6 +107,7 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
     private GCHandle _toplevelListenerHandle;
     private GCHandle _seatListenerHandle;
     private GCHandle _pointerListenerHandle;
+    private GCHandle _keyboardListenerHandle;
 
     // Pending configure state (used by both paths)
     private uint _pendingSerial;
@@ -151,6 +169,11 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
         _onPointerMotion     = OnPointerMotion;
         _onPointerButton     = OnPointerButton;
         _onPointerAxis       = OnPointerAxis;
+        _onKeyboardKeymap    = OnKeyboardKeymap;
+        _onKeyboardEnter     = OnKeyboardEnter;
+        _onKeyboardLeave     = OnKeyboardLeave;
+        _onKeyboardKey       = OnKeyboardKey;
+        _onKeyboardModifiers = OnKeyboardModifiers;
 
         // 1. Bind wl_registry and discover globals.
         _registry = WaylandNative.MarshalNew(display, Op.DisplayGetRegistry, RegistryIface, IntPtr.Zero);
@@ -497,21 +520,35 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void WlPointerAxis(IntPtr data, IntPtr pointer, uint time, uint axis, int value);
 
-    /// <summary>Acquires the wl_pointer once the seat declares the capability.</summary>
+    /// <summary>Acquires wl_pointer and wl_keyboard once the seat declares the capabilities.</summary>
     private void OnSeatCapabilities(IntPtr data, IntPtr seat, uint capabilities)
     {
-        const uint pointerCapability = 1; // WL_SEAT_CAPABILITY_POINTER
-        if ((capabilities & pointerCapability) == 0 || _pointer != IntPtr.Zero)
-            return;
+        const uint pointerCapability  = 1; // WL_SEAT_CAPABILITY_POINTER
+        const uint keyboardCapability = 2; // WL_SEAT_CAPABILITY_KEYBOARD
 
-        _pointer = WaylandNative.MarshalNew(_seat, Op.SeatGetPointer, PointerIface, IntPtr.Zero);
-        AddListener(_pointer, [
-            Marshal.GetFunctionPointerForDelegate(_onPointerEnter),
-            Marshal.GetFunctionPointerForDelegate(_onPointerLeave),
-            Marshal.GetFunctionPointerForDelegate(_onPointerMotion),
-            Marshal.GetFunctionPointerForDelegate(_onPointerButton),
-            Marshal.GetFunctionPointerForDelegate(_onPointerAxis),
-        ], out _pointerListenerHandle);
+        if ((capabilities & pointerCapability) != 0 && _pointer == IntPtr.Zero)
+        {
+            _pointer = WaylandNative.MarshalNew(_seat, Op.SeatGetPointer, PointerIface, IntPtr.Zero);
+            AddListener(_pointer, [
+                Marshal.GetFunctionPointerForDelegate(_onPointerEnter),
+                Marshal.GetFunctionPointerForDelegate(_onPointerLeave),
+                Marshal.GetFunctionPointerForDelegate(_onPointerMotion),
+                Marshal.GetFunctionPointerForDelegate(_onPointerButton),
+                Marshal.GetFunctionPointerForDelegate(_onPointerAxis),
+            ], out _pointerListenerHandle);
+        }
+
+        if ((capabilities & keyboardCapability) != 0 && _keyboard == IntPtr.Zero)
+        {
+            _keyboard = WaylandNative.MarshalNew(_seat, Op.SeatGetKeyboard, KeyboardIface, IntPtr.Zero);
+            AddListener(_keyboard, [
+                Marshal.GetFunctionPointerForDelegate(_onKeyboardKeymap),
+                Marshal.GetFunctionPointerForDelegate(_onKeyboardEnter),
+                Marshal.GetFunctionPointerForDelegate(_onKeyboardLeave),
+                Marshal.GetFunctionPointerForDelegate(_onKeyboardKey),
+                Marshal.GetFunctionPointerForDelegate(_onKeyboardModifiers),
+            ], out _keyboardListenerHandle);
+        }
     }
 
     private void OnSeatName(IntPtr data, IntPtr seat, IntPtr name)
@@ -586,6 +623,130 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
     private static double WlFixedToDouble(int value) => value / 256.0;
 
     private Vector2 PointerPosition() => new((float)_pointerX, (float)_pointerY);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void WlKeyboardKeymap(IntPtr data, IntPtr keyboard, uint format, int fd, uint size);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void WlKeyboardEnter(IntPtr data, IntPtr keyboard, uint serial, IntPtr surface, IntPtr keys);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void WlKeyboardLeave(IntPtr data, IntPtr keyboard, uint serial, IntPtr surface);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void WlKeyboardKey(IntPtr data, IntPtr keyboard, uint serial, uint time, uint key, uint state);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void WlKeyboardModifiers(IntPtr data, IntPtr keyboard, uint serial,
+        uint depressedMods, uint latchedMods, uint lockedMods, uint group);
+
+    /// <summary>
+    /// Receives the compositor's keymap: mmap the fd, compile it with
+    /// xkbcommon, build the state that will interpret every scancode.
+    /// </summary>
+    private void OnKeyboardKeymap(IntPtr data, IntPtr keyboard, uint format, int fd, uint size)
+    {
+        try
+        {
+            if (format != XkbNative.KeymapFormatTextV1)
+                return;
+
+            var mapped = WaylandNative.mmap(IntPtr.Zero, new IntPtr(size),
+                WaylandNative.PROT_READ, WaylandNative.MAP_PRIVATE, fd, 0);
+            if (mapped == new IntPtr(-1))
+                return;
+
+            try
+            {
+                DestroyXkb();
+                _xkbContext = XkbNative.xkb_context_new(0);
+                _xkbKeymap  = XkbNative.xkb_keymap_new_from_string(
+                    _xkbContext, mapped, XkbNative.KeymapFormatTextV1, 0);
+                if (_xkbKeymap != IntPtr.Zero)
+                    _xkbState = XkbNative.xkb_state_new(_xkbKeymap);
+            }
+            finally
+            {
+                WaylandNative.munmap(mapped, new IntPtr(size));
+            }
+        }
+        finally
+        {
+            WaylandNative.close(fd);
+        }
+    }
+
+    private void OnKeyboardEnter(IntPtr data, IntPtr keyboard, uint serial, IntPtr surface, IntPtr keys)
+    {
+        if (surface == _surface)
+            _keyboardInside = true;
+    }
+
+    private void OnKeyboardLeave(IntPtr data, IntPtr keyboard, uint serial, IntPtr surface)
+    {
+        if (surface == _surface)
+            _keyboardInside = false;
+    }
+
+    /// <summary>
+    /// A scancode arrived: xkbcommon turns it (+8, the historical X offset)
+    /// into a keysym for the logical-key channel and UTF-8 for the text
+    /// channel. Wayland does not repeat keys — client-side repeat is deferred
+    /// to its client, the text field.
+    /// </summary>
+    private void OnKeyboardKey(IntPtr data, IntPtr keyboard, uint serial, uint time, uint key, uint state)
+    {
+        if (!_keyboardInside || _xkbState == IntPtr.Zero)
+            return;
+
+        var keycode   = key + 8;
+        var keysym    = XkbNative.xkb_state_key_get_one_sym(_xkbState, keycode);
+        var logical   = KeysymTranslation.ToKey(keysym);
+        var modifiers = ReadModifiers();
+        var pressed   = state == 1;
+
+        RaiseInput(pressed
+            ? new KeyboardKeyPressed(_keyboardDevice, logical, modifiers)
+            : new KeyboardKeyReleased(_keyboardDevice, logical, modifiers));
+
+        if (!pressed)
+            return;
+        var count = XkbNative.xkb_state_key_get_utf8(_xkbState, keycode, _keyTextBuffer, (nuint)_keyTextBuffer.Length);
+        if (count <= 0)
+            return;
+        var text = System.Text.Encoding.UTF8.GetString(_keyTextBuffer, 0, count);
+        if (text.Length > 0 && !char.IsControl(text[0]))
+            RaiseInput(new KeyboardTextInput(_keyboardDevice, text));
+    }
+
+    private void OnKeyboardModifiers(IntPtr data, IntPtr keyboard, uint serial,
+        uint depressedMods, uint latchedMods, uint lockedMods, uint group)
+    {
+        if (_xkbState != IntPtr.Zero)
+            XkbNative.xkb_state_update_mask(_xkbState, depressedMods, latchedMods, lockedMods, 0, 0, group);
+    }
+
+    /// <summary>Effective modifiers read back from the xkb state, by their XKB names.</summary>
+    private KeyModifiers ReadModifiers()
+    {
+        var modifiers = KeyModifiers.None;
+        if (IsModifierActive("Shift"))   modifiers |= KeyModifiers.Shift;
+        if (IsModifierActive("Control")) modifiers |= KeyModifiers.Ctrl;
+        if (IsModifierActive("Mod1"))    modifiers |= KeyModifiers.Alt;
+        if (IsModifierActive("Mod4"))    modifiers |= KeyModifiers.Super;
+        return modifiers;
+    }
+
+    private bool IsModifierActive(string name) =>
+        XkbNative.xkb_state_mod_name_is_active(_xkbState, name, XkbNative.StateModsEffective) == 1;
+
+    /// <summary>Releases the xkbcommon objects, newest first.</summary>
+    private void DestroyXkb()
+    {
+        if (_xkbState   != IntPtr.Zero) { XkbNative.xkb_state_unref(_xkbState);     _xkbState   = IntPtr.Zero; }
+        if (_xkbKeymap  != IntPtr.Zero) { XkbNative.xkb_keymap_unref(_xkbKeymap);   _xkbKeymap  = IntPtr.Zero; }
+        if (_xkbContext != IntPtr.Zero) { XkbNative.xkb_context_unref(_xkbContext); _xkbContext = IntPtr.Zero; }
+    }
 
     // =========================================================================
     // Raw XDG Shell callbacks
@@ -725,7 +886,9 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
         }
 
         DestroyShmBuffer();
-        // Seat and pointer were bound at version 1 (no destructor request): plain proxy destruction.
+        DestroyXkb();
+        // Seat, pointer and keyboard were bound at version 1 (no destructor request): plain proxy destruction.
+        if (_keyboard   != IntPtr.Zero) { WaylandNative.wl_proxy_destroy(_keyboard);              _keyboard   = IntPtr.Zero; }
         if (_pointer    != IntPtr.Zero) { WaylandNative.wl_proxy_destroy(_pointer);               _pointer    = IntPtr.Zero; }
         if (_seat       != IntPtr.Zero) { WaylandNative.wl_proxy_destroy(_seat);                  _seat       = IntPtr.Zero; }
         if (_surface    != IntPtr.Zero) { WaylandNative.SendDestroy(_surface, Op.SurfaceDestroy); _surface    = IntPtr.Zero; }
@@ -738,6 +901,7 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
         _registryListenerHandle.Free();
         if (_seatListenerHandle.IsAllocated)                _seatListenerHandle.Free();
         if (_pointerListenerHandle.IsAllocated)             _pointerListenerHandle.Free();
+        if (_keyboardListenerHandle.IsAllocated)            _keyboardListenerHandle.Free();
         if (_wmBaseListenerHandle.IsAllocated)              _wmBaseListenerHandle.Free();
         if (_xdgSurfaceListenerHandle.IsAllocated)          _xdgSurfaceListenerHandle.Free();
         if (_toplevelListenerHandle.IsAllocated)            _toplevelListenerHandle.Free();

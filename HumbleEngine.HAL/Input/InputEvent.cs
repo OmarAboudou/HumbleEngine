@@ -68,6 +68,28 @@ public enum PointerButton
     Right  = 2,
 }
 
+// --- Keyboard: two conceptual channels — logical keys (shortcuts, navigation)
+// --- and composed text (what a text field consumes). Keyboard events are not
+// --- positional: the router sends them to the focused node, never hit-tests.
+
+/// <summary>Common shape of the logical-key events.</summary>
+public abstract record KeyEvent(Key Key, KeyModifiers Modifiers) : InputEvent;
+
+/// <summary>
+/// A logical key went down. X11 auto-repeats this while held; Wayland does
+/// not (client-side repeat is deferred to its client, the text field).
+/// </summary>
+public record KeyPressed(Key Key, KeyModifiers Modifiers) : KeyEvent(Key, Modifiers);
+
+/// <summary>A logical key went up.</summary>
+public record KeyReleased(Key Key, KeyModifiers Modifiers) : KeyEvent(Key, Modifiers);
+
+/// <summary>
+/// Composed text ready for insertion — layout, shift and dead keys already
+/// applied. The text-field channel; never derive it from <see cref="KeyEvent"/>.
+/// </summary>
+public record TextInput(string Text) : InputEvent;
+
 // --- Mouse-specific events: the neutral event plus its producing device. ---
 
 /// <inheritdoc cref="PointerMoved"/>
@@ -93,3 +115,17 @@ public sealed record MouseEntered(Mouse Device, Vector2 Position)
 /// <inheritdoc cref="PointerExited"/>
 public sealed record MouseExited(Mouse Device)
     : PointerExited, IDeviceEvent<Mouse>;
+
+// --- Keyboard-specific events, same pattern. ---
+
+/// <inheritdoc cref="KeyPressed"/>
+public sealed record KeyboardKeyPressed(Keyboard Device, Key Key, KeyModifiers Modifiers)
+    : KeyPressed(Key, Modifiers), IDeviceEvent<Keyboard>;
+
+/// <inheritdoc cref="KeyReleased"/>
+public sealed record KeyboardKeyReleased(Keyboard Device, Key Key, KeyModifiers Modifiers)
+    : KeyReleased(Key, Modifiers), IDeviceEvent<Keyboard>;
+
+/// <inheritdoc cref="TextInput"/>
+public sealed record KeyboardTextInput(Keyboard Device, string Text)
+    : TextInput(Text), IDeviceEvent<Keyboard>;

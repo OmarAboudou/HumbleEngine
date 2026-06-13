@@ -110,6 +110,20 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
   hover fantôme au `RefreshHover`. Le routeur reste aveugle aux périphériques.
   Note voisine : à l'ère des doigts-sources, retirer l'état d'un pointeur
   transitoire à son `Exited` (sinon le dictionnaire par source fuit lentement).
+- **Input direct à l'OS — complément, jamais remplacement (question d'Omar,
+  2026-06-13)** : lire `/dev/input` exige root/groupe `input` (un lecteur de
+  tous les claviers = un keylogger — le modèle de sécurité Wayland existe
+  contre ça), et le routage refait à l'aveugle ce que seul le compositeur
+  sait (focus, stacking, position du curseur accéléré — evdev n'a que du
+  relatif). L'input fenêtré vient du fenêtrage ; le canal OS direct est
+  l'opt-in du non-fenêtré : manettes, raw input des jeux (ère 2D).
+- **Bug connu, différé avec diagnostic (vu par Omar)** : fenêtre Wayland
+  réduite = compositeur cesse de composer = la WSI Vulkan bloque dans
+  acquire/present = la boucle séquentielle gèle l'autre fenêtre. Correction
+  nommée : remonter l'état `suspended` (configure xdg / libdecor) en
+  `IWindow.IsSuspended`, et la boucle saute le *rendu* du trio suspendu en
+  continuant de *pomper* ses événements. Croisera la refonte de pompe de
+  l'ère WindowNode.
 - **Multi-périphérique (discussion 2026-06-13)** : pas de dialectes parallèles
   ni de double émission — le spécifique est un champ, un record de plus, ou un
   événement *sémantique* d'étage supérieur (le « click » = press+release
@@ -208,9 +222,20 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
   gagne/perd le hover. Démo : tuiles hover + clic = `QueueDispose`, la
   colonne se resserre. Validé interactivement, 260 tests verts
 
-- [ ] **Bloc 5 — Le clavier** — enum `Key`/`KeyModifiers`, X11
-  (`XLookupString`), Wayland (xkbcommon), focus, `TextInput`, répétition
-  client-side ; démo : déplacer le panneau aux flèches
+- [x] **Bloc 5 — Le clavier** ✅ — `Key`/`KeyModifiers` + records en deux
+  canaux (`KeyEvent` → `KeyPressed`/`KeyReleased` ; `TextInput` jamais dérivé
+  des touches), jeton `Keyboard` + sous-records, **`KeysymTranslation`
+  partagée** (X11 et xkbcommon = même dialecte keysym, héritage XKB). X11 :
+  `XLookupString` (texte Latin-1 — l'UTF-8 complet exige XIM, différé avec
+  l'IME), auto-repeat accepté. Wayland : **`XkbNative`** (P/Invoke
+  libxkbcommon — le compositeur n'envoie que scancodes + fd de keymap,
+  l'interprétation est au client), `wl_keyboard` v1 (keymap mmap→compile→état,
+  enter/leave filtrés par surface, scancode+8, modificateurs par
+  `update_mask`/noms XKB), pas de répétition (différée : champ texte).
+  SceneGraph : **focus** (`GrabFocus`, `tree.FocusedNode`, famille clavier →
+  focusé puis bubble, jamais de hit-test, un focus actif). Démo :
+  `MovablePanel` aux flèches (Shift = ×4), accents composés vérifiés.
+  Validé interactivement sur les deux backends
 
 - [ ] **Bloc 6 — Tests** — unitaires (routage sur arbre + FakeRenderer, sans
   display) + intégration Linux, fin de roadmap

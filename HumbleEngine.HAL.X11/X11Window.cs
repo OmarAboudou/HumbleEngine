@@ -11,6 +11,10 @@ internal sealed class X11Window : Window, INativeWindowHandle
     /// <summary>One pointing source per window — X11 core events erase physical provenance.</summary>
     private readonly Mouse _mouse = new();
 
+    /// <summary>One keying source per window — core events merge physical keyboards.</summary>
+    private readonly Keyboard _keyboard = new();
+    private readonly byte[]   _keyTextBuffer = new byte[32];
+
     internal X11Window(IWindowBackend backend, IntPtr display, WindowDescription desc)
         : base(backend)
     {
@@ -103,7 +107,48 @@ internal sealed class X11Window : Window, INativeWindowHandle
             case XEventType.LeaveNotify:
                 RaiseInput(new MouseExited(_mouse));
                 break;
+
+            case XEventType.KeyPress:
+            case XEventType.KeyRelease:
+                TranslateKey(ref ev);
+                break;
         }
+    }
+
+    /// <summary>
+    /// Translates a key event into the two channels: the logical key
+    /// (keysym → <see cref="Key"/>) always, and on press the composed text
+    /// when printable. X11 auto-repeats held keys — accepted as repeated
+    /// presses.
+    /// </summary>
+    private void TranslateKey(ref XEvent ev)
+    {
+        var pressed = ev.type == XEventType.KeyPress;
+        var count = X11Native.XLookupString(
+            ref ev.xkey, _keyTextBuffer, _keyTextBuffer.Length, out var keysym, IntPtr.Zero);
+
+        var key = KeysymTranslation.ToKey((uint)keysym);
+        var modifiers = TranslateModifiers(ev.xkey.state);
+        RaiseInput(pressed
+            ? new KeyboardKeyPressed(_keyboard, key, modifiers)
+            : new KeyboardKeyReleased(_keyboard, key, modifiers));
+
+        if (!pressed || count <= 0)
+            return;
+        var text = System.Text.Encoding.Latin1.GetString(_keyTextBuffer, 0, count);
+        if (text.Length > 0 && !char.IsControl(text[0]))
+            RaiseInput(new KeyboardTextInput(_keyboard, text));
+    }
+
+    /// <summary>Core X modifier mask → HAL flags (Shift, Control, Mod1 = Alt, Mod4 = Super).</summary>
+    private static KeyModifiers TranslateModifiers(uint state)
+    {
+        var modifiers = KeyModifiers.None;
+        if ((state & 0x01) != 0) modifiers |= KeyModifiers.Shift;
+        if ((state & 0x04) != 0) modifiers |= KeyModifiers.Ctrl;
+        if ((state & 0x08) != 0) modifiers |= KeyModifiers.Alt;
+        if ((state & 0x40) != 0) modifiers |= KeyModifiers.Super;
+        return modifiers;
     }
 
     /// <summary>

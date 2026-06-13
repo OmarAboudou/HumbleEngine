@@ -64,4 +64,12 @@ public abstract class UINode : VisualNode
 
     /// <summary>Router entry point — same internal machinery as the lifecycle hooks.</summary>
     internal bool DispatchInput(InputEvent inputEvent) => OnInput(inputEvent);
+
+    /// <summary>
+    /// Takes the keyboard focus of this node's tree: key and text events route
+    /// here first, then bubble up. Granted by code on this étage —
+    /// click-to-focus arrives with focusable widgets (the text field).
+    /// No-op when detached.
+    /// </summary>
+    public void GrabFocus() => Tree?.SetFocus(this);
 }

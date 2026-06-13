@@ -188,7 +188,8 @@ internal static class Op
     internal const uint XdgToplevelDestroy  = 0;
     internal const uint XdgToplevelSetTitle = 2;
     // wl_seat
-    internal const uint SeatGetPointer = 0;
+    internal const uint SeatGetPointer  = 0;
+    internal const uint SeatGetKeyboard = 1;
     // zxdg_decoration_manager_v1
     internal const uint DecorationManagerGetToplevel = 1;
     // zxdg_toplevel_decoration_v1
@@ -285,7 +286,9 @@ internal static class WaylandNative
     [DllImport("libc", EntryPoint = "mmap", CallingConvention = CallingConvention.Cdecl)]
     internal static extern IntPtr mmap(IntPtr addr, IntPtr length, int prot, int flags, int fd, long offset);
     internal const int PROT_READ_WRITE = 3; // PROT_READ | PROT_WRITE
+    internal const int PROT_READ       = 1;
     internal const int MAP_SHARED      = 1;
+    internal const int MAP_PRIVATE     = 2;
 
     [DllImport("libc", EntryPoint = "munmap", CallingConvention = CallingConvention.Cdecl)]
     internal static extern int munmap(IntPtr addr, IntPtr length);

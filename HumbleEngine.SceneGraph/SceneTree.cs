@@ -138,6 +138,15 @@ public sealed class SceneTree : IDisposable
         IsDisposed = true;
     }
 
+    /// <summary>
+    /// Node holding the keyboard focus, or null — key and text events route to
+    /// it first, then bubble (see <see cref="UINode.GrabFocus"/>).
+    /// </summary>
+    public UINode? FocusedNode => _inputRouter.Focused;
+
+    /// <summary>Moves the keyboard focus (router state — dead nodes resolve to null).</summary>
+    internal void SetFocus(UINode? node) => _inputRouter.Focus(node);
+
     /// <summary>Registers a node for the next <see cref="FlushDisposeQueue"/>.</summary>
     internal void EnqueueDispose(Node node) => _disposeQueue.Add(node);
 

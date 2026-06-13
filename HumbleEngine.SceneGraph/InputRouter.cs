@@ -37,10 +37,30 @@ internal sealed class InputRouter
 
     private static readonly object DefaultSource = new();
     private readonly Dictionary<object, PointerState> _pointers = [];
+    private UINode? _focused;
+
+    /// <summary>
+    /// Node holding the keyboard focus — keyboard events are never hit-tested,
+    /// they go here and bubble up. Single active focus by design until a real
+    /// multi-seat case settles the UX questions; granted by code
+    /// (<see cref="UINode.GrabFocus"/>), click-to-focus arrives with focusable
+    /// widgets.
+    /// </summary>
+    public UINode? Focused => Alive(_focused);
+
+    /// <summary>Moves the keyboard focus.</summary>
+    public void Focus(UINode? node) => _focused = node;
 
     /// <summary>Routes one event into the tree below <paramref name="root"/>.</summary>
     public void Route(Node? root, InputEvent inputEvent)
     {
+        // Keyboard family: no hit-test — the focused node, then its ancestors.
+        if (inputEvent is KeyEvent or TextInput)
+        {
+            Bubble(Focused, inputEvent);
+            return;
+        }
+
         var state = StateFor(inputEvent);
 
         // The pointer left the surface: hover ends, capture survives (the

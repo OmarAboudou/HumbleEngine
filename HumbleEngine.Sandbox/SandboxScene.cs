@@ -10,14 +10,8 @@ namespace HumbleEngine.Sandbox;
 public sealed class SandboxScene : Scene
 {
     private TriangleNode? _triangle;
-    private readonly Panel _panel;
+    private readonly MovablePanel _panel;
     private readonly Panel _breathing;
-
-    /// <summary>
-    /// Panel position, exposed as the scene's typed contract — the Sandbox
-    /// animates it to show a reactive value driving the screen.
-    /// </summary>
-    public Reactive<Vector2> PanelPosition => _panel.Position;
 
     /// <summary>
     /// Size of the column's middle panel — the Sandbox animates its height to
@@ -34,7 +28,7 @@ public sealed class SandboxScene : Scene
         _triangle = new TriangleNode { Name = "Triangle" };
         Attach(_triangle);
 
-        _panel = new Panel { Name = "Panel" };
+        _panel = new MovablePanel { Name = "Panel" };
         _panel.Position.Value = new Vector2(250f, 150f);
         _panel.Size.Value     = new Vector2(300f, 200f);
         _panel.Color.Value    = new Vector4(0.2f, 0.5f, 0.9f, 0.7f);

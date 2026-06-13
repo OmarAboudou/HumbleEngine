@@ -42,6 +42,15 @@ internal static class X11Native
     [DllImport(Lib)] internal static extern int XChangeProperty(
         IntPtr display, ulong window, ulong property, ulong type,
         int format, int mode, byte[] data, int nelements);
+
+    /// <summary>
+    /// Translates a key event into its keysym and its Latin-1 text (layout and
+    /// shift applied). The Latin-1 limit is accepted for now — full UTF-8 text
+    /// needs an X input context (XIM), deferred with composition/IME.
+    /// </summary>
+    [DllImport(Lib)] internal static extern int XLookupString(
+        ref XKeyEvent keyEvent, byte[] buffer, int bufferSize,
+        out ulong keysym, IntPtr composeStatus);
 }
 
 /// <summary>
@@ -99,6 +108,19 @@ internal struct XEvent
     [FieldOffset(0)] public XButtonEvent        xbutton;
     [FieldOffset(0)] public XMotionEvent        xmotion;
     [FieldOffset(0)] public XCrossingEvent      xcrossing;
+    [FieldOffset(0)] public XKeyEvent           xkey;
+}
+
+/// <summary>XKeyEvent field offsets for 64-bit Linux.</summary>
+[StructLayout(LayoutKind.Explicit, Size = 96)]
+internal struct XKeyEvent
+{
+    [FieldOffset(0)]  public int   type;
+    [FieldOffset(56)] public ulong time;
+    [FieldOffset(64)] public int   x;
+    [FieldOffset(68)] public int   y;
+    [FieldOffset(80)] public uint  state;
+    [FieldOffset(84)] public uint  keycode;
 }
 
 /// <summary>XButtonEvent field offsets for 64-bit Linux. Buttons 4-7 are the scroll wheel.</summary>

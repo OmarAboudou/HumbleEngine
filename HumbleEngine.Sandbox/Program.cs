@@ -43,7 +43,8 @@ x11Window.OnInput     += x11Tree.RouteInput;
 Console.WriteLine($"OS       : {OS.Current.Name}");
 Console.WriteLine($"Windows  : {waylandBackend.Name} + {x11Backend.Name}");
 Console.WriteLine($"Graphics : {graphicsBackend.Name}");
-Console.WriteLine("Running. Triangles disappear after 5 s. Close either window to exit.");
+Console.WriteLine("Running. Triangles disappear after 5 s; arrows move the blue panel (Shift = faster);");
+Console.WriteLine("hover/click the column tiles. Close either window to exit.");
 
 var clock    = System.Diagnostics.Stopwatch.StartNew();
 var fpsClock = System.Diagnostics.Stopwatch.StartNew();
@@ -97,7 +98,6 @@ void LogInput(string source, InputEvent inputEvent)
 void DriveTrio(SandboxScene scene, SceneTree tree, IRenderer renderer, float phase)
 {
     var t = (float)clock.Elapsed.TotalSeconds;
-    scene.PanelPosition.Value = new Vector2(250f + 100f * MathF.Sin(t * phase * 2f), 150f);
     scene.BreathingSize.Value = new Vector2(150f, 60f + 40f * MathF.Sin(t * phase * 3f));
 
     renderer.BeginFrame();

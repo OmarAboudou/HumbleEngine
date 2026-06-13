@@ -25,3 +25,12 @@ public interface IDeviceEvent<out TDevice>
 public sealed class Mouse
 {
 }
+
+/// <summary>
+/// Identity token of a keying source — same best-effort granularity story as
+/// <see cref="Mouse"/>: one per window today (X11 core and the Wayland seat
+/// merge physical keyboards), finer when a platform exposes it.
+/// </summary>
+public sealed class Keyboard
+{
+}
