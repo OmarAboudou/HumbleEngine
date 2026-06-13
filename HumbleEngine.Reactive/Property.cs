@@ -13,11 +13,12 @@ namespace HumbleEngine;
 /// intermediate states, but the final value is always correct.
 /// </para>
 /// </summary>
-public sealed class Property<T> : IReadOnlyProperty<T>, IReactiveCell
+public sealed class Property<T> : IReadOnlyProperty<T>, IReactiveCell, IReactiveSource
 {
     private T _value;
     private IBinding? _binding;
     private bool _notifying;
+    private HashSet<Computation>? _observers;
 
     /// <summary>Creates a free cell holding the given initial value.</summary>
     public Property(T initialValue) => _value = initialValue;
@@ -38,7 +39,12 @@ public sealed class Property<T> : IReadOnlyProperty<T>, IReactiveCell
     /// <see cref="Unbind"/> first to take back manual control.</exception>
     public T Value
     {
-        get => _value;
+        get
+        {
+            // Reading inside a running Effect/Computed subscribes it; a plain read tracks nothing.
+            Tracking.Track(this);
+            return _value;
+        }
         set
         {
             if (_binding is { IsTwoWay: false })
@@ -142,12 +148,27 @@ public sealed class Property<T> : IReadOnlyProperty<T>, IReactiveCell
         try
         {
             Changed?.Invoke(value);
+            NotifyObservers();
         }
         finally
         {
             _notifying = false;
         }
     }
+
+    /// <summary>Re-runs the computations that read this cell. Copied first: a re-run re-subscribes.</summary>
+    private void NotifyObservers()
+    {
+        if (_observers is null || _observers.Count == 0)
+            return;
+        foreach (var observer in _observers.ToArray())
+            observer.Invalidate();
+    }
+
+    void IReactiveSource.AddObserver(Computation observer) =>
+        (_observers ??= new HashSet<Computation>(ReferenceEqualityComparer.Instance)).Add(observer);
+
+    void IReactiveSource.RemoveObserver(Computation observer) => _observers?.Remove(observer);
 
     /// <summary>Clears the binding slot without disposing — called by the binding itself.</summary>
     internal void ClearBinding() => _binding = null;

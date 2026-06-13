@@ -64,11 +64,14 @@ undo). Donc deux étages, **curseur d'Omar sur la profondeur** :
   renommés (`Property.cs`, `ObservableList.cs`, …) ; `IReactiveCell` (interne) et
   le projet `HumbleEngine.Reactive` gardés. ~17 fichiers clients à jour, **252
   tests verts, zéro changement de comportement**. *Fin de l'étage bas.*
-- [ ] **Bloc 3 — L'auto-tracking : contexte + `Effect`** — un contexte de calcul
-  courant (pile thread-locale) ; le getter `Property.Value` enregistre la cellule
-  lue comme dépendance du calcul en cours ; `Effect(action)` exécute en trackant,
-  se ré-exécute quand une dépendance change, nettoie ses anciennes deps à chaque
-  passe. Tests (compteur de ré-exécutions, deps dynamiques).
+- [x] **Bloc 3 — L'auto-tracking : contexte + `Effect`** ✅ — `Tracking` (contexte
+  courant thread-statique) + `IReactiveSource` + `Computation` (run en trackant,
+  re-track à chaque passe, `Invalidate` à la dépendance, garde `_running` contre
+  l'auto-récursion). `Property.Value` getter appelle `Track(this)` (no-op hors
+  effet) ; le setter invalide les observers après `Changed`. `Effect` public
+  (IDisposable, run immédiat). 7 tests : run unique, ré-exécution sur dépendance
+  lue, ignore les non-lues, **re-track dynamique** (drop des sources périmées),
+  dispose, pas de boucle sur auto-écriture. **259 unitaires verts.**
 - [ ] **Bloc 4 — `Computed<T>`** — cellule dérivée au-dessus du tracking : un
   `Effect` qui écrit une valeur cachée et est lui-même observable (source pour
   l'aval). Évaluation paresseuse vs avide, diamants, ré-entrance/cycles (on a déjà
