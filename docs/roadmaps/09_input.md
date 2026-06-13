@@ -237,7 +237,30 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
   `MovablePanel` aux flèches (Shift = ×4), accents composés vérifiés.
   Validé interactivement sur les deux backends
 
-- [ ] **Bloc 6 — Tests** — unitaires (routage sur arbre + FakeRenderer, sans
-  display) + intégration Linux, fin de roadmap
+- [x] **Bloc 6 — Tests** ✅ — `InputRouterTests` (sur arbre + `FakeRenderer`,
+  sans display) : hit-test reverse-painter (le plus haut gagne, bubbling aux
+  seuls ancêtres `UINode`, nœuds logiques transparents), bubbling booléen
+  s'arrêtant à la consommation, capture implicite (Moved/Released au nœud
+  pressé hors de son rect), hover synthétisé node-scoped sans bubbling,
+  `RefreshHover` suivant le monde sous un pointeur immobile, focus clavier
+  (famille clavier jamais hit-testée, focusé puis bubble), deux souris
+  fantômes à hover/capture indépendants (état par source via le jeton
+  covariant), nœuds morts cessant de recevoir focus et capture. **219 tests
+  unitaires verts.** Un correctif d'attente au passage (`TwoPhantomMice`) :
+  le log enregistre le type runtime, donc un `MouseMoved` bubblé se loggue
+  `MouseMoved` et non `PointerMoved` — c'est le pattern bloc 4 « un événement,
+  deux altitudes » ; seul le hover *synthétisé* par le routeur reste le neutre
+  `PointerEntered`/`Exited`.
+  - **Pas d'intégration input, décision assumée (validé 2026-06-13)** :
+    l'asymétrie est dure. **Wayland est non-instrumentable côté client** — le
+    compositeur a le monopole de l'input (le modèle de sécurité même cité plus
+    haut : injecter = keylogger), pas de synthèse sans compositeur headless
+    dédié. **X11 serait pilotable** (`XSendEvent` dans notre propre queue,
+    non-intrusif — `HandleEvent` ne filtre pas `send_event` ; ou `XTEST`,
+    intrusif car bouge le vrai curseur, fragile sous Xwayland) mais ne couvrirait
+    qu'un seul des deux backends. La traduction dialecte natif → vocabulaire HAL
+    reste donc **couverte par la validation interactive des blocs 3-5** (les deux
+    backends, sur la vraie machine), comme déjà gravé. Voie d'instrumentation X11
+    notée si le besoin se représente.
 
-*Tâche en cours*
+*Roadmap terminée.*
