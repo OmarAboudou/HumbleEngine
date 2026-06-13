@@ -181,6 +181,13 @@ public sealed class VulkanIntegrationTests
         new(new Vector2(-0.5f,  0.5f), new Vector3(0f, 0f, 1f)),
     ];
 
+    /// <summary>A 2×2 RGBA checkerboard (16 bytes) — the smallest real texture.</summary>
+    private static readonly byte[] Checker2x2 =
+    [
+        255, 255, 255, 255,   0,   0,   0, 255,
+          0,   0,   0, 255, 255, 255, 255, 255,
+    ];
+
     [Test]
     public void CreateMesh_ReturnsDisposableMesh()
     {
@@ -391,6 +398,77 @@ public sealed class VulkanIntegrationTests
     }
 
     [Test]
+    public void Renderer_CreatesAndDrawsTexture_InAFrame()
+    {
+        using var windowBackend   = new X11WindowBackend();
+        using var graphicsBackend = new VulkanGraphicsBackend();
+
+        windowBackend.Initialize();
+        using var window = windowBackend.CreateWindow(new WindowDescription("Test", 100, 100));
+
+        graphicsBackend.Initialize();
+        using var renderer = graphicsBackend.CreateRenderer(window);
+        using var texture = renderer.CreateTexture(Checker2x2, 2, 2, TextureFormat.Rgba8);
+
+        Assert.That(texture.Width, Is.EqualTo(2));
+        Assert.That(texture.Height, Is.EqualTo(2));
+
+        // Flat quad (default white set) → textured quad: the descriptor set switches.
+        for (int i = 0; i < 3; i++)
+        {
+            renderer.BeginFrame();
+            renderer.DrawQuad(new Rect(10f, 10f, 50f, 30f), new Vector4(1f, 0f, 0f, 1f));
+            renderer.DrawTexturedQuad(
+                new Rect(20f, 40f, 40f, 40f), texture, new Rect(0f, 0f, 1f, 1f), new Vector4(1f, 1f, 1f, 1f));
+            renderer.EndFrame();
+            renderer.Present();
+        }
+    }
+
+    [Test]
+    public void CreateTexture_R8_Succeeds()
+    {
+        using var windowBackend   = new X11WindowBackend();
+        using var graphicsBackend = new VulkanGraphicsBackend();
+
+        windowBackend.Initialize();
+        using var window = windowBackend.CreateWindow(new WindowDescription("Test", 100, 100));
+
+        graphicsBackend.Initialize();
+        using var renderer = graphicsBackend.CreateRenderer(window);
+
+        // The single-channel coverage format the glyph atlas will use (bloc 3).
+        using var texture = renderer.CreateTexture([0, 64, 128, 255], 2, 2, TextureFormat.R8);
+
+        Assert.That(texture.Width, Is.EqualTo(2));
+    }
+
+    [Test]
+    public void DrawTexturedQuad_WithForeignTexture_Throws()
+    {
+        using var windowBackend   = new X11WindowBackend();
+        using var graphicsBackend = new VulkanGraphicsBackend();
+
+        windowBackend.Initialize();
+        using var window = windowBackend.CreateWindow(new WindowDescription("Test", 100, 100));
+
+        graphicsBackend.Initialize();
+        using var renderer = graphicsBackend.CreateRenderer(window);
+
+        renderer.BeginFrame();
+        try
+        {
+            Assert.Throws<ArgumentException>(() => renderer.DrawTexturedQuad(
+                new Rect(0f, 0f, 10f, 10f), new ForeignTexture(), new Rect(0f, 0f, 1f, 1f), new Vector4(1f, 1f, 1f, 1f)));
+        }
+        finally
+        {
+            renderer.EndFrame();
+            renderer.Present();
+        }
+    }
+
+    [Test]
     public void Window_ReportsItsSize()
     {
         using var windowBackend = new X11WindowBackend();
@@ -406,6 +484,16 @@ public sealed class VulkanIntegrationTests
     /// <summary>An <see cref="IMesh"/> that no Vulkan renderer ever created.</summary>
     private sealed class ForeignMesh : IMesh
     {
+        public void Dispose()
+        {
+        }
+    }
+
+    /// <summary>An <see cref="ITexture"/> that no Vulkan renderer ever created.</summary>
+    private sealed class ForeignTexture : ITexture
+    {
+        public int Width => 1;
+        public int Height => 1;
         public void Dispose()
         {
         }

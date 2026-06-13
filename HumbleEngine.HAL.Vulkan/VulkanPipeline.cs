@@ -3,8 +3,8 @@ using System.Runtime.InteropServices;
 namespace HumbleEngine.Vulkan;
 
 /// <summary>
-/// Push-constant geography of the UI übershader — one 112-byte block (within
-/// the 128 guaranteed by the standard), two write cadences: the orthographic
+/// Push-constant geography of the UI übershader — one 128-byte block (the
+/// minimum the standard guarantees), two write cadences: the orthographic
 /// matrix once per frame, the quad parameters once per draw. Push constants
 /// persist across draws of a command buffer, so the matrix outlives every quad.
 /// </summary>
@@ -20,7 +20,7 @@ internal static class QuadPush
     internal const uint ParamsOffset = MatrixSize;
 
     /// <summary>Size of <see cref="QuadParams"/>.</summary>
-    internal const uint ParamsSize = 48;
+    internal const uint ParamsSize = 64;
 
     /// <summary>Whole block, declared as a single vertex+fragment range.</summary>
     internal const uint TotalSize = MatrixSize + ParamsSize;
@@ -28,18 +28,21 @@ internal static class QuadPush
 
 /// <summary>
 /// Per-draw half of the übershader push block, laid out exactly as the GLSL
-/// declaration (vec4 rect, vec4 color, int mode — tail padded to 16).
+/// declaration (vec4 rect, vec4 uvRect, vec4 color, int mode — tail padded to 16).
 /// </summary>
 [StructLayout(LayoutKind.Sequential)]
-internal readonly struct QuadParams(Vector4 rect, Vector4 color, int mode)
+internal readonly struct QuadParams(Vector4 rect, Vector4 uvRect, Vector4 color, int mode)
 {
     /// <summary>x, y, width, height — pixels, origin top-left.</summary>
     public readonly Vector4 Rect = rect;
 
-    /// <summary>RGBA colour, alpha blended.</summary>
+    /// <summary>u, v, uw, vh — the sampled sub-rectangle of the texture, 0..1 (flat: 0,0,1,1).</summary>
+    public readonly Vector4 UvRect = uvRect;
+
+    /// <summary>RGBA colour, alpha blended — the tint in textured/glyph modes.</summary>
     public readonly Vector4 Color = color;
 
-    /// <summary>Fragment-side interpretation — 0: flat colour (the only mode so far).</summary>
+    /// <summary>Fragment-side interpretation — 0: flat, 1: textured, 2: glyph.</summary>
     public readonly int Mode = mode;
 
     private readonly int _pad0, _pad1, _pad2;
@@ -81,17 +84,20 @@ internal static unsafe class VulkanPipeline
             device, colorFormat,
             "Shaders/triangle.vert.spv", "Shaders/triangle.frag.spv",
             &binding, 1, attributes, 2,
-            alphaBlend: false, null, 0);
+            alphaBlend: false, null, 0, descriptorSetLayout: 0);
     }
 
     /// <summary>
     /// Creates the quad pipeline (UI übershader): no vertex input at all (the
     /// unit quad is generated from <c>gl_VertexIndex</c>), classic alpha
-    /// blending, and a single vertex+fragment push-constant range covering the
-    /// whole <see cref="QuadPush"/> block.
+    /// blending, a single vertex+fragment push-constant range covering the whole
+    /// <see cref="QuadPush"/> block, and the descriptor set layout the fragment
+    /// shader samples through (set 0, binding 0 — one combined image sampler,
+    /// always bound, a default white texture for flat draws).
     /// </summary>
     /// <exception cref="InvalidOperationException">A Vulkan object could not be created.</exception>
-    internal static (ulong Pipeline, ulong Layout) CreateQuadPipeline(IntPtr device, VkFormat colorFormat)
+    internal static (ulong Pipeline, ulong Layout) CreateQuadPipeline(
+        IntPtr device, VkFormat colorFormat, ulong descriptorSetLayout)
     {
         var range = new VkPushConstantRange
         {
@@ -104,7 +110,7 @@ internal static unsafe class VulkanPipeline
             device, colorFormat,
             "Shaders/ui.vert.spv", "Shaders/ui.frag.spv",
             null, 0, null, 0,
-            alphaBlend: true, &range, 1);
+            alphaBlend: true, &range, 1, descriptorSetLayout);
     }
 
     /// <summary>
@@ -121,7 +127,8 @@ internal static unsafe class VulkanPipeline
         string vertResource, string fragResource,
         VkVertexInputBindingDescription* bindings, uint bindingCount,
         VkVertexInputAttributeDescription* attributes, uint attributeCount,
-        bool alphaBlend, VkPushConstantRange* pushRanges, uint pushRangeCount)
+        bool alphaBlend, VkPushConstantRange* pushRanges, uint pushRangeCount,
+        ulong descriptorSetLayout)
     {
         var vertModule = CreateShaderModule(device, vertResource);
         ulong fragModule = 0;
@@ -131,9 +138,12 @@ internal static unsafe class VulkanPipeline
         {
             fragModule = CreateShaderModule(device, fragResource);
 
+            var setLayout = descriptorSetLayout;
             var layoutInfo = new VkPipelineLayoutCreateInfo
             {
                 SType                  = VkStructureType.PipelineLayoutCreateInfo,
+                SetLayoutCount         = descriptorSetLayout != 0 ? 1u : 0u,
+                SetLayouts             = descriptorSetLayout != 0 ? (IntPtr)(&setLayout) : IntPtr.Zero,
                 PushConstantRangeCount = pushRangeCount,
                 PushConstantRanges     = (IntPtr)pushRanges,
             };

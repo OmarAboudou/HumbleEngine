@@ -28,6 +28,19 @@ internal sealed class VulkanRenderer : IRenderer
     private ulong _quadPipeline;
     private ulong _quadPipelineLayout;
     private ulong _boundPipeline;
+    private ulong _boundDescriptorSet;
+
+    // Texture machinery: the übershader's set layout (set 0, binding 0 = combined
+    // image sampler), the pool every texture's set is carved from, one shared
+    // sampler, and a 1×1 white texture bound by flat draws so a valid set is
+    // always present (the single-pipeline übershader keeps its descriptor).
+    private readonly ulong _descriptorSetLayout;
+    private readonly ulong _descriptorPool;
+    private readonly ulong _sampler;
+    private readonly VulkanTexture _defaultTexture;
+
+    /// <summary>Descriptor-pool ceiling — growth past it is deferred (its client: hundreds of distinct textures).</summary>
+    private const uint MaxTextures = 256;
 
     // Per-frame objects (single frame in flight).
     private readonly ulong  _commandPool;
@@ -81,8 +94,10 @@ internal sealed class VulkanRenderer : IRenderer
         try
         {
             CreateImageViews();
+            _descriptorSetLayout = CreateTextureSetLayout(device);
             (_meshPipeline, _meshPipelineLayout) = VulkanPipeline.CreateMeshPipeline(device, imageFormat);
-            (_quadPipeline, _quadPipelineLayout) = VulkanPipeline.CreateQuadPipeline(device, imageFormat);
+            (_quadPipeline, _quadPipelineLayout) =
+                VulkanPipeline.CreateQuadPipeline(device, imageFormat, _descriptorSetLayout);
 
             var poolInfo = new VkCommandPoolCreateInfo
             {
@@ -117,9 +132,16 @@ internal sealed class VulkanRenderer : IRenderer
             };
             Check(VulkanNative.vkCreateFence(device, in fenceInfo, IntPtr.Zero, out _inFlightFence),
                   "vkCreateFence");
+
+            // The texture machinery needs the command pool and queue (one-shot
+            // upload), so it comes after the per-frame objects.
+            _descriptorPool = CreateDescriptorPool(device);
+            _sampler        = CreateSampler(device);
+            _defaultTexture = CreateTextureCore(stackalloc byte[] { 255, 255, 255, 255 }, 1, 1, TextureFormat.Rgba8);
         }
         catch
         {
+            DestroyTextureMachinery();
             DestroyFrameObjects();
             DestroyPipeline();
             DestroyImageViews();
@@ -196,9 +218,10 @@ internal sealed class VulkanRenderer : IRenderer
 
         VulkanNative.vkCmdBeginRendering(_commandBuffer, in renderingInfo);
 
-        // Pipelines are bound lazily by Draw/DrawQuad; the command buffer was
-        // reset, so nothing is bound yet.
-        _boundPipeline = 0;
+        // Pipelines and descriptor sets are bound lazily by Draw/DrawQuad; the
+        // command buffer was reset, so nothing is bound yet.
+        _boundPipeline      = 0;
+        _boundDescriptorSet = 0;
 
         // Viewport and scissor are dynamic pipeline state: provided each frame,
         // so the pipeline itself survives window resizes.
@@ -239,6 +262,18 @@ internal sealed class VulkanRenderer : IRenderer
     }
 
     /// <summary>
+    /// Uploads the pixels into a device-local texture and wraps it as an
+    /// <see cref="ITexture"/> — the expensive, rare half of the contract.
+    /// </summary>
+    /// <exception cref="ObjectDisposedException">The renderer is disposed.</exception>
+    /// <exception cref="InvalidOperationException">A Vulkan call failed.</exception>
+    public ITexture CreateTexture(ReadOnlySpan<byte> pixels, int width, int height, TextureFormat format)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        return CreateTextureCore(pixels, width, height, format);
+    }
+
+    /// <summary>
     /// Records a draw of the mesh into the open rendering episode: bind the
     /// mesh pipeline (if not current), bind the vertex buffer, draw.
     /// </summary>
@@ -263,23 +298,61 @@ internal sealed class VulkanRenderer : IRenderer
     }
 
     /// <summary>
-    /// Records an übershader quad draw into the open episode: bind the quad
-    /// pipeline (if not current), push the per-draw parameters (rect, colour,
-    /// mode 0 — flat colour), draw the six generated vertices. No buffer, no
-    /// descriptor: the unit quad is born in the vertex shader.
+    /// Records an übershader quad draw into the open episode: a flat-coloured
+    /// rect (mode 0). The default white texture is bound so the always-present
+    /// descriptor is valid; the full 0,0,1,1 UV is pushed but never sampled.
     /// </summary>
     /// <exception cref="InvalidOperationException">No frame is open.</exception>
-    public unsafe void DrawQuad(Rect rect, Vector4 color)
+    public void DrawQuad(Rect rect, Vector4 color)
     {
         if (!_frameOpen)
             throw new InvalidOperationException("DrawQuad is only valid between BeginFrame and EndFrame.");
 
+        var quad = new QuadParams(
+            new Vector4(rect.X, rect.Y, rect.Width, rect.Height),
+            new Vector4(0f, 0f, 1f, 1f), color, mode: 0);
+        RecordQuad(in quad, _defaultTexture);
+    }
+
+    /// <summary>
+    /// Records an übershader quad draw sampling <paramref name="texture"/>
+    /// (mode 1): the pixel rect filled with the texture's
+    /// <paramref name="uvSubRect"/>, multiplied by <paramref name="tint"/>.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">No frame is open.</exception>
+    /// <exception cref="ArgumentException">The texture was not created by this renderer.</exception>
+    public void DrawTexturedQuad(Rect rect, ITexture texture, Rect uvSubRect, Vector4 tint)
+    {
+        ArgumentNullException.ThrowIfNull(texture);
+        if (!_frameOpen)
+            throw new InvalidOperationException("DrawTexturedQuad is only valid between BeginFrame and EndFrame.");
+        if (texture is not VulkanTexture vulkanTexture)
+            throw new ArgumentException($"{texture.GetType().Name} was not created by a Vulkan renderer.", nameof(texture));
+        if (!ReferenceEquals(vulkanTexture.Owner, this))
+            throw new ArgumentException(
+                "The texture was created by another renderer — its image lives on that renderer's device.", nameof(texture));
+
+        var quad = new QuadParams(
+            new Vector4(rect.X, rect.Y, rect.Width, rect.Height),
+            new Vector4(uvSubRect.X, uvSubRect.Y, uvSubRect.Width, uvSubRect.Height),
+            tint, mode: 1);
+        RecordQuad(in quad, vulkanTexture);
+    }
+
+    /// <summary>
+    /// The shared tail of every quad draw: bind the quad pipeline and the
+    /// texture's descriptor set (both lazily), push the per-draw parameters,
+    /// draw the six generated vertices.
+    /// </summary>
+    private unsafe void RecordQuad(in QuadParams quad, VulkanTexture texture)
+    {
         BindPipeline(_quadPipeline);
-        var quad = new QuadParams(new Vector4(rect.X, rect.Y, rect.Width, rect.Height), color, mode: 0);
-        VulkanNative.vkCmdPushConstants(
-            _commandBuffer, _quadPipelineLayout,
-            VkShaderStageFlags.Vertex | VkShaderStageFlags.Fragment,
-            QuadPush.ParamsOffset, QuadPush.ParamsSize, (IntPtr)(&quad));
+        BindDescriptorSet(texture.DescriptorSet);
+        fixed (QuadParams* p = &quad)
+            VulkanNative.vkCmdPushConstants(
+                _commandBuffer, _quadPipelineLayout,
+                VkShaderStageFlags.Vertex | VkShaderStageFlags.Fragment,
+                QuadPush.ParamsOffset, QuadPush.ParamsSize, (IntPtr)p);
         VulkanNative.vkCmdDraw(_commandBuffer, 6, 1, 0, 0);
     }
 
@@ -290,6 +363,17 @@ internal sealed class VulkanRenderer : IRenderer
             return;
         VulkanNative.vkCmdBindPipeline(_commandBuffer, VkPipelineBindPoint.Graphics, pipeline);
         _boundPipeline = pipeline;
+    }
+
+    /// <summary>Binds the quad pipeline's set 0 unless it is already the one bound.</summary>
+    private void BindDescriptorSet(ulong set)
+    {
+        if (_boundDescriptorSet == set)
+            return;
+        VulkanNative.vkCmdBindDescriptorSets(
+            _commandBuffer, VkPipelineBindPoint.Graphics, _quadPipelineLayout,
+            0, 1, in set, 0, IntPtr.Zero);
+        _boundDescriptorSet = set;
     }
 
     /// <summary>
@@ -373,6 +457,7 @@ internal sealed class VulkanRenderer : IRenderer
             window.OnResize -= _onResize;
 
         VulkanNative.vkDeviceWaitIdle(_device);
+        DestroyTextureMachinery();
         DestroyFrameObjects();
         DestroyPipeline();
         DestroyImageViews();
@@ -466,9 +551,16 @@ internal sealed class VulkanRenderer : IRenderer
         _imageViews = [];
     }
 
-    /// <summary>Records a layout transition of the image's colour aspect into the command buffer.</summary>
+    /// <summary>Records a colour-aspect layout transition into the per-frame command buffer.</summary>
     private void TransitionImage(
         ulong image, VkImageLayout from, VkImageLayout to,
+        VkAccessFlags srcAccess, VkAccessFlags dstAccess,
+        VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage) =>
+        RecordImageTransition(_commandBuffer, image, from, to, srcAccess, dstAccess, srcStage, dstStage);
+
+    /// <summary>Records a colour-aspect layout transition into <paramref name="commandBuffer"/> — frame or one-shot.</summary>
+    private static void RecordImageTransition(
+        IntPtr commandBuffer, ulong image, VkImageLayout from, VkImageLayout to,
         VkAccessFlags srcAccess, VkAccessFlags dstAccess,
         VkPipelineStageFlags srcStage, VkPipelineStageFlags dstStage)
     {
@@ -491,8 +583,260 @@ internal sealed class VulkanRenderer : IRenderer
         };
 
         VulkanNative.vkCmdPipelineBarrier(
-            _commandBuffer, srcStage, dstStage, 0,
+            commandBuffer, srcStage, dstStage, 0,
             0, IntPtr.Zero, 0, IntPtr.Zero, 1, in barrier);
+    }
+
+    /// <summary>Creates the übershader's descriptor set layout: set 0, binding 0 = combined image sampler, fragment stage.</summary>
+    private static unsafe ulong CreateTextureSetLayout(IntPtr device)
+    {
+        var binding = new VkDescriptorSetLayoutBinding
+        {
+            Binding         = 0,
+            DescriptorType  = VkDescriptorType.CombinedImageSampler,
+            DescriptorCount = 1,
+            StageFlags      = VkShaderStageFlags.Fragment,
+        };
+        var info = new VkDescriptorSetLayoutCreateInfo
+        {
+            SType        = VkStructureType.DescriptorSetLayoutCreateInfo,
+            BindingCount = 1,
+            Bindings     = (IntPtr)(&binding),
+        };
+        Check(VulkanNative.vkCreateDescriptorSetLayout(device, in info, IntPtr.Zero, out var layout),
+              "vkCreateDescriptorSetLayout");
+        return layout;
+    }
+
+    /// <summary>Creates the pool every texture's set is carved from — individually freeable, capped at <see cref="MaxTextures"/>.</summary>
+    private static unsafe ulong CreateDescriptorPool(IntPtr device)
+    {
+        var size = new VkDescriptorPoolSize
+        {
+            Type            = VkDescriptorType.CombinedImageSampler,
+            DescriptorCount = MaxTextures,
+        };
+        var info = new VkDescriptorPoolCreateInfo
+        {
+            SType         = VkStructureType.DescriptorPoolCreateInfo,
+            Flags         = VkDescriptorPoolCreateFlags.FreeDescriptorSet,
+            MaxSets       = MaxTextures,
+            PoolSizeCount = 1,
+            PoolSizes     = (IntPtr)(&size),
+        };
+        Check(VulkanNative.vkCreateDescriptorPool(device, in info, IntPtr.Zero, out var pool),
+              "vkCreateDescriptorPool");
+        return pool;
+    }
+
+    /// <summary>Creates the shared sampler — linear filtering, clamp to edge (no bleeding across atlas neighbours).</summary>
+    private static unsafe ulong CreateSampler(IntPtr device)
+    {
+        var info = new VkSamplerCreateInfo
+        {
+            SType        = VkStructureType.SamplerCreateInfo,
+            MagFilter    = VkFilter.Linear,
+            MinFilter    = VkFilter.Linear,
+            MipmapMode   = VkSamplerMipmapMode.Nearest,
+            AddressModeU = VkSamplerAddressMode.ClampToEdge,
+            AddressModeV = VkSamplerAddressMode.ClampToEdge,
+            AddressModeW = VkSamplerAddressMode.ClampToEdge,
+        };
+        Check(VulkanNative.vkCreateSampler(device, in info, IntPtr.Zero, out var sampler),
+              "vkCreateSampler");
+        return sampler;
+    }
+
+    /// <summary>
+    /// The texture-creation body: a device-local optimal-tiling image, the pixels
+    /// uploaded through a staging buffer (one-shot copy with the Undefined →
+    /// TransferDst → ShaderReadOnly transitions), a view, and a descriptor set
+    /// pointing at (view, shared sampler). The staging buffer dies with the copy.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">A Vulkan call failed.</exception>
+    private unsafe VulkanTexture CreateTextureCore(
+        ReadOnlySpan<byte> pixels, int width, int height, TextureFormat format)
+    {
+        var vkFormat = format switch
+        {
+            TextureFormat.Rgba8 => VkFormat.R8G8B8A8Unorm,
+            TextureFormat.R8    => VkFormat.R8Unorm,
+            _ => throw new ArgumentOutOfRangeException(nameof(format), format, "Unknown texture format."),
+        };
+
+        ulong image = 0, memory = 0, view = 0, set = 0;
+        ulong staging = 0, stagingMemory = 0;
+        try
+        {
+            var imageInfo = new VkImageCreateInfo
+            {
+                SType         = VkStructureType.ImageCreateInfo,
+                ImageType     = VkImageType.Type2D,
+                Format        = vkFormat,
+                Extent        = new VkExtent3D { Width = (uint)width, Height = (uint)height, Depth = 1 },
+                MipLevels     = 1,
+                ArrayLayers   = 1,
+                Samples       = VkSampleCountFlags.Count1,
+                Tiling        = VkImageTiling.Optimal,
+                Usage         = VkImageUsageFlags.TransferDst | VkImageUsageFlags.Sampled,
+                SharingMode   = VkSharingMode.Exclusive,
+                InitialLayout = VkImageLayout.Undefined,
+            };
+            Check(VulkanNative.vkCreateImage(_device, in imageInfo, IntPtr.Zero, out image), "vkCreateImage");
+
+            VulkanNative.vkGetImageMemoryRequirements(_device, image, out var requirements);
+            var allocateInfo = new VkMemoryAllocateInfo
+            {
+                SType           = VkStructureType.MemoryAllocateInfo,
+                AllocationSize  = requirements.Size,
+                MemoryTypeIndex = VulkanBuffers.FindMemoryType(
+                    _physicalDevice, requirements.MemoryTypeBits, VkMemoryPropertyFlags.DeviceLocal),
+            };
+            Check(VulkanNative.vkAllocateMemory(_device, in allocateInfo, IntPtr.Zero, out memory),
+                  "vkAllocateMemory (image)");
+            Check(VulkanNative.vkBindImageMemory(_device, image, memory, 0), "vkBindImageMemory");
+
+            (staging, stagingMemory) = VulkanBuffers.CreateStagingBuffer(_physicalDevice, _device, pixels);
+            UploadImage(image, staging, (uint)width, (uint)height);
+
+            var viewInfo = new VkImageViewCreateInfo
+            {
+                SType    = VkStructureType.ImageViewCreateInfo,
+                Image    = image,
+                ViewType = VkImageViewType.Type2D,
+                Format   = vkFormat,
+                SubresourceRange = new VkImageSubresourceRange
+                {
+                    AspectMask = VkImageSubresourceRange.AspectColor,
+                    LevelCount = 1,
+                    LayerCount = 1,
+                },
+            };
+            Check(VulkanNative.vkCreateImageView(_device, in viewInfo, IntPtr.Zero, out view),
+                  "vkCreateImageView (texture)");
+
+            ulong setLayout = _descriptorSetLayout;
+            var setAllocInfo = new VkDescriptorSetAllocateInfo
+            {
+                SType              = VkStructureType.DescriptorSetAllocateInfo,
+                DescriptorPool     = _descriptorPool,
+                DescriptorSetCount = 1,
+                SetLayouts         = (IntPtr)(&setLayout),
+            };
+            Check(VulkanNative.vkAllocateDescriptorSets(_device, in setAllocInfo, out set),
+                  "vkAllocateDescriptorSets");
+
+            var imageDescriptor = new VkDescriptorImageInfo
+            {
+                Sampler     = _sampler,
+                ImageView   = view,
+                ImageLayout = VkImageLayout.ShaderReadOnlyOptimal,
+            };
+            var write = new VkWriteDescriptorSet
+            {
+                SType           = VkStructureType.WriteDescriptorSet,
+                DstSet          = set,
+                DstBinding      = 0,
+                DescriptorCount = 1,
+                DescriptorType  = VkDescriptorType.CombinedImageSampler,
+                ImageInfo       = (IntPtr)(&imageDescriptor),
+            };
+            VulkanNative.vkUpdateDescriptorSets(_device, 1, in write, 0, IntPtr.Zero);
+
+            return new VulkanTexture(this, _device, _descriptorPool, image, memory, view, set, width, height);
+        }
+        catch
+        {
+            if (set != 0)    VulkanNative.vkFreeDescriptorSets(_device, _descriptorPool, 1, in set);
+            if (view != 0)   VulkanNative.vkDestroyImageView(_device, view, IntPtr.Zero);
+            if (image != 0)  VulkanNative.vkDestroyImage(_device, image, IntPtr.Zero);
+            if (memory != 0) VulkanNative.vkFreeMemory(_device, memory, IntPtr.Zero);
+            throw;
+        }
+        finally
+        {
+            if (staging != 0)       VulkanNative.vkDestroyBuffer(_device, staging, IntPtr.Zero);
+            if (stagingMemory != 0) VulkanNative.vkFreeMemory(_device, stagingMemory, IntPtr.Zero);
+        }
+    }
+
+    /// <summary>
+    /// Records and submits a one-shot command buffer: transition to TransferDst,
+    /// copy the staging buffer into the image, transition to ShaderReadOnly. Waits
+    /// the queue idle — the rare, expensive path, like a mesh upload's stall.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">A Vulkan call failed.</exception>
+    private unsafe void UploadImage(ulong image, ulong staging, uint width, uint height)
+    {
+        var allocInfo = new VkCommandBufferAllocateInfo
+        {
+            SType              = VkStructureType.CommandBufferAllocateInfo,
+            CommandPool        = _commandPool,
+            Level              = 0,
+            CommandBufferCount = 1,
+        };
+        Check(VulkanNative.vkAllocateCommandBuffers(_device, in allocInfo, out var cmd),
+              "vkAllocateCommandBuffers (upload)");
+
+        try
+        {
+            var beginInfo = new VkCommandBufferBeginInfo
+            {
+                SType = VkStructureType.CommandBufferBeginInfo,
+                Flags = (uint)VkCommandBufferUsageFlags.OneTimeSubmit,
+            };
+            Check(VulkanNative.vkBeginCommandBuffer(cmd, in beginInfo), "vkBeginCommandBuffer (upload)");
+
+            RecordImageTransition(cmd, image,
+                VkImageLayout.Undefined, VkImageLayout.TransferDstOptimal,
+                VkAccessFlags.None, VkAccessFlags.TransferWrite,
+                VkPipelineStageFlags.TopOfPipe, VkPipelineStageFlags.Transfer);
+
+            var region = new VkBufferImageCopy
+            {
+                ImageSubresource = new VkImageSubresourceLayers
+                {
+                    AspectMask = VkImageSubresourceRange.AspectColor,
+                    LayerCount = 1,
+                },
+                ImageExtent = new VkExtent3D { Width = width, Height = height, Depth = 1 },
+            };
+            VulkanNative.vkCmdCopyBufferToImage(cmd, staging, image, VkImageLayout.TransferDstOptimal, 1, in region);
+
+            RecordImageTransition(cmd, image,
+                VkImageLayout.TransferDstOptimal, VkImageLayout.ShaderReadOnlyOptimal,
+                VkAccessFlags.TransferWrite, VkAccessFlags.ShaderRead,
+                VkPipelineStageFlags.Transfer, VkPipelineStageFlags.FragmentShader);
+
+            Check(VulkanNative.vkEndCommandBuffer(cmd), "vkEndCommandBuffer (upload)");
+
+            IntPtr cmdHandle = cmd;
+            var submit = new VkSubmitInfo
+            {
+                SType              = VkStructureType.SubmitInfo,
+                CommandBufferCount = 1,
+                CommandBuffers     = (IntPtr)(&cmdHandle),
+            };
+            Check(VulkanNative.vkQueueSubmit(GraphicsQueue, 1, in submit, 0), "vkQueueSubmit (upload)");
+            Check(VulkanNative.vkQueueWaitIdle(GraphicsQueue), "vkQueueWaitIdle (upload)");
+        }
+        finally
+        {
+            IntPtr cmdHandle = cmd;
+            VulkanNative.vkFreeCommandBuffers(_device, _commandPool, 1, in cmdHandle);
+        }
+    }
+
+    /// <summary>Disposes the default texture and destroys the sampler, pool and set layout. Tolerates partial construction.</summary>
+    private void DestroyTextureMachinery()
+    {
+        _defaultTexture?.Dispose();
+        if (_sampler != 0)
+            VulkanNative.vkDestroySampler(_device, _sampler, IntPtr.Zero);
+        if (_descriptorPool != 0)
+            VulkanNative.vkDestroyDescriptorPool(_device, _descriptorPool, IntPtr.Zero);
+        if (_descriptorSetLayout != 0)
+            VulkanNative.vkDestroyDescriptorSetLayout(_device, _descriptorSetLayout, IntPtr.Zero);
     }
 
     /// <summary>Throws if <paramref name="result"/> is an error (negative VkResult).</summary>

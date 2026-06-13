@@ -34,6 +34,11 @@ public sealed class SandboxScene : Scene
         _panel.Color.Value    = new Vector4(0.2f, 0.5f, 0.9f, 0.7f);
         Attach(_panel);
 
+        var image = new ImageNode { Name = "Image" };
+        image.Position.Value = new Vector2(60f, 360f);
+        image.Size.Value     = new Vector2(180f, 180f);
+        Attach(image);
+
         _breathing = MakeTile(new Vector4(0.3f, 0.8f, 0.4f, 1f));
         var column = new Column { Name = "Column" };
         column.Position.Value = new Vector2(620f, 40f);

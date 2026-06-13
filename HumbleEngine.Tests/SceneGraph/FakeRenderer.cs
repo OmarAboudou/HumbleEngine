@@ -16,6 +16,12 @@ internal sealed class FakeRenderer : IRenderer
     /// <summary>Quads received by <see cref="DrawQuad"/>, in submission order.</summary>
     public List<(Rect Rect, Vector4 Color)> Quads { get; } = [];
 
+    /// <summary>Textures created by this renderer, in creation order.</summary>
+    public List<FakeTexture> Textures { get; } = [];
+
+    /// <summary>Textured quads received by <see cref="DrawTexturedQuad"/>, in submission order.</summary>
+    public List<(Rect Rect, ITexture Texture, Rect UvSubRect, Vector4 Tint)> TexturedQuads { get; } = [];
+
     public void BeginFrame()
     {
     }
@@ -39,9 +45,37 @@ internal sealed class FakeRenderer : IRenderer
 
     public void DrawQuad(Rect rect, Vector4 color) => Quads.Add((rect, color));
 
+    public ITexture CreateTexture(ReadOnlySpan<byte> pixels, int width, int height, TextureFormat format)
+    {
+        var texture = new FakeTexture(width, height);
+        Textures.Add(texture);
+        return texture;
+    }
+
+    public void DrawTexturedQuad(Rect rect, ITexture texture, Rect uvSubRect, Vector4 tint) =>
+        TexturedQuads.Add((rect, texture, uvSubRect, tint));
+
     public void Dispose()
     {
     }
+}
+
+/// <summary>
+/// <see cref="ITexture"/> test double: remembers its size and whether it was
+/// disposed — the assertion surface of the texture-ownership story.
+/// </summary>
+internal sealed class FakeTexture(int width, int height) : ITexture
+{
+    /// <inheritdoc/>
+    public int Width { get; } = width;
+
+    /// <inheritdoc/>
+    public int Height { get; } = height;
+
+    /// <summary>True once <see cref="Dispose"/> has run.</summary>
+    public bool IsDisposed { get; private set; }
+
+    public void Dispose() => IsDisposed = true;
 }
 
 /// <summary>

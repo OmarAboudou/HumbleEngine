@@ -154,6 +154,102 @@ internal static class VulkanNative
     [DllImport(LibVulkan)]
     internal static extern void vkDestroyImageView(IntPtr device, ulong view, IntPtr allocator);
 
+    // --- Images, samplers, descriptors (textures) ---
+
+    /// <summary>
+    /// Creates an image object — a description (type, format, extent, usage, tiling),
+    /// without storage: memory is allocated and bound separately, like a buffer.
+    /// </summary>
+    [DllImport(LibVulkan)]
+    internal static extern VkResult vkCreateImage(
+        IntPtr device, in VkImageCreateInfo createInfo, IntPtr allocator, out ulong image);
+
+    /// <summary>Destroys an image. Its memory is freed separately.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkDestroyImage(IntPtr device, ulong image, IntPtr allocator);
+
+    /// <summary>Real size/alignment the image needs and which memory types can back it — the FindMemoryType input.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkGetImageMemoryRequirements(
+        IntPtr device, ulong image, out VkMemoryRequirements requirements);
+
+    /// <summary>Marries an image object to a region of allocated memory.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern VkResult vkBindImageMemory(
+        IntPtr device, ulong image, ulong memory, ulong memoryOffset);
+
+    /// <summary>Creates a sampler — how a shader filters and wraps when reading an image.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern VkResult vkCreateSampler(
+        IntPtr device, in VkSamplerCreateInfo createInfo, IntPtr allocator, out ulong sampler);
+
+    /// <summary>Destroys a sampler.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkDestroySampler(IntPtr device, ulong sampler, IntPtr allocator);
+
+    /// <summary>
+    /// Creates a descriptor set layout — the shape of one set: which bindings
+    /// (here a single combined image sampler) the shaders reach, at which stages.
+    /// </summary>
+    [DllImport(LibVulkan)]
+    internal static extern VkResult vkCreateDescriptorSetLayout(
+        IntPtr device, in VkDescriptorSetLayoutCreateInfo createInfo, IntPtr allocator, out ulong setLayout);
+
+    /// <summary>Destroys a descriptor set layout.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkDestroyDescriptorSetLayout(IntPtr device, ulong setLayout, IntPtr allocator);
+
+    /// <summary>Creates a descriptor pool — the allocator from which descriptor sets are carved.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern VkResult vkCreateDescriptorPool(
+        IntPtr device, in VkDescriptorPoolCreateInfo createInfo, IntPtr allocator, out ulong descriptorPool);
+
+    /// <summary>Destroys a descriptor pool and every set allocated from it.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkDestroyDescriptorPool(IntPtr device, ulong descriptorPool, IntPtr allocator);
+
+    /// <summary>Allocates descriptor sets from a pool. Declared for a single set (one layout in, one handle out).</summary>
+    [DllImport(LibVulkan)]
+    internal static extern VkResult vkAllocateDescriptorSets(
+        IntPtr device, in VkDescriptorSetAllocateInfo allocateInfo, out ulong descriptorSet);
+
+    /// <summary>Frees descriptor sets back to their pool (pool must allow it). Declared for a single set.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern VkResult vkFreeDescriptorSets(
+        IntPtr device, ulong descriptorPool, uint descriptorSetCount, in ulong descriptorSet);
+
+    /// <summary>
+    /// Writes resources into descriptor sets. Declared for a single write (no
+    /// copies) — points a binding at an image+sampler.
+    /// </summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkUpdateDescriptorSets(
+        IntPtr device, uint writeCount, in VkWriteDescriptorSet writes, uint copyCount, IntPtr copies);
+
+    // --- Texture-related commands recorded into a command buffer ---
+
+    /// <summary>Copies buffer data into an image. Declared for a single region (the whole mip 0).</summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkCmdCopyBufferToImage(
+        IntPtr commandBuffer, ulong srcBuffer, ulong dstImage, VkImageLayout dstImageLayout,
+        uint regionCount, in VkBufferImageCopy region);
+
+    /// <summary>Binds descriptor sets for subsequent draws. Declared for a single set at <c>firstSet</c>, no dynamic offsets.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkCmdBindDescriptorSets(
+        IntPtr commandBuffer, VkPipelineBindPoint bindPoint, ulong layout,
+        uint firstSet, uint descriptorSetCount, in ulong descriptorSets,
+        uint dynamicOffsetCount, IntPtr dynamicOffsets);
+
+    /// <summary>Frees command buffers back to their pool. Declared for a single buffer.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern void vkFreeCommandBuffers(
+        IntPtr device, ulong commandPool, uint commandBufferCount, in IntPtr commandBuffer);
+
+    /// <summary>Blocks until every submission to the queue has completed — the simple wait for a one-shot upload.</summary>
+    [DllImport(LibVulkan)]
+    internal static extern VkResult vkQueueWaitIdle(IntPtr queue);
+
     // --- Pipeline ---
 
     /// <summary>
@@ -469,6 +565,7 @@ internal enum VkStructureType
     FenceCreateInfo              = 8,
     SemaphoreCreateInfo          = 9,
     BufferCreateInfo             = 12,
+    ImageCreateInfo              = 14,
     ImageViewCreateInfo          = 15,
     ShaderModuleCreateInfo       = 16,
     PipelineShaderStageCreateInfo         = 18,
@@ -481,6 +578,11 @@ internal enum VkStructureType
     PipelineDynamicStateCreateInfo        = 27,
     GraphicsPipelineCreateInfo            = 28,
     PipelineLayoutCreateInfo              = 30,
+    SamplerCreateInfo            = 31,
+    DescriptorSetLayoutCreateInfo = 32,
+    DescriptorPoolCreateInfo     = 33,
+    DescriptorSetAllocateInfo    = 34,
+    WriteDescriptorSet           = 35,
     CommandPoolCreateInfo        = 39,
     CommandBufferAllocateInfo    = 40,
     CommandBufferBeginInfo       = 42,
@@ -622,6 +724,10 @@ internal enum VkQueueFlags : uint
 internal enum VkFormat
 {
     Undefined    = 0,
+    /// <summary>One 8-bit unsigned-normalized channel — the glyph coverage atlas (bloc 3).</summary>
+    R8Unorm       = 9,
+    /// <summary>Four 8-bit unsigned-normalized channels — the RGBA texture (bloc 2).</summary>
+    R8G8B8A8Unorm = 37,
     B8G8R8A8Unorm = 44,
     B8G8R8A8Srgb  = 50,
     /// <summary>Two 32-bit floats — a <c>vec2</c> attribute (Vector2).</summary>
@@ -669,8 +775,12 @@ internal enum VkCompositeAlphaFlagsKhr : uint
 [Flags]
 internal enum VkImageUsageFlags : uint
 {
-    /// <summary>Destination of transfer/clear commands (vkCmdClearColorImage).</summary>
+    /// <summary>Source of transfer commands.</summary>
+    TransferSrc     = 0x1,
+    /// <summary>Destination of transfer/clear commands (vkCmdClearColorImage, vkCmdCopyBufferToImage).</summary>
     TransferDst     = 0x2,
+    /// <summary>Readable from a shader through a sampler — the texture's reason to exist.</summary>
+    Sampled         = 0x4,
     ColorAttachment = 0x10,
 }
 
@@ -837,6 +947,8 @@ internal enum VkImageLayout
     Undefined                = 0,
     /// <summary>Optimal for being written by the pipeline as a colour attachment.</summary>
     ColorAttachmentOptimal   = 2,
+    /// <summary>Optimal for being read from a shader through a sampler.</summary>
+    ShaderReadOnlyOptimal    = 5,
     /// <summary>Optimal as the destination of transfer/clear commands.</summary>
     TransferDstOptimal       = 7,
     /// <summary>Required layout for handing the image to the presentation engine.</summary>
@@ -848,6 +960,8 @@ internal enum VkImageLayout
 internal enum VkPipelineStageFlags : uint
 {
     TopOfPipe             = 0x1,
+    /// <summary>The fragment shader stage — where a sampled texture is first read.</summary>
+    FragmentShader        = 0x80,
     /// <summary>The stage writing colour attachments — where rendering output lands.</summary>
     ColorAttachmentOutput = 0x400,
     Transfer              = 0x1000,
@@ -859,7 +973,11 @@ internal enum VkPipelineStageFlags : uint
 internal enum VkAccessFlags : uint
 {
     None                 = 0,
+    /// <summary>Read by a shader — a sampled texture, once transitioned for reading.</summary>
+    ShaderRead           = 0x20,
     ColorAttachmentWrite = 0x100,
+    /// <summary>Read by a transfer command.</summary>
+    TransferRead         = 0x800,
     TransferWrite        = 0x1000,
 }
 
@@ -867,6 +985,74 @@ internal enum VkAccessFlags : uint
 internal enum VkImageViewType
 {
     Type2D = 1,
+}
+
+/// <summary>Image dimensionality (<c>VkImageType</c>). Subset.</summary>
+internal enum VkImageType
+{
+    Type2D = 1,
+}
+
+/// <summary>Memory layout of an image's texels (<c>VkImageTiling</c>).</summary>
+internal enum VkImageTiling
+{
+    /// <summary>Implementation-defined, opaque — what a sampled texture wants. Requires a staging upload.</summary>
+    Optimal = 0,
+    /// <summary>Row-major, host-addressable — limited, slower for sampling.</summary>
+    Linear  = 1,
+}
+
+/// <summary>Number of samples per pixel (<c>VkSampleCountFlagBits</c>). Subset.</summary>
+[Flags]
+internal enum VkSampleCountFlags : uint
+{
+    /// <summary>One sample — no multisampling.</summary>
+    Count1 = 0x1,
+}
+
+/// <summary>Kinds of descriptor (<c>VkDescriptorType</c>). Subset.</summary>
+internal enum VkDescriptorType
+{
+    /// <summary>An image and its sampler in one binding — what the übershader samples.</summary>
+    CombinedImageSampler = 1,
+}
+
+/// <summary>Texel filtering (<c>VkFilter</c>).</summary>
+internal enum VkFilter
+{
+    Nearest = 0,
+    Linear  = 1,
+}
+
+/// <summary>How a sampler treats coordinates outside [0,1] (<c>VkSamplerAddressMode</c>). Subset.</summary>
+internal enum VkSamplerAddressMode
+{
+    Repeat      = 0,
+    /// <summary>Clamp to the edge texel — no bleeding across an atlas's neighbours.</summary>
+    ClampToEdge = 2,
+}
+
+/// <summary>Mip filtering (<c>VkSamplerMipmapMode</c>).</summary>
+internal enum VkSamplerMipmapMode
+{
+    Nearest = 0,
+    Linear  = 1,
+}
+
+/// <summary>Descriptor pool behaviour (<c>VkDescriptorPoolCreateFlagBits</c>). Subset.</summary>
+[Flags]
+internal enum VkDescriptorPoolCreateFlags : uint
+{
+    /// <summary>Allows individual sets to be freed back to the pool — a texture frees its set at Dispose.</summary>
+    FreeDescriptorSet = 0x1,
+}
+
+/// <summary>Command buffer recording hints (<c>VkCommandBufferUsageFlagBits</c>). Subset.</summary>
+[Flags]
+internal enum VkCommandBufferUsageFlags : uint
+{
+    /// <summary>Recorded once, submitted once, then reset/freed — the one-shot texture upload.</summary>
+    OneTimeSubmit = 0x1,
 }
 
 /// <summary>What happens to an attachment's content when a rendering episode opens (<c>VkAttachmentLoadOp</c>).</summary>
@@ -1078,6 +1264,172 @@ internal struct VkOffset2D
 {
     public int X;
     public int Y;
+}
+
+/// <summary>Mirror of <c>VkOffset3D</c>.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkOffset3D
+{
+    public int X;
+    public int Y;
+    public int Z;
+}
+
+/// <summary>Mirror of <c>VkImageCreateInfo</c> — an image description, storage excluded (bound separately).</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkImageCreateInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public uint Flags;
+    public VkImageType ImageType;
+    public VkFormat Format;
+    public VkExtent3D Extent;
+    public uint MipLevels;
+    public uint ArrayLayers;
+    public VkSampleCountFlags Samples;
+    public VkImageTiling Tiling;
+    public VkImageUsageFlags Usage;
+    public VkSharingMode SharingMode;
+    public uint QueueFamilyIndexCount;
+    public IntPtr QueueFamilyIndices;
+    /// <summary>The layout the image is created in — <see cref="VkImageLayout.Undefined"/> before any transition.</summary>
+    public VkImageLayout InitialLayout;
+}
+
+/// <summary>Mirror of <c>VkSamplerCreateInfo</c> — how a shader filters and wraps when reading an image.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkSamplerCreateInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public uint Flags;
+    public VkFilter MagFilter;
+    public VkFilter MinFilter;
+    public VkSamplerMipmapMode MipmapMode;
+    public VkSamplerAddressMode AddressModeU;
+    public VkSamplerAddressMode AddressModeV;
+    public VkSamplerAddressMode AddressModeW;
+    public float MipLodBias;
+    /// <summary>VkBool32 — anisotropic filtering off (no device feature needed).</summary>
+    public uint AnisotropyEnable;
+    public float MaxAnisotropy;
+    /// <summary>VkBool32 — no depth-compare sampler.</summary>
+    public uint CompareEnable;
+    /// <summary><c>VkCompareOp</c> — ignored when compare is disabled.</summary>
+    public uint CompareOp;
+    public float MinLod;
+    public float MaxLod;
+    /// <summary><c>VkBorderColor</c> — only used with a clamp-to-border address mode.</summary>
+    public uint BorderColor;
+    /// <summary>VkBool32 — sample with normalized [0,1] coordinates (the usual case).</summary>
+    public uint UnnormalizedCoordinates;
+}
+
+/// <summary>Mirror of <c>VkImageSubresourceLayers</c> — which mip/layers a copy targets.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkImageSubresourceLayers
+{
+    public uint AspectMask;
+    public uint MipLevel;
+    public uint BaseArrayLayer;
+    public uint LayerCount;
+}
+
+/// <summary>Mirror of <c>VkBufferImageCopy</c> — one buffer→image copy region (the whole mip 0 here).</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkBufferImageCopy
+{
+    public ulong BufferOffset;
+    /// <summary>0 = tightly packed (row length = image width).</summary>
+    public uint BufferRowLength;
+    public uint BufferImageHeight;
+    public VkImageSubresourceLayers ImageSubresource;
+    public VkOffset3D ImageOffset;
+    public VkExtent3D ImageExtent;
+}
+
+/// <summary>Mirror of <c>VkDescriptorSetLayoutBinding</c> — one binding's shape inside a set.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkDescriptorSetLayoutBinding
+{
+    public uint Binding;
+    public VkDescriptorType DescriptorType;
+    public uint DescriptorCount;
+    public VkShaderStageFlags StageFlags;
+    /// <summary>Pointer to immutable samplers, or <see cref="IntPtr.Zero"/>.</summary>
+    public IntPtr ImmutableSamplers;
+}
+
+/// <summary>Mirror of <c>VkDescriptorSetLayoutCreateInfo</c>.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkDescriptorSetLayoutCreateInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public uint Flags;
+    public uint BindingCount;
+    /// <summary>Pointer to an array of <see cref="VkDescriptorSetLayoutBinding"/>.</summary>
+    public IntPtr Bindings;
+}
+
+/// <summary>Mirror of <c>VkDescriptorPoolSize</c> — how many descriptors of one type a pool reserves.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkDescriptorPoolSize
+{
+    public VkDescriptorType Type;
+    public uint DescriptorCount;
+}
+
+/// <summary>Mirror of <c>VkDescriptorPoolCreateInfo</c>.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkDescriptorPoolCreateInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public VkDescriptorPoolCreateFlags Flags;
+    public uint MaxSets;
+    public uint PoolSizeCount;
+    /// <summary>Pointer to an array of <see cref="VkDescriptorPoolSize"/>.</summary>
+    public IntPtr PoolSizes;
+}
+
+/// <summary>Mirror of <c>VkDescriptorSetAllocateInfo</c>.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkDescriptorSetAllocateInfo
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public ulong DescriptorPool;
+    public uint DescriptorSetCount;
+    /// <summary>Pointer to an array of VkDescriptorSetLayout (<c>ulong</c>).</summary>
+    public IntPtr SetLayouts;
+}
+
+/// <summary>Mirror of <c>VkDescriptorImageInfo</c> — the image+sampler a binding is pointed at.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkDescriptorImageInfo
+{
+    public ulong Sampler;
+    public ulong ImageView;
+    public VkImageLayout ImageLayout;
+}
+
+/// <summary>Mirror of <c>VkWriteDescriptorSet</c> — points a binding at a resource (one image here).</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct VkWriteDescriptorSet
+{
+    public VkStructureType SType;
+    public IntPtr Next;
+    public ulong DstSet;
+    public uint DstBinding;
+    public uint DstArrayElement;
+    public uint DescriptorCount;
+    public VkDescriptorType DescriptorType;
+    /// <summary>Pointer to a <see cref="VkDescriptorImageInfo"/> (image descriptors).</summary>
+    public IntPtr ImageInfo;
+    public IntPtr BufferInfo;
+    public IntPtr TexelBufferView;
 }
 
 /// <summary>Mirror of <c>VkRect2D</c> — an offset/extent pair in pixels.</summary>
@@ -1412,6 +1764,8 @@ internal enum VkMemoryPropertyFlags : uint
 [Flags]
 internal enum VkBufferUsageFlags : uint
 {
+    /// <summary>Source of a transfer command — the staging buffer of a texture upload.</summary>
+    TransferSrc  = 0x1,
     VertexBuffer = 0x80,
 }
 

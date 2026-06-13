@@ -68,12 +68,68 @@ internal static class VulkanBuffers
     }
 
     /// <summary>
-    /// The classic loop: crosses the buffer's acceptable types
-    /// (<paramref name="typeBits"/>, bit i = type i) with the properties the CPU
-    /// route requires, and returns the first matching type index.
+    /// Creates a staging buffer holding <paramref name="bytes"/>: a host-visible
+    /// transfer source, mapped and filled, to be copied into a device-local
+    /// resource (a texture's image) and destroyed once the copy is recorded.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">No suitable memory type, or a Vulkan call failed.</exception>
+    internal static unsafe (ulong Buffer, ulong Memory) CreateStagingBuffer(
+        IntPtr physicalDevice, IntPtr device, ReadOnlySpan<byte> bytes)
+    {
+        ulong buffer = 0;
+        ulong memory = 0;
+
+        try
+        {
+            var bufferInfo = new VkBufferCreateInfo
+            {
+                SType       = VkStructureType.BufferCreateInfo,
+                Size        = (ulong)bytes.Length,
+                Usage       = VkBufferUsageFlags.TransferSrc,
+                SharingMode = VkSharingMode.Exclusive,
+            };
+            Check(VulkanNative.vkCreateBuffer(device, in bufferInfo, IntPtr.Zero, out buffer),
+                  "vkCreateBuffer (staging)");
+
+            VulkanNative.vkGetBufferMemoryRequirements(device, buffer, out var requirements);
+
+            var allocateInfo = new VkMemoryAllocateInfo
+            {
+                SType           = VkStructureType.MemoryAllocateInfo,
+                AllocationSize  = requirements.Size,
+                MemoryTypeIndex = FindMemoryType(
+                    physicalDevice, requirements.MemoryTypeBits,
+                    VkMemoryPropertyFlags.HostVisible | VkMemoryPropertyFlags.HostCoherent),
+            };
+            Check(VulkanNative.vkAllocateMemory(device, in allocateInfo, IntPtr.Zero, out memory),
+                  "vkAllocateMemory (staging)");
+            Check(VulkanNative.vkBindBufferMemory(device, buffer, memory, 0), "vkBindBufferMemory (staging)");
+
+            Check(VulkanNative.vkMapMemory(device, memory, 0, (ulong)bytes.Length, 0, out var mapped),
+                  "vkMapMemory (staging)");
+            bytes.CopyTo(new Span<byte>((void*)mapped, bytes.Length));
+            VulkanNative.vkUnmapMemory(device, memory);
+
+            return (buffer, memory);
+        }
+        catch
+        {
+            if (buffer != 0)
+                VulkanNative.vkDestroyBuffer(device, buffer, IntPtr.Zero);
+            if (memory != 0)
+                VulkanNative.vkFreeMemory(device, memory, IntPtr.Zero);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// The classic loop: crosses a resource's acceptable types
+    /// (<paramref name="typeBits"/>, bit i = type i) with the memory properties
+    /// required, and returns the first matching type index. Shared by buffers
+    /// (host-visible) and textures (device-local image memory).
     /// </summary>
     /// <exception cref="InvalidOperationException">No memory type satisfies both constraints.</exception>
-    private static uint FindMemoryType(
+    internal static uint FindMemoryType(
         IntPtr physicalDevice, uint typeBits, VkMemoryPropertyFlags required)
     {
         VulkanNative.vkGetPhysicalDeviceMemoryProperties(physicalDevice, out var properties);

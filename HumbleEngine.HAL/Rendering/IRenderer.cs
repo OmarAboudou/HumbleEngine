@@ -35,4 +35,24 @@ public interface IRenderer : IDisposable
     /// <see cref="BeginFrame"/> and <see cref="EndFrame"/>.
     /// </summary>
     void DrawQuad(Rect rect, Vector4 color);
+
+    /// <summary>
+    /// Uploads pixel data to a GPU-resident texture and returns the handle to
+    /// sample it with — the expensive, rare half of the contract, mirroring
+    /// <see cref="CreateMesh"/>. <paramref name="pixels"/> is read as a raw copy
+    /// in <paramref name="format"/>'s layout, <paramref name="width"/> ×
+    /// <paramref name="height"/> texels, tightly packed.
+    /// </summary>
+    ITexture CreateTexture(ReadOnlySpan<byte> pixels, int width, int height, TextureFormat format);
+
+    /// <summary>
+    /// Records a draw of an axis-aligned quad sampling <paramref name="texture"/>
+    /// into the current frame: the pixel-space <paramref name="rect"/> is filled
+    /// with the texture's <paramref name="uvSubRect"/> (a normalized 0..1
+    /// rectangle — the whole image, or one glyph in an atlas), multiplied by
+    /// <paramref name="tint"/> and alpha-blended. Only valid between
+    /// <see cref="BeginFrame"/> and <see cref="EndFrame"/>, and only with a
+    /// texture created by this renderer.
+    /// </summary>
+    void DrawTexturedQuad(Rect rect, ITexture texture, Rect uvSubRect, Vector4 tint);
 }

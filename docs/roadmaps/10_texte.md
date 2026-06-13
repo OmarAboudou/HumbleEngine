@@ -48,17 +48,62 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
   roadmap 09 comme cliente de cette phase (le compositeur Wayland n'envoie que
   `repeat_info`, la répétition est à la charge du client).
 
+### Les textures dans le renderer (bloc 2 — validé 2026-06-13)
+
+- **Contrat HAL** : `ITexture : IDisposable` + `IRenderer.CreateTexture(
+  ReadOnlySpan<byte> pixels, int width, int height, TextureFormat format)` +
+  `DrawTexturedQuad(Rect rect, ITexture texture, Rect uvSubRect, Vector4 tint)`.
+  Le texte sera un quad sur le `uvSubRect` du glyphe dans l'atlas ; les images
+  arrivent gratuites. `VulkanTexture` porte image + mémoire + view + sampler +
+  descriptor set, avec la **garde d'origine** déjà éprouvée (`VulkanMesh.Owner` :
+  une texture étrangère rejetée plutôt qu'un crash latent).
+- **Format** : `RGBA8` au bloc 2 (l'image du Sandbox), `R8` ajouté au bloc 3
+  (la couverture alpha 8 bits que sort FreeType). `TextureFormat` enum dès
+  maintenant pour ne pas réécrire le contrat.
+- **Upload : staging + device-local** (validé 2026-06-13 — recommandé, anticipé
+  par les notes 07-08 « staging buffer + device-local ») : buffer host-visible
+  → `vkCmdCopyBufferToImage` → image device-local en tiling optimal, transitions
+  `Undefined → TransferDst → ShaderReadOnly`, sur un **command buffer one-shot
+  soumis et attendu** à la création. Écarté : l'image host-visible linéaire
+  (plus simple, cohérente avec le chemin mesh actuel, mais format restreint et
+  plus lente — il faudrait migrer pour les vrais assets de toute façon).
+- **Un seul pipeline, texture blanche 1×1 par défaut** (validé 2026-06-13 —
+  recommandé) : ajouter un `set 0, binding 0 = combined image sampler`
+  (fragment) au layout du pipeline quad veut dire que les draws flat (`mode 0`)
+  ont un layout déclarant un sampler ; plutôt que **scinder l'übershader en deux
+  pipelines** (ce qui briserait « un pipeline pour toute l'UI » et rendrait un
+  `BindPipeline` entre flat et texturé), les draws flat bindent le set d'une
+  texture blanche 1×1 — « flat = blanc × couleur », un set valide toujours
+  bindé. Modes übershader : `0` flat, `1` texture (`texture(tex,uv) × tint`),
+  `2` glyphe (`.r` comme couverture, bloc 3).
+- **Descriptor set par texture** : alloué d'un pool du renderer à `CreateTexture`,
+  libéré au `Dispose`. Bindless / descriptor indexing différé (son client : des
+  centaines de textures distinctes, pas l'UI d'aujourd'hui où l'atlas est *une*
+  texture bindée une fois).
+
 ## Blocs
 
 - [ ] **Bloc 1 — Conception** — passe 1 (l'arc + hautes décisions) ✅ ci-dessus.
   Le design fin de chaque bloc suivant se fait à son ouverture (passes
   progressives), comme en roadmap 09.
 
-- [ ] **Bloc 2 — Les textures dans le renderer** — l'infra GPU manquante :
-  sampled image + image view + sampler, descriptor set layout + pool + sets,
-  upload par **staging buffer + device-local** et transitions de layout, mode
-  texture de l'übershader (UV déjà émis). Contrat HAL : `ITexture` +
-  `DrawTexturedQuad`. *Sandbox : une image statique sur un quad.*
+- [x] **Bloc 2 — Les textures dans le renderer** ✅ — l'infra GPU posée.
+  `VulkanNative` : la fondation P/Invoke (image/sampler/descriptor/copy + structs
+  miroirs). Übershader : `sampler2D` set 0/binding 0 + modes `1` texture, `2`
+  glyphe (prêt bloc 3) ; `uvRect` ajouté aux push constants (bloc per-draw 48→64,
+  l'UV interpolée dans le sous-rect). Contrat HAL : `ITexture` (Width/Height) +
+  `TextureFormat` (Rgba8/R8) + `CreateTexture`/`DrawTexturedQuad`, OpenGL en
+  `NotSupported`. `VulkanTexture` : image device-local + view + descriptor set +
+  garde `Owner` (miroir `VulkanMesh`). `VulkanRenderer` : set layout (créé avant
+  le pipeline quad qui le reçoit), pool (sets libérables, plafond 256), sampler
+  partagé (linéaire, clamp), **texture blanche 1×1 par défaut** (les draws flat la
+  bindent → set toujours valide, un seul pipeline). `CreateTexture` : image
+  optimal-tiling + **staging one-shot** (`vkQueueWaitIdle`, transitions Undefined
+  → TransferDst → ShaderReadOnly). `_boundDescriptorSet` (skip des binds
+  redondants, comme `_boundPipeline`). *Sandbox : `ImageNode` (damier RGBA généré
+  au code) — validé interactivement.* Tests : 3 d'intégration Vulkan
+  (création+draw, format R8, garde d'origine) ; 219 unitaires + 53 intégration
+  verts, 0 erreur de validation Vulkan sur un run du Sandbox.
 
 - [ ] **Bloc 3 — Les glyphes** — FreeType en P/Invoke (chargement de police,
   `FT_Load_Glyph`, bitmap + métriques), atlas de glyphes (packing, cache par
@@ -74,4 +119,4 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
   bidirectionnel `Reactive<string>`. Le vrai client. *Sandbox : on tape dans un
   champ lié à un label.*
 
-*Tâche en cours : bloc 1 (conception), passe 1 faite.*
+*Tâche en cours : bloc 2 ✅ ; prochain — bloc 3 (les glyphes : FreeType + atlas).*
