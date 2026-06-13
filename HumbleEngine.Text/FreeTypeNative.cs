@@ -26,6 +26,15 @@ internal static class FreeTypeNative
     /// <summary>Byte offset of <c>FT_FaceRec.glyph</c> (the active glyph slot pointer) — see the class remarks.</summary>
     internal const int FaceGlyphSlotOffset = 152;
 
+    /// <summary>Byte offset of <c>FT_FaceRec.size</c> (the active size pointer, just after <c>glyph</c>).</summary>
+    internal const int FaceSizeOffset = 160;
+
+    /// <summary>Offset of <c>ascender</c> in <c>FT_SizeRec.metrics</c> (metrics @24, ascender @+24), 26.6 px.</summary>
+    internal const int SizeMetricsAscenderOffset = 48;
+
+    /// <summary>Offset of <c>height</c> (line spacing) in <c>FT_SizeRec.metrics</c> (metrics @24, height @+40), 26.6 px.</summary>
+    internal const int SizeMetricsHeightOffset = 64;
+
     /// <summary>Initializes a FreeType library instance.</summary>
     [DllImport(Lib)]
     internal static extern int FT_Init_FreeType(out IntPtr library);

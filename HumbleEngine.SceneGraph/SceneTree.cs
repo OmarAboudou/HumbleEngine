@@ -18,9 +18,13 @@ namespace HumbleEngine;
 /// </summary>
 public sealed class SceneTree : IDisposable
 {
+    private const int DefaultFontPixelSize = 18;
+
     private readonly List<Node> _disposeQueue = [];
     private readonly InputRouter _inputRouter = new();
     private Node? _root;
+    private Font? _defaultFont;
+    private GlyphAtlas? _defaultFontAtlas;
 
     /// <summary>
     /// Renderer driving this tree's surface — injected by the application,
@@ -37,6 +41,29 @@ public sealed class SceneTree : IDisposable
 
     /// <summary>True once <see cref="Dispose"/> has run.</summary>
     public bool IsDisposed { get; private set; }
+
+    /// <summary>
+    /// The tree's shared default glyph atlas (DejaVu Sans at a UI size), created
+    /// lazily from <see cref="Renderer"/> on first use and owned by the tree:
+    /// every <c>Label</c> of this tree draws through it, the way they all draw
+    /// through the tree's renderer — what lets a Label be default-constructible
+    /// (its font comes from the context, not its constructor). Disposed with the
+    /// tree. A reactive font size and a per-size cache are the noted evolution.
+    /// </summary>
+    /// <exception cref="ObjectDisposedException">This tree is disposed.</exception>
+    public GlyphAtlas DefaultFontAtlas
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(IsDisposed, this);
+            if (_defaultFontAtlas is null)
+            {
+                _defaultFont = Font.Default(DefaultFontPixelSize);
+                _defaultFontAtlas = new GlyphAtlas(Renderer, _defaultFont);
+            }
+            return _defaultFontAtlas;
+        }
+    }
 
     /// <summary>
     /// Root node of the living tree. Setting it makes the new root's whole subtree
@@ -135,6 +162,8 @@ public sealed class SceneTree : IDisposable
             return;
         _root?.Dispose();
         FlushDisposeQueue();
+        _defaultFontAtlas?.Dispose();
+        _defaultFont?.Dispose();
         IsDisposed = true;
     }
 

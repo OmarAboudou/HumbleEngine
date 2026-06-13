@@ -12,12 +12,20 @@ public sealed class SandboxScene : Scene
     private TriangleNode? _triangle;
     private readonly MovablePanel _panel;
     private readonly Panel _breathing;
+    private readonly Label _label;
 
     /// <summary>
     /// Size of the column's middle panel — the Sandbox animates its height to
     /// show the reactive layout: the panel below slides on its own.
     /// </summary>
     public Reactive<Vector2> BreathingSize => _breathing.Size;
+
+    /// <summary>
+    /// Text of the reactive label (bloc 4): the Sandbox animates it to show the
+    /// content sizing — the label re-measures and the marker tile beside it
+    /// slides, no layout wiring.
+    /// </summary>
+    public Reactive<string> LabelText => _label.Text;
 
     /// <summary>
     /// Builds the interior: a triangle, a panel over its heart, and a column
@@ -33,6 +41,19 @@ public sealed class SandboxScene : Scene
         _panel.Size.Value     = new Vector2(300f, 200f);
         _panel.Color.Value    = new Vector4(0.2f, 0.5f, 0.9f, 0.7f);
         Attach(_panel);
+
+        // A reactive label and a marker tile in a Row: when the label's text
+        // changes it re-measures, and the Row restacks the marker on its own.
+        _label = new Label { Name = "Label" };
+        _label.Color.Value = new Vector4(0.95f, 0.9f, 0.4f, 1f);
+        var marker = new Tile(new Vector4(0.9f, 0.3f, 0.3f, 1f));
+        marker.Size.Value = new Vector2(40f, 22f);
+        var textRow = new Row { Name = "TextRow" };
+        textRow.Position.Value = new Vector2(60f, 250f);
+        textRow.Spacing.Value  = 12f;
+        textRow.Children.Add(_label);
+        textRow.Children.Add(marker);
+        Attach(textRow);
 
         var text = new TextNode { Name = "Text" };
         text.Position.Value = new Vector2(60f, 300f);

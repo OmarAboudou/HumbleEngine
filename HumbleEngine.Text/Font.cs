@@ -19,6 +19,12 @@ public sealed class Font : IDisposable
     /// <summary>Rendering size in pixels — the glyph bitmaps' scale.</summary>
     public int PixelSize { get; }
 
+    /// <summary>Pixels from the baseline up to the font's top — where the first line sits.</summary>
+    public float Ascent { get; private set; }
+
+    /// <summary>Baseline-to-baseline distance in pixels — the natural line spacing.</summary>
+    public float LineHeight { get; private set; }
+
     /// <summary>
     /// Loads a face from in-memory font data at <paramref name="pixelSize"/>.
     /// The data is pinned for the face's lifetime (FreeType reads it lazily).
@@ -36,6 +42,11 @@ public sealed class Font : IDisposable
             Check(FreeTypeNative.FT_New_Memory_Face(_library, _pin.AddrOfPinnedObject(), fontData.LongLength, 0, out _face),
                   "FT_New_Memory_Face");
             Check(FreeTypeNative.FT_Set_Pixel_Sizes(_face, 0, (uint)pixelSize), "FT_Set_Pixel_Sizes");
+
+            // Scaled line metrics live in face->size->metrics (26.6 fixed point).
+            var sizePtr = Marshal.ReadIntPtr(_face, FreeTypeNative.FaceSizeOffset);
+            Ascent     = Marshal.ReadInt64(sizePtr, FreeTypeNative.SizeMetricsAscenderOffset) / 64f;
+            LineHeight = Marshal.ReadInt64(sizePtr, FreeTypeNative.SizeMetricsHeightOffset) / 64f;
         }
         catch
         {

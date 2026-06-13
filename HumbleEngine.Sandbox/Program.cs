@@ -100,6 +100,11 @@ void DriveTrio(SandboxScene scene, SceneTree tree, IRenderer renderer, float pha
     var t = (float)clock.Elapsed.TotalSeconds;
     scene.BreathingSize.Value = new Vector2(150f, 60f + 40f * MathF.Sin(t * phase * 3f));
 
+    // Typewriter: the label's text grows then resets — it re-measures and the
+    // marker tile beside it slides (content sizing through the reactive layout).
+    const string phrase = "Humble Engine — éàç 0123";
+    scene.LabelText.Value = phrase[..(1 + (int)(t * 6f) % phrase.Length)];
+
     renderer.BeginFrame();
     tree.Render();
     renderer.EndFrame();

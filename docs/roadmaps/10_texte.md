@@ -111,6 +111,36 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
 - **Démo Sandbox** : quelques glyphes posés à la main (`DrawTexturedQuad` sur
   leurs sous-rects, `mode 2`) — du texte visible avant le moindre `Label`.
 
+### La mise en forme (bloc 4 — validé 2026-06-13)
+
+- **`TextLayout` dans `HumbleEngine.Text`** : `(atlas, string) → glyphes
+  positionnés (relatifs au coin haut-gauche) + taille mesurée`. Marche du pen +
+  advance, baseline à `Ascent`. **Une seule ligne** (validé — multi-ligne `\n`
+  et word-wrap différés : le wrap exige une contrainte de largeur qui se bat
+  avec le sizing par contenu). **Kerning différé** (polish, exige les index de
+  glyphes — l'advance seul suffit pour DejaVu).
+- **Métriques de ligne** ajoutées à `Font`/`GlyphAtlas` : `Ascent`,
+  `LineHeight` (lues de `face->size->metrics` en P/Invoke — encore des offsets
+  64-bit : size@160, metrics ascender@+48 / height@+64). Donnent la baseline et
+  la hauteur mesurée.
+- **`Label : UINode`** dans `SceneGraph` (nouvelle dép **`SceneGraph → Text`**) :
+  `Text` (`Reactive<string>`) + `Color` (`Reactive<Vector4>`) ; `Color` lue au
+  draw (pas de relayout), `Text` déclenche la re-mesure. **Se mesure → écrit sa
+  `Size.Value`** : le `Relayout` du parent se déclenche **gratuitement**
+  (`LinearContainer` écoute déjà `child.Size.Changed`) — le sizing par contenu
+  tombe du modèle réactif existant, noté différé en 07-08, son client est ici.
+- **Atlas partagé sur l'arbre** (validé 2026-06-13) : `SceneTree` expose un
+  `DefaultFontAtlas` (`GlyphAtlas`) **paresseux**, créé de son `Renderer` à la
+  première demande, libéré au `Dispose` — exactement comme l'arbre fournit déjà
+  `Renderer` aux nœuds (`VisualNode.Renderer ← Tree`), et ce qui rend le `Label`
+  défaut-constructible (contrat éditeur : ses ressources viennent du contexte,
+  pas du constructeur). Tous les `Label` d'une taille partagent **un** atlas.
+  Taille de police par défaut fixe à cet étage ; **`FontSize` réactif / cache
+  par taille différés** (leur client : des tailles multiples, l'éditeur).
+- **Démo Sandbox** : un `Label` réactif dans le layout — son texte change, il se
+  re-mesure, la colonne se ré-empile. Du texte *dans* l'UI réactive, pas posé à
+  la main.
+
 ## Blocs
 
 - [ ] **Bloc 1 — Conception** — passe 1 (l'arc + hautes décisions) ✅ ci-dessus.
@@ -151,14 +181,26 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
   sans bitmap, accent dans le charset, hors-charset absent, atlas R8 512²).
   224 unitaires + 53 intégration verts, 0 erreur de validation sur un run.
 
-- [ ] **Bloc 4 — La mise en forme** — layout `string → glyphes positionnés`
-  (avance, kerning, retour à la ligne), nœud `Label`/`TextNode` qui se **mesure**
-  et nourrit le layout réactif, texte/couleur/taille réactifs. *Sandbox : un
-  label réactif dans l'UI.*
+- [x] **Bloc 4 — La mise en forme** ✅ — métriques de ligne (`Ascent`,
+  `LineHeight`) lues de `face->size->metrics` (offsets 64-bit size@160,
+  ascender@+48/height@+64, validés par les tests). `TextLayout.Arrange` (une
+  ligne, baseline à `Ascent`, marche du pen + advance → `PositionedGlyph`
+  relatifs + taille mesurée ; kerning/multi-ligne différés). `Label : UINode`
+  (`Text`+`Color` réactifs, `Color` lue au draw, `Text` re-mesure) qui obtient
+  son atlas du **`SceneTree.DefaultFontAtlas`** (paresseux, créé du `Renderer`,
+  libéré au `Dispose` — comme `Renderer ← Tree`, ce qui garde le `Label`
+  défaut-constructible) et **se mesure → écrit sa `Size`** : le `Relayout` du
+  parent se déclenche gratuitement (sizing par contenu via le réactif existant).
+  Dép **`SceneGraph → Text`**. *Sandbox : un `Label` machine-à-écrire dans un
+  `Row` — il se re-mesure, la tuile-marqueur glisse — validé interactivement.*
+  Tests : 9 unitaires (sans display, via `FakeRenderer` — métriques saines,
+  `Arrange` left-to-right / largeur croissante / espaces sans glyphe, atlas
+  paresseux et partagé, `Label` qui se mesure, content-sizing qui ré-empile le
+  `Row`). 233 unitaires + 53 intégration verts, 0 erreur de validation.
 
 - [ ] **Bloc 5 — Le champ texte** — édition (caret, insertion/suppression via
   `TextInput`), navigation clavier + **répétition de touche**, binding
   bidirectionnel `Reactive<string>`. Le vrai client. *Sandbox : on tape dans un
   champ lié à un label.*
 
-*Tâche en cours : bloc 3 ✅ ; prochain — bloc 4 (la mise en forme : layout `string → glyphes`, `Label` qui se mesure).*
+*Tâche en cours : bloc 4 ✅ ; prochain — bloc 5 (le champ texte : caret, édition via `TextInput`, navigation + répétition de touche, binding bidirectionnel `Reactive<string>`).*

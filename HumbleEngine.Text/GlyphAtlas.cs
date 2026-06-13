@@ -22,6 +22,12 @@ public sealed class GlyphAtlas : IDisposable
     /// <summary>The font's pixel size — the natural line scale for layout.</summary>
     public int PixelSize { get; }
 
+    /// <summary>Pixels from the baseline up to the font's top (from the baked font).</summary>
+    public float Ascent { get; }
+
+    /// <summary>Baseline-to-baseline distance in pixels — the natural line spacing.</summary>
+    public float LineHeight { get; }
+
     /// <summary>Bakes the engine's default charset (printable ASCII + Latin-1) of <paramref name="font"/>.</summary>
     public GlyphAtlas(IRenderer renderer, Font font) : this(renderer, font, DefaultCharset())
     {
@@ -37,7 +43,9 @@ public sealed class GlyphAtlas : IDisposable
     {
         ArgumentNullException.ThrowIfNull(renderer);
         ArgumentNullException.ThrowIfNull(font);
-        PixelSize = font.PixelSize;
+        PixelSize  = font.PixelSize;
+        Ascent     = font.Ascent;
+        LineHeight = font.LineHeight;
 
         var atlas = new byte[Width * Height];
         int penX = 0, penY = 0, rowHeight = 0;
