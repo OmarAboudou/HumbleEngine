@@ -72,10 +72,14 @@ undo). Donc deux étages, **curseur d'Omar sur la profondeur** :
   (IDisposable, run immédiat). 7 tests : run unique, ré-exécution sur dépendance
   lue, ignore les non-lues, **re-track dynamique** (drop des sources périmées),
   dispose, pas de boucle sur auto-écriture. **259 unitaires verts.**
-- [ ] **Bloc 4 — `Computed<T>`** — cellule dérivée au-dessus du tracking : un
-  `Effect` qui écrit une valeur cachée et est lui-même observable (source pour
-  l'aval). Évaluation paresseuse vs avide, diamants, ré-entrance/cycles (on a déjà
-  la détection en two-way à étendre).
+- [x] **Bloc 4 — `Computed<T>`** ✅ — dérivée au-dessus du tracking : une
+  `Computation` (consomme les lectures de sa formule) qui est aussi
+  `IReactiveSource`/`IReadOnlyProperty` (source pour l'aval). **Avide + synchrone**
+  comme le reste du graphe ; ne notifie que si la valeur change vraiment
+  (egalité). Re-entrance protégée par la garde `_running` de la `Computation`.
+  8 tests : valeur initiale, recompute sur dépendance, `Changed`, **chaîne
+  `Property→Computed→Effect`**, **skip si dérivée inchangée**, dérivation chaînée,
+  dispose. **266 unitaires verts.**
 - [ ] **Bloc 5 — Brancher l'existant** — remplacer le câblage manuel du
   `LinearContainer` (un `Effect` qui re-tracke les enfants/Spacing → `Relayout`)
   et de `Label`/`TextField` (mesure dérivée), comme dogfood + preuve. *Fin de
