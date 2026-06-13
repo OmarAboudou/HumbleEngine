@@ -334,6 +334,23 @@ public abstract class Node : IDisposable
             child.RenderSubtree(renderer);
     }
 
+    /// <summary>
+    /// Finds the topmost <see cref="UINode"/> containing the position — the
+    /// render traversal, reversed: last children first (they drew last, they
+    /// are on top), depth first. No clipping, consistent with rendering:
+    /// children may overflow their parent and still be hit.
+    /// </summary>
+    internal UINode? HitTest(Vector2 position)
+    {
+        for (var i = _children.Count - 1; i >= 0; i--)
+        {
+            var hit = _children[i].HitTest(position);
+            if (hit is not null)
+                return hit;
+        }
+        return this is UINode ui && ui.GlobalRect.Contains(position) ? ui : null;
+    }
+
     /// <summary>Rejects a child that is this node itself or one of its ancestors.</summary>
     private void EnsureNotSelfOrAncestor(Node child)
     {

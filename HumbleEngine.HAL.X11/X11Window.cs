@@ -8,6 +8,9 @@ internal sealed class X11Window : Window, INativeWindowHandle
     private readonly ulong  _netWmName;
     private readonly ulong  _utf8String;
 
+    /// <summary>One pointing source per window — X11 core events erase physical provenance.</summary>
+    private readonly Mouse _mouse = new();
+
     internal X11Window(IWindowBackend backend, IntPtr display, WindowDescription desc)
         : base(backend)
     {
@@ -85,7 +88,7 @@ internal sealed class X11Window : Window, INativeWindowHandle
                 break;
 
             case XEventType.MotionNotify:
-                RaiseInput(new PointerMoved(new Vector2(ev.xmotion.x, ev.xmotion.y)));
+                RaiseInput(new MouseMoved(_mouse, new Vector2(ev.xmotion.x, ev.xmotion.y)));
                 break;
 
             case XEventType.ButtonPress:
@@ -94,11 +97,11 @@ internal sealed class X11Window : Window, INativeWindowHandle
                 break;
 
             case XEventType.EnterNotify:
-                RaiseInput(new PointerEntered(new Vector2(ev.xcrossing.x, ev.xcrossing.y)));
+                RaiseInput(new MouseEntered(_mouse, new Vector2(ev.xcrossing.x, ev.xcrossing.y)));
                 break;
 
             case XEventType.LeaveNotify:
-                RaiseInput(new PointerExited());
+                RaiseInput(new MouseExited(_mouse));
                 break;
         }
     }
@@ -123,8 +126,8 @@ internal sealed class X11Window : Window, INativeWindowHandle
                     _ => PointerButton.Right,
                 };
                 RaiseInput(pressed
-                    ? new PointerPressed(button, position)
-                    : new PointerReleased(button, position));
+                    ? new MousePressed(_mouse, button, position)
+                    : new MouseReleased(_mouse, button, position));
                 break;
 
             case >= 4 and <= 7 when pressed:
@@ -135,7 +138,7 @@ internal sealed class X11Window : Window, INativeWindowHandle
                     6 => new Vector2(-1f, 0f),
                     _ => new Vector2(1f, 0f),
                 };
-                RaiseInput(new PointerScrolled(delta, position));
+                RaiseInput(new MouseScrolled(_mouse, delta, position));
                 break;
         }
     }

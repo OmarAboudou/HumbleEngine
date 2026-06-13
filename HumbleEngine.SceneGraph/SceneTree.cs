@@ -19,6 +19,7 @@ namespace HumbleEngine;
 public sealed class SceneTree : IDisposable
 {
     private readonly List<Node> _disposeQueue = [];
+    private readonly InputRouter _inputRouter = new();
     private Node? _root;
 
     /// <summary>
@@ -82,6 +83,28 @@ public sealed class SceneTree : IDisposable
     {
         ObjectDisposedException.ThrowIf(IsDisposed, this);
         _root?.RenderSubtree(Renderer);
+
+        // Hover is derived state (pointer × geometry): the geometry half just
+        // settled for this frame — re-evaluate, so a node sliding under a
+        // still pointer gains/loses hover like one moved onto it.
+        _inputRouter.RefreshHover(_root);
+    }
+
+    /// <summary>
+    /// Routes one input event into the living tree: positional events are
+    /// hit-tested (reverse painter's order) and bubble from the target up the
+    /// <see cref="UINode"/> ancestors until consumed
+    /// (<see cref="UINode"/>.<c>OnInput</c> returning <c>true</c>); hover
+    /// enter/exit are synthesized per node; a press captures the pointer until
+    /// its release. The application wires it next to rendering:
+    /// <c>window.OnInput += tree.RouteInput</c>.
+    /// </summary>
+    /// <exception cref="ObjectDisposedException">This tree is disposed.</exception>
+    public void RouteInput(InputEvent inputEvent)
+    {
+        ArgumentNullException.ThrowIfNull(inputEvent);
+        ObjectDisposedException.ThrowIf(IsDisposed, this);
+        _inputRouter.Route(_root, inputEvent);
     }
 
     /// <summary>

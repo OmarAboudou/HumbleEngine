@@ -50,4 +50,18 @@ public abstract class UINode : VisualNode
             return new Rect(origin, Size.Value);
         }
     }
+
+    /// <summary>
+    /// Called for every input event routed to this node: as the hit-test
+    /// target or a bubbling ancestor (positional events), or as the single
+    /// addressee of a synthesized hover notification
+    /// (<see cref="PointerEntered"/>/<see cref="PointerExited"/>, no bubbling).
+    /// Return <c>true</c> to consume — the records are immutable, the return
+    /// value is the signal that stops the propagation. Never mutate the tree
+    /// structure here — destruction goes through <see cref="Node.QueueDispose"/>.
+    /// </summary>
+    protected virtual bool OnInput(InputEvent inputEvent) => false;
+
+    /// <summary>Router entry point — same internal machinery as the lifecycle hooks.</summary>
+    internal bool DispatchInput(InputEvent inputEvent) => OnInput(inputEvent);
 }

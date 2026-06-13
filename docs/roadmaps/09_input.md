@@ -103,6 +103,13 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
   pointeur dans le routeur), `PointerDeviceKind` (mouse/touch/pen), pression
   stylet, scroll cinétique synthétisé. Et toujours : IME/composition, scale
   factor HiDPI Wayland.
+- **Contrat de grammaire tactile (question d'Omar, 2026-06-13)** : un doigt qui
+  se lève = `Released` **puis `Exited` synthétisé par le backend** (le W3C
+  émet `pointerleave` après `pointerup` pour le tactile, jamais pour la
+  souris). Sans ça, `LastPosition` survivrait au doigt dans le routeur →
+  hover fantôme au `RefreshHover`. Le routeur reste aveugle aux périphériques.
+  Note voisine : à l'ère des doigts-sources, retirer l'état d'un pointeur
+  transitoire à son `Exited` (sinon le dictionnaire par source fuit lentement).
 - **Multi-périphérique (discussion 2026-06-13)** : pas de dialectes parallèles
   ni de double émission — le spécifique est un champ, un record de plus, ou un
   événement *sémantique* d'étage supérieur (le « click » = press+release
@@ -186,10 +193,20 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
   deux fenêtres (Moved throttlés). Validé interactivement par Omar sur les
   deux backends, 260 tests verts
 
-- [ ] **Bloc 4 — Le routage** — `tree.RouteInput`, hit-test inverse du
-  peintre, bubbling, capture implicite, hover synthétisé ; démo : les tuiles
-  de la colonne réagissent au survol, un clic en tue une (`QueueDispose`) et
-  la `Column` se resserre toute seule
+- [x] **Bloc 4 — Le routage** ✅ — `IDeviceEvent<out T>` (covariance →
+  `IDeviceEvent<object>`, la clé du routeur), jeton `Mouse` (granularité
+  « best effort » documentée), sous-records `Mouse*` héritant des neutres
+  déscellés (le pattern d'Omar : un événement, deux altitudes), backends
+  émettant avec leur jeton. `Node.HitTest` (rendu inversé, sans clipping),
+  `UINode.OnInput → bool`, `InputRouter` interne (état **par source** :
+  hover + capture implicite par pointeur, garde `Alive` contre les nœuds
+  morts en plein drag, hover node-scoped synthétisé sans bubbling),
+  `SceneTree.RouteInput`. **Correctif post-validation (bug vu par Omar)** :
+  le hover est un état dérivé (pointeur × géométrie) — `Render()` termine
+  par `RefreshHover` sur la dernière position connue de chaque pointeur
+  (gelé sous capture) : une tuile qui glisse sous un curseur immobile
+  gagne/perd le hover. Démo : tuiles hover + clic = `QueueDispose`, la
+  colonne se resserre. Validé interactivement, 260 tests verts
 
 - [ ] **Bloc 5 — Le clavier** — enum `Key`/`KeyModifiers`, X11
   (`XLookupString`), Wayland (xkbcommon), focus, `TextInput`, répétition

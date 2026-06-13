@@ -44,6 +44,8 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
     private static readonly IntPtr PointerIface    = WaylandNative.GetBuiltinInterface("wl_pointer_interface");
 
     // --- Input (wl_seat, bound at version 1: five pointer events, no frame batching) ---
+    /// <summary>One pointing source per window — the Wayland seat aggregates physical devices.</summary>
+    private readonly Mouse _mouse = new();
     private IntPtr _seat;
     private IntPtr _pointer;
     /// <summary>The pointer is over <b>our</b> surface — libdecor's decoration surfaces share the seat.</summary>
@@ -525,7 +527,7 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
         _pointerInside = true;
         _pointerX = WlFixedToDouble(surfaceX);
         _pointerY = WlFixedToDouble(surfaceY);
-        RaiseInput(new PointerEntered(PointerPosition()));
+        RaiseInput(new MouseEntered(_mouse, PointerPosition()));
     }
 
     private void OnPointerLeave(IntPtr data, IntPtr pointer, uint serial, IntPtr surface)
@@ -533,7 +535,7 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
         if (surface != _surface || !_pointerInside)
             return;
         _pointerInside = false;
-        RaiseInput(new PointerExited());
+        RaiseInput(new MouseExited(_mouse));
     }
 
     private void OnPointerMotion(IntPtr data, IntPtr pointer, uint time, int surfaceX, int surfaceY)
@@ -542,7 +544,7 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
             return;
         _pointerX = WlFixedToDouble(surfaceX);
         _pointerY = WlFixedToDouble(surfaceY);
-        RaiseInput(new PointerMoved(PointerPosition()));
+        RaiseInput(new MouseMoved(_mouse, PointerPosition()));
     }
 
     private void OnPointerButton(IntPtr data, IntPtr pointer, uint serial, uint time, uint button, uint state)
@@ -562,8 +564,8 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
             return;
 
         RaiseInput(state == 1
-            ? new PointerPressed(translated.Value, PointerPosition())
-            : new PointerReleased(translated.Value, PointerPosition()));
+            ? new MousePressed(_mouse, translated.Value, PointerPosition())
+            : new MouseReleased(_mouse, translated.Value, PointerPosition()));
     }
 
     private void OnPointerAxis(IntPtr data, IntPtr pointer, uint time, uint axis, int value)
@@ -577,7 +579,7 @@ internal sealed class WaylandWindow : Window, INativeWindowHandle
         var delta = axis == 0 /* vertical */
             ? new Vector2(0f, -notches)
             : new Vector2(notches, 0f);
-        RaiseInput(new PointerScrolled(delta, PointerPosition()));
+        RaiseInput(new MouseScrolled(_mouse, delta, PointerPosition()));
     }
 
     /// <summary>wl_fixed_t is signed 24.8 fixed point.</summary>

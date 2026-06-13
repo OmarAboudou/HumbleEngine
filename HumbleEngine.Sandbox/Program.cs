@@ -34,6 +34,12 @@ var movedLogClock = System.Diagnostics.Stopwatch.StartNew();
 waylandWindow.OnInput += e => LogInput("Wayland", e);
 x11Window.OnInput     += e => LogInput("X11", e);
 
+// Bloc 4 — each window routes into its tree, the symmetric of rendering:
+// hover brightens the column tiles, a left click disposes one and the
+// Column restacks on its own.
+waylandWindow.OnInput += waylandTree.RouteInput;
+x11Window.OnInput     += x11Tree.RouteInput;
+
 Console.WriteLine($"OS       : {OS.Current.Name}");
 Console.WriteLine($"Windows  : {waylandBackend.Name} + {x11Backend.Name}");
 Console.WriteLine($"Graphics : {graphicsBackend.Name}");

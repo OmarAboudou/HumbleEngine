@@ -50,12 +50,11 @@ public sealed class SandboxScene : Scene
         Attach(column);
     }
 
-    /// <summary>A 150×60 opaque tile for the column.</summary>
-    private static Panel MakeTile(Vector4 color)
+    /// <summary>A 150×60 interactive tile for the column (hover + click-to-dispose).</summary>
+    private static Tile MakeTile(Vector4 color)
     {
-        var tile = new Panel();
-        tile.Size.Value  = new Vector2(150f, 60f);
-        tile.Color.Value = color;
+        var tile = new Tile(color);
+        tile.Size.Value = new Vector2(150f, 60f);
         return tile;
     }
 
