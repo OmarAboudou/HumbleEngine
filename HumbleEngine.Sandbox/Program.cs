@@ -2,93 +2,112 @@ using HumbleEngine;
 using HumbleEngine.Linux;
 using HumbleEngine.Sandbox;
 
-OS.Register(new LinuxOS());
+// CLI: choose the OS, the windowing backend and the graphics backend.
+//   dotnet run -- [--os Linux] [--windowing Wayland|X11] [--graphics Vulkan|OpenGL]
+if (args.Contains("--help") || args.Contains("-h"))
+{
+    Console.WriteLine("Usage: HumbleEngine.Sandbox [--os Linux] [--windowing Wayland|X11] [--graphics Vulkan|OpenGL]");
+    return;
+}
 
+var osName        = ArgValue("--os", "Linux");
+var windowingName = ArgValue("--windowing", "Wayland");
+var graphicsName  = ArgValue("--graphics", "Vulkan");
+
+// The application registers the target platform. Only Linux ships today; the
+// switch is where Windows/macOS slot in once their platform assemblies exist
+// (and the project references them).
+OS? platform = osName.ToLowerInvariant() switch
+{
+    "linux" => new LinuxOS(),
+    _       => null,
+};
+if (platform is null)
+{
+    Console.Error.WriteLine($"Unknown OS '{osName}'. Available: Linux.");
+    return;
+}
+OS.Register(platform);
 var desktop = (DesktopOS)OS.Current;
 
-// Two windowing backends side by side, one Vulkan backend serving both:
-// the trio "window ↔ renderer ↔ tree" instantiated twice (roadmap 09).
-var waylandBackend  = desktop.GetWindowBackend("Wayland");
-var x11Backend      = desktop.GetWindowBackend("X11");
-var graphicsBackend = desktop.GetGraphicsBackend("Vulkan");
+// One trio "window ↔ renderer ↔ tree". The engine runs several side by side (the
+// integration tests cover both backends), but the demo stays single-window: the
+// multi-window event-pump decoupling — a blocking render must not freeze the
+// other window's pump — is its own deferred roadmap (docs/roadmaps/11_boucle.md).
+IWindowBackend   windowBackend;
+IGraphicsBackend graphicsBackend;
+try
+{
+    windowBackend   = desktop.GetWindowBackend(windowingName);
+    graphicsBackend = desktop.GetGraphicsBackend(graphicsName);
+}
+catch (Exception ex)
+{
+    Console.Error.WriteLine(ex.Message);
+    Console.Error.WriteLine($"Available windowing: {string.Join(", ", desktop.AvailableWindowBackends.Select(b => b.Name))}");
+    Console.Error.WriteLine($"Available graphics : {string.Join(", ", desktop.AvailableGraphicsBackends.Select(b => b.Name))}");
+    return;
+}
 
-waylandBackend.Initialize();
-x11Backend.Initialize();
-var waylandWindow = waylandBackend.CreateWindow(new WindowDescription("HumbleEngine — Wayland + Vulkan", 800, 600));
-var x11Window     = x11Backend.CreateWindow(new WindowDescription("HumbleEngine — X11 + Vulkan", 800, 600));
+windowBackend.Initialize();
+var window = windowBackend.CreateWindow(
+    new WindowDescription($"HumbleEngine — {windowBackend.Name} + {graphicsBackend.Name}", 800, 600));
 
 graphicsBackend.Initialize();
-var waylandRenderer = graphicsBackend.CreateRenderer(waylandWindow);
-var x11Renderer     = graphicsBackend.CreateRenderer(x11Window);
+var renderer = graphicsBackend.CreateRenderer(window);
 
-// Same scene template, two instances, two worlds — each tree owns its renderer,
-// each node acquires its GPU resources from the tree it enters.
-var waylandScene = new SandboxScene { Name = "Wayland" };
-var waylandTree  = new SceneTree(waylandRenderer) { Root = waylandScene, Clipboard = waylandWindow.Clipboard };
-var x11Scene     = new SandboxScene { Name = "X11" };
-var x11Tree      = new SceneTree(x11Renderer) { Root = x11Scene, Clipboard = x11Window.Clipboard };
+var scene = new SandboxScene { Name = "Sandbox" };
+var tree  = new SceneTree(renderer) { Root = scene, Clipboard = window.Clipboard };
 
-// Bloc 3 roadmap 09 — the single input channel, demonstrated raw: every event
-// logged as-is (record ToString), movements throttled to stay readable.
+// The single input channel, demonstrated raw (every event logged, moves throttled),
+// then wired into the tree — the symmetric of rendering.
 var movedLogClock = System.Diagnostics.Stopwatch.StartNew();
-waylandWindow.OnInput += e => LogInput("Wayland", e);
-x11Window.OnInput     += e => LogInput("X11", e);
-
-// Bloc 4 — each window routes into its tree, the symmetric of rendering:
-// hover brightens the column tiles, a left click disposes one and the
-// Column restacks on its own.
-waylandWindow.OnInput += waylandTree.RouteInput;
-x11Window.OnInput     += x11Tree.RouteInput;
+window.OnInput += LogInput;
+window.OnInput += tree.RouteInput;
 
 Console.WriteLine($"OS       : {OS.Current.Name}");
-Console.WriteLine($"Windows  : {waylandBackend.Name} + {x11Backend.Name}");
+Console.WriteLine($"Windowing: {windowBackend.Name}");
 Console.WriteLine($"Graphics : {graphicsBackend.Name}");
-Console.WriteLine("Running. Triangles disappear after 5 s; arrows move the blue panel (Shift = faster);");
-Console.WriteLine("hover/click the column tiles. Close either window to exit.");
+Console.WriteLine("Running. Triangle disappears after 5 s; arrows move the blue panel (Shift = faster);");
+Console.WriteLine("hover/click the column tiles; type, select and copy in the fields. Close the window to exit.");
 
 var clock    = System.Diagnostics.Stopwatch.StartNew();
 var fpsClock = System.Diagnostics.Stopwatch.StartNew();
 var frames   = 0;
 
-// The loop policy is the application's, one Step per window in the condition:
-// each trio pumps its window then plays its own frame, and the loop leaves as
-// soon as either window asks to close. Delegates are created once, not per turn.
-Action waylandFrame = () => DriveTrio(waylandScene, waylandTree, waylandRenderer, phase: 1f);
-Action x11Frame     = () => DriveTrio(x11Scene, x11Tree, x11Renderer, phase: -1f);
-
-while (waylandWindow.Step(waylandFrame) && x11Window.Step(x11Frame))
+// One window: the loop is the Step sugar (pump, then frame) — the policy is the
+// application's, as everywhere in the engine.
+while (window.Step(Frame))
 {
     frames++;
     if (fpsClock.Elapsed.TotalSeconds >= 1)
     {
         var fps = frames / fpsClock.Elapsed.TotalSeconds;
         Console.WriteLine($"[fps] {fps:F0}");
-        waylandWindow.SetTitle($"HumbleEngine — Wayland + Vulkan — {fps:F0} fps");
-        x11Window.SetTitle($"HumbleEngine — X11 + Vulkan — {fps:F0} fps");
+        window.SetTitle($"HumbleEngine — {windowBackend.Name} + {graphicsBackend.Name} — {fps:F0} fps");
         fpsClock.Restart();
         frames = 0;
     }
-
-    // Both windows suspended (fully occluded): nothing renders to throttle the
-    // loop — yield so a backgrounded engine does not spin a core while it keeps
-    // pumping events (input, clipboard).
-    if (waylandWindow.IsSuspended && x11Window.IsSuspended)
-        System.Threading.Thread.Sleep(10);
 }
 
-// Destruction in reverse creation order, trios first.
-x11Tree.Dispose();
-waylandTree.Dispose();
-x11Renderer.Dispose();
-waylandRenderer.Dispose();
+// Destruction in reverse creation order.
+tree.Dispose();
+renderer.Dispose();
 graphicsBackend.Dispose();
-x11Window.Dispose();
-waylandWindow.Dispose();
-x11Backend.Dispose();
-waylandBackend.Dispose();
+window.Dispose();
+windowBackend.Dispose();
 return;
 
-void LogInput(string source, InputEvent inputEvent)
+// Reads "--name value" from the command line, or returns the fallback.
+string ArgValue(string name, string fallback)
+{
+    for (var i = 0; i + 1 < args.Length; i++)
+        if (string.Equals(args[i], name, StringComparison.OrdinalIgnoreCase))
+            return args[i + 1];
+    return fallback;
+}
+
+void LogInput(InputEvent inputEvent)
 {
     if (inputEvent is PointerMoved)
     {
@@ -96,23 +115,21 @@ void LogInput(string source, InputEvent inputEvent)
             return;
         movedLogClock.Restart();
     }
-    Console.WriteLine($"[input] {source}: {inputEvent}");
+    Console.WriteLine($"[input] {inputEvent}");
 }
 
-// One trio's frame: animate (phase keeps the two worlds visibly independent),
-// render, honour the 5 s triangle demo, flush the dispose queue.
-void DriveTrio(SandboxScene scene, SceneTree tree, IRenderer renderer, float phase)
+// Animate, render (skipping when the window is not presentable), honour the 5 s
+// triangle demo, flush the dispose queue.
+void Frame()
 {
     var t = (float)clock.Elapsed.TotalSeconds;
-    scene.BreathingSize.Value = new Vector2(150f, 60f + 40f * MathF.Sin(t * phase * 3f));
+    scene.BreathingSize.Value = new Vector2(150f, 60f + 40f * MathF.Sin(t * 3f));
 
     // Typewriter: the label's text grows then resets — it re-measures and the
     // marker tile beside it slides (content sizing through the reactive layout).
     const string phrase = "Humble Engine — éàç 0123";
     scene.LabelText.Value = phrase[..(1 + (int)(t * 6f) % phrase.Length)];
 
-    // Skip the whole render when no frame could be acquired (window not
-    // presentable): the loop keeps pumping events and the clipboard keeps serving.
     if (renderer.BeginFrame())
     {
         tree.Render();

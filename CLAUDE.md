@@ -8,7 +8,7 @@ HumbleEngine is a C# game engine built from scratch with the goal of understandi
 
 - Language: C# / .NET 10.0
 - IDE: Rider (`.idea/` present)
-- Current phase: **le texte** (`docs/roadmaps/10_texte.md`) — **Roadmap 10 TERMINÉE** : textures, glyphes (`HumbleEngine.Text`), mise en forme (`Label`), champ texte (`TextField`), édition riche, presse-papiers + texte sélectionnable (`SelectableText`, `IClipboard`). Rastérisation FreeType en P/Invoke. **Prochaine roadmap décidée : le découplage pompe/rendu** (boucle pilotée par les fd) — corrige le gel/lag multi-fenêtre quand une fenêtre est réduite (bug différé en roadmap 09 ; n'affecte que le bi-fenêtre mono-processus du Sandbox). Ensuite candidates : runtime de signals (voir mémoire), éditeur (dogfooding), 2D. Phase précédente terminée : input (`docs/roadmaps/09_input.md`, 6 blocs)
+- Current phase : **aucune en cours — prochaine à choisir.** Dernière terminée : **le texte** (`docs/roadmaps/10_texte.md`, 6 blocs : textures, glyphes/`HumbleEngine.Text`, `Label`, `TextField`, édition riche, presse-papiers/`SelectableText`/`IClipboard`). Candidates pour la suite : un runtime de signals (auto-tracking `Effect`/`Computed`, voir mémoire), l'éditeur (dogfooding), la 2D. **Différé** : le découplage pompe/rendu (`docs/roadmaps/11_boucle.md`) — le rendu Vulkan bloquant fige la boucle mono-thread quand une fenêtre est réduite ; ne touche que le bi-fenêtre mono-processus, donc le Sandbox a été réduit à une fenêtre et la refonte attend son client (éditeur / vrai multi-fenêtre).
 
 ## Build & run commands
 
@@ -48,7 +48,7 @@ HumbleEngine.Mathematics/    — Types mathématiques (Vector2, Rect, …) — a
 HumbleEngine.Reactive/       — Primitives réactives (Reactive&lt;T&gt;, ReactiveList&lt;T&gt;, bindings) — autonome, aucune dépendance
 HumbleEngine.SceneGraph/     — Node (fermé par défaut), VisualNode (OnDraw), UINode/Panel/Column/Row (pixels, layout réactif), SelectableText (sélection/copie partagées) → Label (se mesure → sizing par contenu, sélectionnable) et TextField (champ éditable : caret, édition, couper/coller, two-way binding), SceneTree (hooks de cycle de vie, QueueDispose, Render, DefaultFontAtlas + Clipboard injectés), Scene, NodeSlot/NodeList observables, BindItemsFrom
 HumbleEngine.Text/           — Rendu de texte — FreeType en P/Invoke (FreeTypeNative), Font (face mémoire, rastérisation, métriques), GlyphAtlas (pré-cuit, R8, shelf-packing), Glyph, TextLayout (mise en forme une ligne). Police DejaVu Sans embarquée. Dépend de HAL + Mathematics
-HumbleEngine.Sandbox/        — Projet exécutable de test — démo bi-fenêtre : deux trios (Wayland + X11, un backend Vulkan), `dotnet run` sans argument
+HumbleEngine.Sandbox/        — Projet exécutable de test — démo mono-fenêtre (Wayland + Vulkan) : un trio, triangle/panneaux/colonne/texte/champs éditables, `dotnet run` sans argument. (Le multi-fenêtre attend le découplage pompe/rendu, roadmap 11 différée.)
 HumbleEngine.Tests/          — Tests unitaires — FakeOS, aucune dépendance à un display
 HumbleEngine.Tests.Linux/    — Tests d'intégration — X11, GLX, Wayland, Vulkan, cycle frame complet
 docs/
