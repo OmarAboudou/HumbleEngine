@@ -45,4 +45,10 @@ public interface IWindow : IGraphicsSurface
 
     /// <summary>Creates a child window that shares the parent's display connection.</summary>
     IWindow CreateChildWindow(WindowDescription description);
+
+    /// <summary>
+    /// The system clipboard, backed by this window's connection — the application
+    /// hands it to a scene tree (<c>tree.Clipboard = window.Clipboard</c>).
+    /// </summary>
+    IClipboard Clipboard { get; }
 }

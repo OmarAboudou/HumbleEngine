@@ -65,6 +65,11 @@ public abstract class Window : IWindow
     public abstract IWindow CreateChildWindow(WindowDescription description);
 
     /// <inheritdoc/>
+    /// <remarks>Backends with clipboard support override this; the default refuses.</remarks>
+    public virtual IClipboard Clipboard =>
+        throw new NotSupportedException("This window backend has no clipboard support.");
+
+    /// <inheritdoc/>
     public abstract void Dispose();
 
     /// <summary>Raises <see cref="OnClose"/>.</summary>

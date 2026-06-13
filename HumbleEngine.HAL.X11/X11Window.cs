@@ -1,12 +1,19 @@
 namespace HumbleEngine.X11;
 
-internal sealed class X11Window : Window, INativeWindowHandle
+internal sealed class X11Window : Window, INativeWindowHandle, IClipboard
 {
     private readonly IntPtr _display;
     private readonly ulong  _window;
     private readonly ulong  _wmDeleteWindow;
     private readonly ulong  _netWmName;
     private readonly ulong  _utf8String;
+
+    // Clipboard (the CLIPBOARD selection): the atoms, the property we receive a
+    // paste into, and the text we serve while we own the selection.
+    private readonly ulong _clipboard;
+    private readonly ulong _targets;
+    private readonly ulong _clipboardProperty;
+    private string? _ownedText;
 
     /// <summary>One pointing source per window — X11 core events erase physical provenance.</summary>
     private readonly Mouse _mouse = new();
@@ -49,6 +56,10 @@ internal sealed class X11Window : Window, INativeWindowHandle
 
         _netWmName  = X11Native.XInternAtom(display, "_NET_WM_NAME", false);
         _utf8String = X11Native.XInternAtom(display, "UTF8_STRING", false);
+
+        _clipboard         = X11Native.XInternAtom(display, "CLIPBOARD", false);
+        _targets           = X11Native.XInternAtom(display, "TARGETS", false);
+        _clipboardProperty = X11Native.XInternAtom(display, "HUMBLE_CLIPBOARD", false);
 
         if (desc.Borderless)
         {
@@ -111,6 +122,14 @@ internal sealed class X11Window : Window, INativeWindowHandle
             case XEventType.KeyPress:
             case XEventType.KeyRelease:
                 TranslateKey(ref ev);
+                break;
+
+            case XEventType.SelectionRequest:
+                ServeSelection(ref ev.xselectionrequest);
+                break;
+
+            case XEventType.SelectionClear:
+                _ownedText = null; // another application took the clipboard
                 break;
         }
     }
@@ -214,6 +233,112 @@ internal sealed class X11Window : Window, INativeWindowHandle
 
     public IntPtr GetNativeHandle()     => new IntPtr((long)_window);
     public IntPtr GetConnectionHandle() => _display;
+
+    // --- Clipboard (the CLIPBOARD selection) ---
+
+    /// <inheritdoc/>
+    public override IClipboard Clipboard => this;
+
+    /// <summary>Becomes the CLIPBOARD owner and remembers the text to serve on request.</summary>
+    public void SetText(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        _ownedText = text;
+        X11Native.XSetSelectionOwner(_display, _clipboard, _window, X11Native.CurrentTime);
+        X11Native.XFlush(_display);
+    }
+
+    /// <summary>
+    /// Reads the CLIPBOARD: our own text when we own it, otherwise a conversion
+    /// request to the owner, pumped (bounded) for the <c>SelectionNotify</c> answer.
+    /// </summary>
+    public string? GetText()
+    {
+        var owner = X11Native.XGetSelectionOwner(_display, _clipboard);
+        if (owner == 0)
+            return null;
+        if (owner == _window)
+            return _ownedText;
+
+        X11Native.XConvertSelection(
+            _display, _clipboard, _utf8String, _clipboardProperty, _window, X11Native.CurrentTime);
+        X11Native.XFlush(_display);
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        XEvent ev = default;
+        while (clock.ElapsedMilliseconds < 500)
+        {
+            X11Native.XPending(_display); // read the connection into the event queue
+            if (X11Native.XCheckTypedWindowEvent(_display, _window, XEventType.SelectionNotify, ref ev) != 0)
+            {
+                return ev.xselection.property == 0 ? null : ReadClipboardProperty();
+            }
+            System.Threading.Thread.Sleep(2);
+        }
+        return null;
+    }
+
+    /// <summary>Reads (and deletes) the delivered UTF-8 bytes from our clipboard property.</summary>
+    private string? ReadClipboardProperty()
+    {
+        var status = X11Native.XGetWindowProperty(
+            _display, _window, _clipboardProperty, 0, int.MaxValue / 4, true, 0 /* AnyPropertyType */,
+            out _, out _, out var nitems, out _, out var data);
+        if (status != 0 || data == IntPtr.Zero)
+            return null;
+        try
+        {
+            if (nitems == 0)
+                return string.Empty;
+            var bytes = new byte[nitems];
+            System.Runtime.InteropServices.Marshal.Copy(data, bytes, 0, (int)nitems);
+            return System.Text.Encoding.UTF8.GetString(bytes);
+        }
+        finally
+        {
+            X11Native.XFree(data);
+        }
+    }
+
+    /// <summary>Answers a SelectionRequest: write the asked target into the requestor's property, then notify it.</summary>
+    private void ServeSelection(ref XSelectionRequestEvent request)
+    {
+        ulong property = 0; // None = refused, until filled
+
+        if (_ownedText is not null && request.selection == _clipboard)
+        {
+            if (request.target == _utf8String)
+            {
+                var bytes = System.Text.Encoding.UTF8.GetBytes(_ownedText);
+                X11Native.XChangeProperty(
+                    _display, request.requestor, request.property, request.target, 8, 0, bytes, bytes.Length);
+                property = request.property;
+            }
+            else if (request.target == _targets)
+            {
+                var atoms = new nint[] { (nint)_targets, (nint)_utf8String };
+                X11Native.XChangeProperty(
+                    _display, request.requestor, request.property, 4 /* XA_ATOM */, 32, 0, atoms, atoms.Length);
+                property = request.property;
+            }
+        }
+
+        var reply = new XEvent
+        {
+            xselection = new XSelectionEvent
+            {
+                type      = XEventType.SelectionNotify,
+                display   = _display,
+                requestor = request.requestor,
+                selection = request.selection,
+                target    = request.target,
+                property  = property,
+                time      = request.time,
+            },
+        };
+        X11Native.XSendEvent(_display, request.requestor, false, 0, ref reply);
+        X11Native.XFlush(_display);
+    }
 
     private bool _disposed;
 

@@ -43,6 +43,47 @@ internal static class X11Native
         IntPtr display, ulong window, ulong property, ulong type,
         int format, int mode, byte[] data, int nelements);
 
+    /// <summary>Atom-array overload — 32-bit format properties (a <c>TARGETS</c> reply lists atoms).</summary>
+    [DllImport(Lib)] internal static extern int XChangeProperty(
+        IntPtr display, ulong window, ulong property, ulong type,
+        int format, int mode, nint[] data, int nelements);
+
+    // --- Selections (the clipboard: an owner serves data on request) ---
+
+    /// <summary>The special <c>CurrentTime</c> value (0).</summary>
+    internal const ulong CurrentTime = 0;
+
+    /// <summary>Makes <paramref name="owner"/> the owner of <paramref name="selection"/> (the source of a copy).</summary>
+    [DllImport(Lib)] internal static extern int XSetSelectionOwner(
+        IntPtr display, ulong selection, ulong owner, ulong time);
+
+    /// <summary>The window currently owning a selection, or 0 when none holds it.</summary>
+    [DllImport(Lib)] internal static extern ulong XGetSelectionOwner(IntPtr display, ulong selection);
+
+    /// <summary>Asks the owner to convert a selection to a target type and place it in a property — a paste request.</summary>
+    [DllImport(Lib)] internal static extern int XConvertSelection(
+        IntPtr display, ulong selection, ulong target, ulong property, ulong requestor, ulong time);
+
+    /// <summary>Reads a window property — the data delivered by a selection conversion. <paramref name="prop"/> must be freed with <see cref="XFree"/>.</summary>
+    [DllImport(Lib)] internal static extern int XGetWindowProperty(
+        IntPtr display, ulong window, ulong property, long longOffset, long longLength,
+        [MarshalAs(UnmanagedType.Bool)] bool delete, ulong reqType,
+        out ulong actualType, out int actualFormat, out ulong nitems, out ulong bytesAfter, out IntPtr prop);
+
+    /// <summary>Frees memory Xlib allocated (a property buffer).</summary>
+    [DllImport(Lib)] internal static extern int XFree(IntPtr data);
+
+    /// <summary>Deletes a window property.</summary>
+    [DllImport(Lib)] internal static extern int XDeleteProperty(IntPtr display, ulong window, ulong property);
+
+    /// <summary>Sends an event to a window — here the <c>SelectionNotify</c> answering a paste request.</summary>
+    [DllImport(Lib)] internal static extern int XSendEvent(
+        IntPtr display, ulong window, [MarshalAs(UnmanagedType.Bool)] bool propagate, long eventMask, ref XEvent send);
+
+    /// <summary>Pulls one event of a given type for a window from the queue without blocking, leaving others in place. Returns nonzero when found.</summary>
+    [DllImport(Lib)] internal static extern int XCheckTypedWindowEvent(
+        IntPtr display, ulong window, int eventType, ref XEvent @event);
+
     /// <summary>
     /// Translates a key event into its keysym and its Latin-1 text (layout and
     /// shift applied). The Latin-1 limit is accepted for now — full UTF-8 text
@@ -93,6 +134,9 @@ internal static class XEventType
     public const int Expose          = 12;
     public const int DestroyNotify   = 17;
     public const int ConfigureNotify = 22;
+    public const int SelectionClear   = 29;
+    public const int SelectionRequest = 30;
+    public const int SelectionNotify  = 31;
     public const int ClientMessage   = 33;
 }
 
@@ -109,6 +153,36 @@ internal struct XEvent
     [FieldOffset(0)] public XMotionEvent        xmotion;
     [FieldOffset(0)] public XCrossingEvent      xcrossing;
     [FieldOffset(0)] public XKeyEvent           xkey;
+    [FieldOffset(0)] public XSelectionRequestEvent xselectionrequest;
+    [FieldOffset(0)] public XSelectionEvent     xselection;
+}
+
+/// <summary>XSelectionRequestEvent (someone asks us to serve the selection) — 64-bit Linux offsets.</summary>
+[StructLayout(LayoutKind.Explicit)]
+internal struct XSelectionRequestEvent
+{
+    [FieldOffset(0)]  public int   type;
+    [FieldOffset(32)] public ulong owner;
+    [FieldOffset(40)] public ulong requestor;
+    [FieldOffset(48)] public ulong selection;
+    [FieldOffset(56)] public ulong target;
+    [FieldOffset(64)] public ulong property;
+    [FieldOffset(72)] public ulong time;
+}
+
+/// <summary>XSelectionEvent (a conversion answer, or the reply we send) — 64-bit Linux offsets.</summary>
+[StructLayout(LayoutKind.Explicit)]
+internal struct XSelectionEvent
+{
+    [FieldOffset(0)]  public int    type;
+    [FieldOffset(8)]  public ulong  serial;
+    [FieldOffset(16)] public int    send_event;
+    [FieldOffset(24)] public IntPtr display;
+    [FieldOffset(32)] public ulong  requestor;
+    [FieldOffset(40)] public ulong  selection;
+    [FieldOffset(48)] public ulong  target;
+    [FieldOffset(56)] public ulong  property;
+    [FieldOffset(64)] public ulong  time;
 }
 
 /// <summary>XKeyEvent field offsets for 64-bit Linux.</summary>

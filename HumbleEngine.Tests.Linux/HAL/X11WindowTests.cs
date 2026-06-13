@@ -35,4 +35,15 @@ public sealed class X11WindowTests
         var handle = (INativeWindowHandle)_window;
         Assert.That(handle.GetConnectionHandle(), Is.Not.EqualTo(IntPtr.Zero));
     }
+
+    [Test]
+    public void Clipboard_SetThenGet_RoundTripsWhileWeOwnIt()
+    {
+        // Exercises the real XSetSelectionOwner / XGetSelectionOwner wiring; the
+        // cross-application serve/read path is validated interactively.
+        var clipboard = _window.Clipboard;
+        clipboard.SetText("héllo 123");
+
+        Assert.That(clipboard.GetText(), Is.EqualTo("héllo 123"));
+    }
 }
