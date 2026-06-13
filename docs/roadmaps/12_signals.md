@@ -85,10 +85,20 @@ undo). Donc deux étages, **curseur d'Omar sur la profondeur** :
   8 tests : valeur initiale, recompute sur dépendance, `Changed`, **chaîne
   `Property→Computed→Effect`**, **skip si dérivée inchangée**, dérivation chaînée,
   dispose. **266 unitaires verts.**
-- [ ] **Bloc 5 — Brancher l'existant** — remplacer le câblage manuel du
-  `LinearContainer` (un `Effect` qui re-tracke les enfants/Spacing → `Relayout`)
-  et de `Label`/`TextField` (mesure dérivée), comme dogfood + preuve. *Fin de
-  l'étage haut.*
+- [x] **Bloc 5 — Intégration nœud + preuve** ✅ — `Node.CreateEffect(Action)` et
+  `Node.CreateComputed<T>(Func<T>)` (durée de vie liée au nœud : disposés à la
+  mort du nœud, comme `CreateProperty`). *Sandbox : un `Label` « statut » dont le
+  texte est un `Computed` du nombre de caractères d'un champ, recalculé tout seul
+  quand on tape, miroité par `BindFrom` — le stack signals de bout en bout, zéro
+  `.Changed`.* 2 tests de durée de vie ; **272 unitaires verts.**
+  - **Suivi noté : les collections réactives.** Rebrancher le `LinearContainer`
+    complet (un `Effect` qui re-tracke les enfants + Spacing + tailles, supprimant
+    le bookkeeping `.Changed` add/remove) exige que les collections (`NodeList`,
+    `ObservableList`) **participent au tracking** (track à la lecture, invalidation
+    à la mutation) — or `IReactiveSource` est interne au projet Reactive. C'est un
+    morceau à part (exposer un primitif de tracking aux collections SceneGraph),
+    laissé en suivi.
 
-*Tâche en cours : bloc 1 (conception) fait ; prochain — bloc 2 (le renommage),
-puis curseur sur l'étage haut.*
+*Roadmap 12 terminée.* Étage bas (renommage + `Property`/`IReadOnlyProperty` +
+`AsReadOnly`) et étage haut (`Effect`/`Computed` auto-tracking + intégration nœud)
+faits. Suivi : collections réactives (pour le dogfood `LinearContainer`).

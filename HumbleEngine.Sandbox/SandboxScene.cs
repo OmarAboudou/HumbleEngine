@@ -73,6 +73,15 @@ public sealed class SandboxScene : Scene
         Attach(fieldA);
         Attach(fieldB);
 
+        // Bloc 5 (signals) — a live derived label: a Computed over the field's
+        // text, recomputed automatically as you type and mirrored into the label.
+        // No .Changed subscription; the read inside the formula lists itself.
+        var status = new Label { Name = "Status" };
+        status.Position.Value = new Vector2(300f, 478f);
+        status.Color.Value    = new Vector4(0.6f, 0.8f, 0.95f, 1f);
+        status.Text.BindFrom(CreateComputed(() => $"{fieldA.Text.Value.Length} caractères"));
+        Attach(status);
+
         _breathing = MakeTile(new Vector4(0.3f, 0.8f, 0.4f, 1f));
         var column = new Column { Name = "Column" };
         column.Position.Value = new Vector2(620f, 40f);

@@ -8,7 +8,7 @@ HumbleEngine is a C# game engine built from scratch with the goal of understandi
 
 - Language: C# / .NET 10.0
 - IDE: Rider (`.idea/` present)
-- Current phase : **les signals** (`docs/roadmaps/12_signals.md`) — « tout observable » à la React/Solid, le levier = l'auto-tracking. Conception passe 1 faite : renommage `Reactive<T>`→`Property<T>` (rôle vs mécanisme, aligné éditeur) + famille `Property`/`Computed`/`Effect` ; deux étages (renommage certain, auto-tracking selon curseur). Phase précédente terminée : **le texte** (`docs/roadmaps/10_texte.md`, 6 blocs). **Différé** : le découplage pompe/rendu (`docs/roadmaps/11_boucle.md`, attend l'éditeur / vrai multi-fenêtre ; Sandbox réduit à une fenêtre).
+- Current phase : **aucune en cours — prochaine à choisir.** Dernière terminée : **les signals** (`docs/roadmaps/12_signals.md`) — `Reactive<T>`→`Property<T>` (rôle vs mécanisme), `AsReadOnly` (lecture seule garantie par le type), auto-tracking `Effect`/`Computed` (les lectures listent leurs dépendances), intégration nœud `CreateEffect`/`CreateComputed`. Suivi noté : les collections réactives (rebrancher le `LinearContainer`). Candidates suite : l'éditeur (dogfooding), la 2D. **Différé** : le découplage pompe/rendu (`docs/roadmaps/11_boucle.md`, attend l'éditeur / vrai multi-fenêtre ; Sandbox réduit à une fenêtre). Avant les signals : **le texte** (`docs/roadmaps/10_texte.md`, 6 blocs).
 
 ## Build & run commands
 
@@ -45,7 +45,7 @@ HumbleEngine.HAL.Vulkan/     — Backend graphique Vulkan — instance (validati
 HumbleEngine.HAL.OpenGL/     — Backend graphique OpenGL — GLX context, BeginFrame/EndFrame/Present
 HumbleEngine.HAL.Linux/      — Assembly de plateforme Linux (agrège X11, Wayland, Vulkan, OpenGL)
 HumbleEngine.Mathematics/    — Types mathématiques (Vector2, Rect, …) — autonome, aucune dépendance
-HumbleEngine.Reactive/       — Primitives réactives (Reactive&lt;T&gt;, ReactiveList&lt;T&gt;, bindings) — autonome, aucune dépendance
+HumbleEngine.Reactive/       — Runtime de réactivité (Property&lt;T&gt; + AsReadOnly, ObservableList&lt;T&gt;, bindings, auto-tracking : Effect/Computed) — autonome, aucune dépendance
 HumbleEngine.SceneGraph/     — Node (fermé par défaut), VisualNode (OnDraw), UINode/Panel/Column/Row (pixels, layout réactif), SelectableText (sélection/copie partagées) → Label (se mesure → sizing par contenu, sélectionnable) et TextField (champ éditable : caret, édition, couper/coller, two-way binding), SceneTree (hooks de cycle de vie, QueueDispose, Render, DefaultFontAtlas + Clipboard injectés), Scene, NodeSlot/NodeList observables, BindItemsFrom
 HumbleEngine.Text/           — Rendu de texte — FreeType en P/Invoke (FreeTypeNative), Font (face mémoire, rastérisation, métriques), GlyphAtlas (pré-cuit, R8, shelf-packing), Glyph, TextLayout (mise en forme une ligne). Police DejaVu Sans embarquée. Dépend de HAL + Mathematics
 HumbleEngine.Sandbox/        — Projet exécutable de test — démo mono-fenêtre (Wayland + Vulkan) : un trio, triangle/panneaux/colonne/texte/champs éditables, `dotnet run` sans argument. (Le multi-fenêtre attend le découplage pompe/rendu, roadmap 11 différée.)

@@ -201,6 +201,30 @@ public abstract class Node : IDisposable
     }
 
     /// <summary>
+    /// Creates an <see cref="Effect"/> tied to this node's lifetime: it runs
+    /// <paramref name="action"/> now and again whenever a reactive value it read
+    /// changes, and is disposed with the node — a dead subtree stops reacting (and
+    /// stops retaining what it read), no manual <c>.Changed</c> bookkeeping.
+    /// </summary>
+    protected Effect CreateEffect(Action action)
+    {
+        var effect = new Effect(action);
+        Disposing += effect.Dispose;
+        return effect;
+    }
+
+    /// <summary>
+    /// Creates a <see cref="Computed{T}"/> tied to this node's lifetime: the
+    /// derived value tracks its formula and stops recomputing when the node dies.
+    /// </summary>
+    protected Computed<T> CreateComputed<T>(Func<T> formula)
+    {
+        var computed = new Computed<T>(formula);
+        Disposing += computed.Dispose;
+        return computed;
+    }
+
+    /// <summary>
     /// Called after this node's parent changed: attached (<paramref name="oldParent"/>
     /// is null), detached (<paramref name="newParent"/> is null) or reparented.
     /// Hooks report facts only — a reparent never pretends the node left the tree.
