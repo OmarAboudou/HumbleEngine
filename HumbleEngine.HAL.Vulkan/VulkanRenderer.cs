@@ -340,6 +340,31 @@ internal sealed class VulkanRenderer : IRenderer
     }
 
     /// <summary>
+    /// Records a glyph draw (mode 2): the coverage atlas sampled in
+    /// <paramref name="uvSubRect"/> is used as alpha over the solid
+    /// <paramref name="color"/>.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">No frame is open.</exception>
+    /// <exception cref="ArgumentException">The atlas was not created by this renderer.</exception>
+    public void DrawGlyph(Rect rect, ITexture atlas, Rect uvSubRect, Vector4 color)
+    {
+        ArgumentNullException.ThrowIfNull(atlas);
+        if (!_frameOpen)
+            throw new InvalidOperationException("DrawGlyph is only valid between BeginFrame and EndFrame.");
+        if (atlas is not VulkanTexture vulkanAtlas)
+            throw new ArgumentException($"{atlas.GetType().Name} was not created by a Vulkan renderer.", nameof(atlas));
+        if (!ReferenceEquals(vulkanAtlas.Owner, this))
+            throw new ArgumentException(
+                "The atlas was created by another renderer — its image lives on that renderer's device.", nameof(atlas));
+
+        var quad = new QuadParams(
+            new Vector4(rect.X, rect.Y, rect.Width, rect.Height),
+            new Vector4(uvSubRect.X, uvSubRect.Y, uvSubRect.Width, uvSubRect.Height),
+            color, mode: 2);
+        RecordQuad(in quad, vulkanAtlas);
+    }
+
+    /// <summary>
     /// The shared tail of every quad draw: bind the quad pipeline and the
     /// texture's descriptor set (both lazily), push the per-draw parameters,
     /// draw the six generated vertices.

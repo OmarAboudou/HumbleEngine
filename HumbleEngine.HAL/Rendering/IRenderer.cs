@@ -55,4 +55,14 @@ public interface IRenderer : IDisposable
     /// texture created by this renderer.
     /// </summary>
     void DrawTexturedQuad(Rect rect, ITexture texture, Rect uvSubRect, Vector4 tint);
+
+    /// <summary>
+    /// Records a glyph draw into the current frame: the pixel-space
+    /// <paramref name="rect"/> sampled from the <paramref name="uvSubRect"/> of a
+    /// single-channel coverage atlas (<see cref="TextureFormat.R8"/>), the sample
+    /// used as alpha over the solid <paramref name="color"/> — the text primitive.
+    /// Only valid between <see cref="BeginFrame"/> and <see cref="EndFrame"/>, and
+    /// only with a texture created by this renderer.
+    /// </summary>
+    void DrawGlyph(Rect rect, ITexture atlas, Rect uvSubRect, Vector4 color);
 }

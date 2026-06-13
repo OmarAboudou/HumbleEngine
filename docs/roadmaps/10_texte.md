@@ -81,6 +81,36 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
   centaines de textures distinctes, pas l'UI d'aujourd'hui où l'atlas est *une*
   texture bindée une fois).
 
+### Les glyphes (bloc 3 — validé 2026-06-13)
+
+- **Un nouveau projet `HumbleEngine.Text`** (validé 2026-06-13 — recommandé) :
+  isole la P/Invoke FreeType + `Font` + `GlyphAtlas`, namespace `HumbleEngine`
+  (API publique), dépend de `HAL` (pour `ITexture`/`IRenderer`) + `Mathematics`.
+  Miroir de l'isolation `HAL.Vulkan`/`HAL.X11` — la rastérisation bas-niveau ne
+  se mêle pas aux nœuds de scène. `SceneGraph` y référera au bloc 4 (le `Label`).
+- **Rastérisation FreeType en P/Invoke** : `FT_Init_FreeType`,
+  `FT_New_Memory_Face` (depuis le `byte[]` embarqué, pas de chemin),
+  `FT_Set_Pixel_Sizes`, `FT_Load_Char(…, FT_LOAD_RENDER)` → bitmap +
+  métriques (bearing, advance). Les gros structs C (`FT_FaceRec`,
+  `FT_GlyphSlotRec`, `FT_Bitmap`, `FT_Glyph_Metrics`) mappés par offsets — le
+  morceau d'apprentissage.
+- **Atlas pré-cuit** (choisi 2026-06-13 — délégué par Omar, reco retenue) : au
+  chargement, rastériser une fois un **charset fixe** (ASCII 32–126 + supplément
+  Latin-1 : les accents français déjà tapés au bloc 5), packer en un bitmap
+  **R8** CPU (shelf-packing, atlas de taille fixe), créer **une texture
+  immuable** via le `CreateTexture` du bloc 2 (réutilisé tel quel, zéro nouveau
+  contrat HAL). **Différé : l'atlas dynamique** (texture vierge, glyphes
+  uploadés à la demande via un futur `ITexture.Update(region)` + copie staging
+  sous-rect) — son client : les grands charsets / CJK.
+- **L'enregistrement par glyphe** : `uvSubRect` (0..1 dans l'atlas) + taille px
+  + bearing (left/top) + advance — exactement ce que consommera le layout du
+  bloc 4. Récupérable par codepoint (cache du charset cuit).
+- **Police embarquée : `DejaVuSans.ttf`** (validé — reco) en `EmbeddedResource`,
+  miroir exact de l'embed des shaders SPIR-V ; déterministe, pas de fontconfig.
+  Licence permissive (DejaVu). Découverte des polices système différée.
+- **Démo Sandbox** : quelques glyphes posés à la main (`DrawTexturedQuad` sur
+  leurs sous-rects, `mode 2`) — du texte visible avant le moindre `Label`.
+
 ## Blocs
 
 - [ ] **Bloc 1 — Conception** — passe 1 (l'arc + hautes décisions) ✅ ci-dessus.
@@ -105,9 +135,21 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
   (création+draw, format R8, garde d'origine) ; 219 unitaires + 53 intégration
   verts, 0 erreur de validation Vulkan sur un run du Sandbox.
 
-- [ ] **Bloc 3 — Les glyphes** — FreeType en P/Invoke (chargement de police,
-  `FT_Load_Glyph`, bitmap + métriques), atlas de glyphes (packing, cache par
-  codepoint × taille). *Sandbox : dump de l'atlas / quelques glyphes posés.*
+- [x] **Bloc 3 — Les glyphes** ✅ — nouveau projet **`HumbleEngine.Text`**
+  (namespace `HumbleEngine`, deps HAL + Mathematics), DejaVuSans.ttf embarqué.
+  `FreeTypeNative` (P/Invoke `libfreetype.so.6` + structs `FtBitmap`/`FtGlyphSlot`
+  **mappés par offsets 64-bit** : advance@128, bitmap@152, bearing@192/196 —
+  validés par les tests). `Font` (lib+face+bytes épinglés, `Rasterize` copie en
+  managé via `RasterizedGlyph`, `Font.Default(px)`). `GlyphAtlas` pré-cuit
+  (charset ASCII + Latin-1, shelf-packing R8 512², texture immuable du bloc 2,
+  `char → Glyph`). `Glyph` record (uvSubRect + taille + bearing + advance).
+  **Primitive HAL `DrawGlyph`** (mode 2 : couverture `.r` × couleur), câblée
+  Vulkan/OpenGL/Fake — la conception disait « DrawTexturedQuad mode 2 », un draw
+  dédié est plus net. *Sandbox : `TextNode` pose une chaîne (ASCII + accents) à
+  la main — validé interactivement.* Tests : 5 unitaires (sans display, via
+  `FakeRenderer` — 'A' à métriques saines = preuve des offsets, espace = advance
+  sans bitmap, accent dans le charset, hors-charset absent, atlas R8 512²).
+  224 unitaires + 53 intégration verts, 0 erreur de validation sur un run.
 
 - [ ] **Bloc 4 — La mise en forme** — layout `string → glyphes positionnés`
   (avance, kerning, retour à la ligne), nœud `Label`/`TextNode` qui se **mesure**
@@ -119,4 +161,4 @@ Découpage en blocs — chaque bloc compile, **se voit** (Sandbox) et est valid�
   bidirectionnel `Reactive<string>`. Le vrai client. *Sandbox : on tape dans un
   champ lié à un label.*
 
-*Tâche en cours : bloc 2 ✅ ; prochain — bloc 3 (les glyphes : FreeType + atlas).*
+*Tâche en cours : bloc 3 ✅ ; prochain — bloc 4 (la mise en forme : layout `string → glyphes`, `Label` qui se mesure).*

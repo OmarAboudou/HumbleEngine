@@ -8,7 +8,7 @@ HumbleEngine is a C# game engine built from scratch with the goal of understandi
 
 - Language: C# / .NET 10.0
 - IDE: Rider (`.idea/` present)
-- Current phase: **le texte** (`docs/roadmaps/10_texte.md`) — arc en 4 blocs (textures → glyphes → mise en forme → champ texte), rastérisation FreeType en P/Invoke. Bloc 2 (textures dans le renderer : `ITexture`/`DrawTexturedQuad`, übershader sampler+modes, staging+device-local, texture blanche par défaut) ✅. Prochain : bloc 3 (glyphes : FreeType + atlas). Phase précédente terminée : input (`docs/roadmaps/09_input.md`, 6 blocs)
+- Current phase: **le texte** (`docs/roadmaps/10_texte.md`) — arc en 4 blocs (textures → glyphes → mise en forme → champ texte), rastérisation FreeType en P/Invoke. Bloc 2 (textures : `ITexture`/`DrawTexturedQuad`, übershader sampler+modes) ✅ ; bloc 3 (glyphes : projet `HumbleEngine.Text`, FreeType en P/Invoke, `Font`/`GlyphAtlas`/`Glyph`, `DrawGlyph` mode 2) ✅. Prochain : bloc 4 (mise en forme : layout `string → glyphes`, `Label` qui se mesure). Phase précédente terminée : input (`docs/roadmaps/09_input.md`, 6 blocs)
 
 ## Build & run commands
 
@@ -47,6 +47,7 @@ HumbleEngine.HAL.Linux/      — Assembly de plateforme Linux (agrège X11, Wayl
 HumbleEngine.Mathematics/    — Types mathématiques (Vector2, Rect, …) — autonome, aucune dépendance
 HumbleEngine.Reactive/       — Primitives réactives (Reactive&lt;T&gt;, ReactiveList&lt;T&gt;, bindings) — autonome, aucune dépendance
 HumbleEngine.SceneGraph/     — Node (fermé par défaut), VisualNode (OnDraw), UINode/Panel/Column/Row (pixels, layout réactif), SceneTree (hooks de cycle de vie, QueueDispose, Render), Scene, NodeSlot/NodeList observables, BindItemsFrom
+HumbleEngine.Text/           — Rendu de texte — FreeType en P/Invoke (FreeTypeNative), Font (face mémoire, rastérisation), GlyphAtlas (pré-cuit, R8, shelf-packing), Glyph. Police DejaVu Sans embarquée. Dépend de HAL + Mathematics
 HumbleEngine.Sandbox/        — Projet exécutable de test — démo bi-fenêtre : deux trios (Wayland + X11, un backend Vulkan), `dotnet run` sans argument
 HumbleEngine.Tests/          — Tests unitaires — FakeOS, aucune dépendance à un display
 HumbleEngine.Tests.Linux/    — Tests d'intégration — X11, GLX, Wayland, Vulkan, cycle frame complet
@@ -72,6 +73,7 @@ HAL.macOS   (futur)  → HAL + HAL.Cocoa + HAL.Metal
 Mathematics          → (aucune)
 Reactive             → (aucune)
 SceneGraph           → HAL + Mathematics + Reactive
+Text                 → HAL + Mathematics
 ```
 
 L'assembly de plateforme (`HAL.Linux`, `HAL.Windows`, `HAL.macOS`) est le seul à connaître tous les backends. L'application ne référence que `HAL` + l'assembly de plateforme cible, et enregistre explicitement l'OS via `OS.Register(new LinuxOS())` au démarrage.

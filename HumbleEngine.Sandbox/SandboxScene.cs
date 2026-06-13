@@ -34,6 +34,10 @@ public sealed class SandboxScene : Scene
         _panel.Color.Value    = new Vector4(0.2f, 0.5f, 0.9f, 0.7f);
         Attach(_panel);
 
+        var text = new TextNode { Name = "Text" };
+        text.Position.Value = new Vector2(60f, 300f);
+        Attach(text);
+
         var image = new ImageNode { Name = "Image" };
         image.Position.Value = new Vector2(60f, 360f);
         image.Size.Value     = new Vector2(180f, 180f);

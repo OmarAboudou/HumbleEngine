@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>HumbleEngine</RootNamespace>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\HumbleEngine.HAL\HumbleEngine.HAL.csproj" />
+        <ProjectReference Include="..\HumbleEngine.Mathematics\HumbleEngine.Mathematics.csproj" />
+    </ItemGroup>
+
+    <!-- The default font, shipped in the repo (DejaVu Sans, permissive licence):
+         embedded as an assembly resource and loaded by FT_New_Memory_Face, so
+         there is no file path and no fontconfig dependency. -->
+    <ItemGroup>
+        <EmbeddedResource Include="Fonts/DejaVuSans.ttf" LogicalName="Fonts/DejaVuSans.ttf" />
+    </ItemGroup>
+
+</Project>

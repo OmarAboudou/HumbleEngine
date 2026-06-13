@@ -22,6 +22,9 @@ internal sealed class FakeRenderer : IRenderer
     /// <summary>Textured quads received by <see cref="DrawTexturedQuad"/>, in submission order.</summary>
     public List<(Rect Rect, ITexture Texture, Rect UvSubRect, Vector4 Tint)> TexturedQuads { get; } = [];
 
+    /// <summary>Glyphs received by <see cref="DrawGlyph"/>, in submission order.</summary>
+    public List<(Rect Rect, ITexture Atlas, Rect UvSubRect, Vector4 Color)> Glyphs { get; } = [];
+
     public void BeginFrame()
     {
     }
@@ -54,6 +57,9 @@ internal sealed class FakeRenderer : IRenderer
 
     public void DrawTexturedQuad(Rect rect, ITexture texture, Rect uvSubRect, Vector4 tint) =>
         TexturedQuads.Add((rect, texture, uvSubRect, tint));
+
+    public void DrawGlyph(Rect rect, ITexture atlas, Rect uvSubRect, Vector4 color) =>
+        Glyphs.Add((rect, atlas, uvSubRect, color));
 
     public void Dispose()
     {
