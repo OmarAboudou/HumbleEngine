@@ -26,6 +26,15 @@ public abstract class UINode : VisualNode
     public Property<Vector2> Size { get; }
 
     /// <summary>
+    /// Surface in square pixels, derived from <see cref="Size"/> — a read-only
+    /// <see cref="Computed{T}"/>: it recomputes whenever the size changes and
+    /// cannot be written. Mostly a worked example of a derived value: the
+    /// inspector discovers it like any other <c>IObservableValue</c> and shows it
+    /// as a live, read-only field.
+    /// </summary>
+    public Computed<float> Area { get; }
+
+    /// <summary>
     /// Whether the pointer hit-test can target this node. Default true. Set false to
     /// make it transparent to picking — the click passes through to whatever sits
     /// behind it (a decorative label over a clickable row). This is Godot's
@@ -38,6 +47,7 @@ public abstract class UINode : VisualNode
     {
         Position = CreateProperty(Vector2.Zero);
         Size     = CreateProperty(Vector2.Zero);
+        Area     = CreateComputed(() => Size.Value.X * Size.Value.Y);
     }
 
     /// <summary>

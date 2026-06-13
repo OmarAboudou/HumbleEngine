@@ -66,6 +66,38 @@ public sealed class InspectorTests
         Assert.That(names, Does.Not.Contain("Children"));
     }
 
+    [Test]
+    public void GetInspectableProperties_FindsComputed()
+    {
+        var node = new Panel();
+
+        var names = NodeInspector.GetInspectableProperties(node).Select(p => p.Name).ToList();
+
+        // Area is a Computed<float> — discovered like any IObservableValue.
+        Assert.That(names, Does.Contain("Area"));
+    }
+
+    [Test]
+    public void InspectorRow_ForComputed_IsReadOnlyLabelAndLive()
+    {
+        var node = new Panel();
+        node.Size.Value = new Vector2(3f, 4f);          // Area = 12
+        var area = NodeInspector.GetInspectableProperties(node).Single(p => p.Name == "Area");
+
+        var row    = new InspectorRow(area);
+        var widget = row.Children.Single(c => c.Name != "PropName");
+
+        // A Computed is read-only → a Label, never an editable TextField.
+        Assert.That(widget, Is.InstanceOf<Label>());
+        Assert.That(widget, Is.Not.InstanceOf<TextField>());
+
+        // And live: changing Size recomputes Area, the label follows.
+        var label = (Label)widget;
+        Assert.That(label.Text.Value, Does.Contain("12"));
+        node.Size.Value = new Vector2(5f, 4f);          // Area = 20
+        Assert.That(label.Text.Value, Does.Contain("20"));
+    }
+
     // ── InspectorView rows ────────────────────────────────────────────────────
 
     private static Column RowsColumn(InspectorView view) =>
