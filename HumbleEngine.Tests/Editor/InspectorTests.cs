@@ -78,6 +78,44 @@ public sealed class InspectorTests
     }
 
     [Test]
+    public void GetInspectableProperties_IncludesParentData_UnderAFlexContainer()
+    {
+        var row   = new Row();
+        var child = new Panel();
+        row.Add(new Expanded(child, 2f));
+
+        var names = NodeInspector.GetInspectableProperties(child).Select(p => p.Name).ToList();
+
+        // The flex parent-data fields show up, in addition to the node's own.
+        Assert.That(names, Does.Contain("Factor"));
+        Assert.That(names, Does.Contain("Tight"));
+    }
+
+    [Test]
+    public void GetInspectableProperties_NoParentData_WhenNoParent()
+    {
+        var panel = new Panel();
+
+        var names = NodeInspector.GetInspectableProperties(panel).Select(p => p.Name).ToList();
+
+        // Contextual: nothing extra without a parent that defines parent-data.
+        Assert.That(names, Does.Not.Contain("Factor"));
+        Assert.That(names, Does.Not.Contain("Tight"));
+    }
+
+    [Test]
+    public void GetInspectableProperties_ParentDataValuesAreLive()
+    {
+        var row   = new Row();
+        var child = new Panel();
+        row.Add(new Expanded(child, 2f));
+
+        var factor = NodeInspector.GetInspectableProperties(child).Single(p => p.Name == "Factor");
+
+        Assert.That(((IObservableValue<float>)factor.Value).Value, Is.EqualTo(2f));
+    }
+
+    [Test]
     public void InspectorRow_ForComputed_IsReadOnlyLabelAndLive()
     {
         var node = new Panel();

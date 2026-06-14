@@ -41,6 +41,18 @@ public static class NodeInspector
             if (info.GetValue(node) is IObservableValue value)
                 result.Add(new InspectableProperty(info.Name, value));
         }
+
+        // Contextual: the per-child layout data the parent stamped on this node (the
+        // flex Factor/Tight, for instance), discovered the same way. Present only when
+        // a parent defines one — null otherwise, so nothing extra shows.
+        if (node.ParentData is { } parentData)
+        {
+            foreach (var info in GetOrBuildCache(parentData.GetType()))
+            {
+                if (info.GetValue(parentData) is IObservableValue value)
+                    result.Add(new InspectableProperty(info.Name, value));
+            }
+        }
         return result;
     }
 
