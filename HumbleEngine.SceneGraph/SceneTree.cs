@@ -22,6 +22,7 @@ public sealed class SceneTree : IDisposable
 
     private readonly List<Node> _disposeQueue = [];
     private readonly InputRouter _inputRouter = new();
+    private readonly Effect _surfaceSeed;
     private Node? _root;
     private Font? _defaultFont;
     private GlyphAtlas? _defaultFontAtlas;
@@ -40,11 +41,38 @@ public sealed class SceneTree : IDisposable
     /// </summary>
     public IClipboard? Clipboard { get; set; }
 
+    /// <summary>
+    /// Size of the surface this tree draws, in pixels — the top of the layout's
+    /// down-channel. The application feeds it from its window
+    /// (<c>tree.SurfaceSize.Value = new Vector2(w, h)</c> on <c>OnResize</c>, plus the
+    /// initial size), the same injection style as <see cref="Renderer"/>/<see cref="Clipboard"/>:
+    /// the tree knows a surface size, not a window. When <see cref="Root"/> is a
+    /// <see cref="UINode"/>, the tree seeds its <see cref="UINode.Incoming"/> with a
+    /// tight constraint of this size — so resizing reflows the whole tree.
+    /// </summary>
+    public Property<Vector2> SurfaceSize { get; } = new(Vector2.Zero);
+
     /// <summary>Creates a tree paired with the renderer of the surface it drives.</summary>
     public SceneTree(IRenderer renderer)
     {
         ArgumentNullException.ThrowIfNull(renderer);
         Renderer = renderer;
+        // Seed the root's constraint from the surface size, re-running on resize.
+        _surfaceSeed = new Effect(SeedRootConstraints);
+    }
+
+    // Pins the root (when it is a UINode) to a tight constraint of the surface size.
+    // Reads SurfaceSize so the effect re-runs on resize; called again from the Root
+    // setter so a freshly-installed root is seeded immediately.
+    private void SeedRootConstraints()
+    {
+        var size = SurfaceSize.Value;
+        // Until a real surface size is fed, leave roots unconstrained (Unbounded) so
+        // they keep the size they compute for themselves — a 0×0 "size" means unset.
+        if (size.X <= 0f || size.Y <= 0f)
+            return;
+        if (_root is UINode ui)
+            ui.Incoming.Value = Constraints.Tight(size);
     }
 
     /// <summary>True once <see cref="Dispose"/> has run.</summary>
@@ -104,6 +132,7 @@ public sealed class SceneTree : IDisposable
             previous?.ExitTree();
             _root = value;
             value?.EnterTree(this);
+            SeedRootConstraints();   // pin the new root to the current surface size
         }
     }
 
@@ -168,6 +197,7 @@ public sealed class SceneTree : IDisposable
     {
         if (IsDisposed)
             return;
+        _surfaceSeed.Dispose();
         _root?.Dispose();
         FlushDisposeQueue();
         _defaultFontAtlas?.Dispose();

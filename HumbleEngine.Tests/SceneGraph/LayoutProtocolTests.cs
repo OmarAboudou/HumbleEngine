@@ -72,4 +72,30 @@ public sealed class LayoutProtocolTests
         Assert.That(changes, Is.EqualTo(1));
         Assert.That(panel.Size.Value, Is.EqualTo(new Vector2(42f, 7f)));
     }
+
+    [Test]
+    public void SurfaceSize_SeedsTheRoot_AndFollowsResize()
+    {
+        var root = new Panel();
+        using var tree = new SceneTree(new FakeRenderer());
+        tree.SurfaceSize.Value = new Vector2(800f, 600f);
+        tree.Root = root;
+
+        // A UINode root is pinned to a tight constraint of the surface → it fills.
+        Assert.That(root.Size.Value, Is.EqualTo(new Vector2(800f, 600f)));
+
+        tree.SurfaceSize.Value = new Vector2(1024f, 768f);
+        Assert.That(root.Size.Value, Is.EqualTo(new Vector2(1024f, 768f)));
+    }
+
+    [Test]
+    public void SurfaceSize_SetAfterRoot_StillSeeds()
+    {
+        var root = new Panel();
+        using var tree = new SceneTree(new FakeRenderer()) { Root = root };
+
+        tree.SurfaceSize.Value = new Vector2(640f, 480f);
+
+        Assert.That(root.Size.Value, Is.EqualTo(new Vector2(640f, 480f)));
+    }
 }

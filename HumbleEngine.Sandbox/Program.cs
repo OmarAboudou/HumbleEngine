@@ -6,7 +6,7 @@ using HumbleEngine.Sandbox;
 //   dotnet run -- [--os Linux] [--windowing Wayland|X11] [--graphics Vulkan|OpenGL]
 if (args.Contains("--help") || args.Contains("-h"))
 {
-    Console.WriteLine("Usage: HumbleEngine.Sandbox [--os Linux] [--windowing Wayland|X11] [--graphics Vulkan|OpenGL] [--demo sandbox|hierarchy]");
+    Console.WriteLine("Usage: HumbleEngine.Sandbox [--os Linux] [--windowing Wayland|X11] [--graphics Vulkan|OpenGL] [--demo sandbox|hierarchy|layout]");
     return;
 }
 
@@ -56,14 +56,34 @@ var window = windowBackend.CreateWindow(
 graphicsBackend.Initialize();
 var renderer = graphicsBackend.CreateRenderer(window);
 
-// The root scene depends on the demo: the default Sandbox, or the editor hierarchy
-// panel (roadmap 13, bloc 2) over a sample tree. Only the Sandbox animates per frame.
+// The root scene depends on the demo: the default Sandbox (animates per frame), the
+// editor hierarchy panel (roadmap 13) over a sample tree, or the layout demo
+// (roadmap 14) — a Panel pinned to the window that follows the resize.
 var demoName = ArgValue("--demo", "sandbox");
-var sandbox  = demoName.Equals("hierarchy", StringComparison.OrdinalIgnoreCase)
-    ? null
-    : new SandboxScene { Name = "Sandbox" };
-Node rootScene = sandbox ?? (Node)new HierarchyDemoScene { Name = "HierarchyDemo" };
-var tree = new SceneTree(renderer) { Root = rootScene, Clipboard = window.Clipboard };
+SandboxScene? sandbox = null;
+Node rootScene;
+switch (demoName.ToLowerInvariant())
+{
+    case "hierarchy":
+        rootScene = new HierarchyDemoScene { Name = "HierarchyDemo" };
+        break;
+    case "layout":
+        var fill = new Panel { Name = "Fill" };
+        fill.Color.Value = new Vector4(0.15f, 0.18f, 0.28f, 1f);
+        rootScene = fill;
+        break;
+    default:
+        sandbox   = new SandboxScene { Name = "Sandbox" };
+        rootScene = sandbox;
+        break;
+}
+
+var tree = new SceneTree(renderer) { Clipboard = window.Clipboard };
+// Feed the surface size into the tree — the top of the layout's down-channel — and
+// keep it live, so the root (when a UINode) follows the window as it resizes.
+tree.SurfaceSize.Value = new Vector2(window.Width, window.Height);
+window.OnResize += (w, h) => tree.SurfaceSize.Value = new Vector2(w, h);
+tree.Root = rootScene;
 
 // The single input channel, demonstrated raw (every event logged, moves throttled),
 // then wired into the tree — the symmetric of rendering.
@@ -74,10 +94,13 @@ window.OnInput += tree.RouteInput;
 Console.WriteLine($"OS       : {OS.Current.Name}");
 Console.WriteLine($"Windowing: {windowBackend.Name}");
 Console.WriteLine($"Graphics : {graphicsBackend.Name}");
-Console.WriteLine(sandbox is not null
-    ? "Running (sandbox). Triangle disappears after 5 s; arrows move the blue panel (Shift = faster); "
-      + "hover/click the column tiles; type, select and copy in the fields. Close the window to exit."
-    : "Running (hierarchy+inspector+viewport). Click a row to select — inspector shows live properties; the viewport renders the scene. Close the window to exit.");
+Console.WriteLine(demoName.ToLowerInvariant() switch
+{
+    "hierarchy" => "Running (hierarchy+inspector+viewport). Click a row to select — inspector shows live properties; the viewport renders the scene. Close the window to exit.",
+    "layout"    => "Running (layout). The panel is pinned to the window — resize to see it follow. Close the window to exit.",
+    _           => "Running (sandbox). Triangle disappears after 5 s; arrows move the blue panel (Shift = faster); "
+                   + "hover/click the column tiles; type, select and copy in the fields. Close the window to exit.",
+});
 
 var clock    = System.Diagnostics.Stopwatch.StartNew();
 var fpsClock = System.Diagnostics.Stopwatch.StartNew();
