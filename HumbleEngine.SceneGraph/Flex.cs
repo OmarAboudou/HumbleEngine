@@ -18,7 +18,7 @@ public sealed class FlexParentData : ParentData
     public Property<float> Factor { get; } = new(0f);
 
     /// <summary>When flex, whether the child fills its share exactly (vs. may be smaller).</summary>
-    public Property<bool> Tight { get; } = new(true);
+    public Property<bool> Tight { get; } = new(false);
 }
 
 /// <summary>
