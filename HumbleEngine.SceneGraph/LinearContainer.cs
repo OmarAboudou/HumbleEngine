@@ -2,20 +2,21 @@ namespace HumbleEngine;
 
 /// <summary>
 /// Shared machinery of <see cref="Column"/> and <see cref="Row"/>: stacks the
-/// UI children along one axis, separated by <see cref="Spacing"/>. A container
-/// opens its composition (<see cref="Children"/>) — the engine rule: containers
-/// open, scenes close.
+/// UI children along one axis, separated by <see cref="Spacing"/>, and measures
+/// itself from them (content sizing). A container opens its composition
+/// (<see cref="Children"/>) — the engine rule: containers open, scenes close.
 /// <para>
-/// The layout is <b>reactive, not per frame</b>: it is a single auto-tracking
-/// <see cref="Effect"/>. Restacking <i>reads</i> the children structure
-/// (<see cref="NodeList{TChild}.Count"/>, the indexer), each child's
-/// <see cref="UINode.Size"/>, and <see cref="Spacing"/> — so the effect
-/// re-subscribes to exactly those each run and re-runs when any changes, including
-/// children joining or leaving (the structure signal) and departures behind the
-/// list's back. No manual <c>.Changed</c>/<c>Added</c> bookkeeping, and no
-/// per-child subscription to maintain: the reads list the dependencies. The effect
-/// writes <see cref="UINode.Position"/>, which it never reads, so no feedback loop
-/// is possible.
+/// The container is a node in the layout protocol ("constraints down, sizes up"):
+/// its <see cref="ComputeLayout"/> poses each child's <see cref="UINode.Incoming"/>
+/// (a loosened copy of its own constraint — children take their content size),
+/// reads the child's resulting <see cref="UINode.Size"/>, places it at the running
+/// main-axis offset, and returns its own size (main = the children's extents plus
+/// the spacings, cross = the widest child). It reads the children structure
+/// (<see cref="NodeList{TChild}.Count"/>, the indexer), each child's size, and
+/// <see cref="Spacing"/> — so the per-node layout effect re-subscribes to exactly
+/// those and re-runs when any changes, including children joining or leaving.
+/// No stretch on this étage (that is the flex bloc); cross-axis children keep their
+/// own extent.
 /// </para>
 /// </summary>
 public abstract class LinearContainer : UINode
@@ -30,52 +31,74 @@ public abstract class LinearContainer : UINode
     {
         Children = CreateChildList<UINode>();
         Spacing  = CreateProperty(0f);
-        CreateEffect(Relayout);
+    }
+
+    /// <summary>
+    /// Stacks the children and measures the container. Poses each child's
+    /// <see cref="UINode.Incoming"/> (loosened — content sizing), reads its
+    /// <see cref="UINode.Size"/>, places it, and accumulates the main extent (plus
+    /// spacing between children) and the maximum cross extent. Returns the content
+    /// size clamped to <paramref name="constraints"/>.
+    /// </summary>
+    protected override Vector2 ComputeLayout(Constraints constraints)
+    {
+        var childConstraints = constraints.Loosen();
+        var main  = 0f;
+        var cross = 0f;
+        var count = Children.Count;
+        for (var i = 0; i < count; i++)
+        {
+            if (i > 0)
+                main += Spacing.Value;
+            var child = Children[i];
+            child.Incoming.Value = childConstraints;   // ↓ constrain
+            var size = child.Size.Value;               // ↑ read the result (eager)
+            child.Position.Value = Place(main);
+            main  += MainExtent(size);
+            cross  = MathF.Max(cross, CrossExtent(size));
+        }
+        return constraints.Constrain(BuildSize(main, cross));
     }
 
     /// <summary>Relative position of a child whose main-axis offset is <paramref name="mainOffset"/>.</summary>
     private protected abstract Vector2 Place(float mainOffset);
 
-    /// <summary>The size's extent along the stacking axis.</summary>
+    /// <summary>The size's extent along the stacking (main) axis.</summary>
     private protected abstract float MainExtent(Vector2 size);
 
-    /// <summary>
-    /// Restacks every child: walk in order, place each at the running offset,
-    /// advance by its main-axis extent plus the spacing. Run inside an
-    /// <see cref="Effect"/> — every reactive read here becomes a dependency.
-    /// </summary>
-    private void Relayout()
-    {
-        var offset = 0f;
-        for (var i = 0; i < Children.Count; i++)
-        {
-            var child = Children[i];
-            child.Position.Value = Place(offset);
-            offset += MainExtent(child.Size.Value) + Spacing.Value;
-        }
-    }
+    /// <summary>The size's extent along the cross axis.</summary>
+    private protected abstract float CrossExtent(Vector2 size);
+
+    /// <summary>Builds a size from its main-axis and cross-axis extents.</summary>
+    private protected abstract Vector2 BuildSize(float main, float cross);
 }
 
 /// <summary>
-/// Stacks its children vertically, top to bottom — the child's
-/// <see cref="UINode.Size"/> height drives the stacking, its width is left
-/// untouched (no stretch on this étage).
+/// Stacks its children vertically, top to bottom — height drives the stacking,
+/// the container's width is the widest child (no stretch on this étage).
 /// </summary>
 public sealed class Column : LinearContainer
 {
     private protected override Vector2 Place(float mainOffset) => new(0f, mainOffset);
 
     private protected override float MainExtent(Vector2 size) => size.Y;
+
+    private protected override float CrossExtent(Vector2 size) => size.X;
+
+    private protected override Vector2 BuildSize(float main, float cross) => new(cross, main);
 }
 
 /// <summary>
-/// Stacks its children horizontally, left to right — the child's
-/// <see cref="UINode.Size"/> width drives the stacking, its height is left
-/// untouched (no stretch on this étage).
+/// Stacks its children horizontally, left to right — width drives the stacking,
+/// the container's height is the tallest child (no stretch on this étage).
 /// </summary>
 public sealed class Row : LinearContainer
 {
     private protected override Vector2 Place(float mainOffset) => new(mainOffset, 0f);
 
     private protected override float MainExtent(Vector2 size) => size.X;
+
+    private protected override float CrossExtent(Vector2 size) => size.Y;
+
+    private protected override Vector2 BuildSize(float main, float cross) => new(main, cross);
 }
