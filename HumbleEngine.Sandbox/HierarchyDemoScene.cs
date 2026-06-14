@@ -1,46 +1,45 @@
 namespace HumbleEngine.Sandbox;
 
 /// <summary>
-/// Editor demo (roadmap 13, blocs 2-4): a small "scene being edited" introspected
-/// and rendered live. Three panels:
+/// Editor demo (roadmaps 13-14): a small "scene being edited" introspected and
+/// rendered live, in a shell that <b>reflows with the window</b>. The shell is a
+/// <see cref="Row"/> (the demo's root, so the tree seeds it from the surface size):
 /// <list type="bullet">
-///   <item><b>Hierarchy</b> (left) — live tree view; click to select.</item>
-///   <item><b>Inspector</b> (middle) — properties of the selected node, editable.</item>
-///   <item><b>Viewport</b> (right) — live render of the edited scene: the sample tree
-///     is the <see cref="ViewportNode.Content"/>, so it enters the living tree and its
-///     nodes draw with positions naturally offset by the viewport's own position.</item>
+///   <item><b>Hierarchy</b> (left, fixed width) — live tree view; click to select.</item>
+///   <item><b>Inspector</b> (middle, fixed width) — properties of the selected node,
+///     editable; parent-data (flex Factor/Tight) shows for nodes under a container.</item>
+///   <item><b>Viewport</b> (right, <see cref="Expanded"/>) — takes the remaining width;
+///     renders the sample tree (its <see cref="ViewportNode.Content"/>). Resizing the
+///     window redistributes the free width and fills the height.</item>
 /// </list>
 /// </summary>
-public sealed class HierarchyDemoScene : Scene
+public static class HierarchyDemoScene
 {
-    private const float PanelY      = 20f;
-    private const float PanelHeight = 500f;
-    private const float HierarchyW  = 220f;
-    private const float InspectorW  = 300f;
-    private const float ViewportW   = 380f;
-    private const float Gap         = 16f;
-    private const float MarginLeft  = 20f;
+    private const float HierarchyW = 220f;
+    private const float InspectorW = 300f;
 
-    public HierarchyDemoScene()
+    /// <summary>Builds the editor shell (a reflowing <see cref="Row"/>) — the demo's root.</summary>
+    public static Row Build()
     {
+        var shell = new Row { Name = "HierarchyDemo" };
+        shell.Spacing.Value = 8f;
+
         var editor = new EditorState();
         var sample = BuildSampleScene();
 
         var hierarchy = new HierarchyView(sample, editor) { Name = "Hierarchy" };
-        hierarchy.Position.Value = new Vector2(MarginLeft, PanelY);
-        hierarchy.Size.Value     = new Vector2(HierarchyW, PanelHeight);
-        Attach(hierarchy);
+        hierarchy.Size.Value = new Vector2(HierarchyW, 0f);   // requested width; height filled
 
         var inspector = new InspectorView(editor) { Name = "Inspector" };
-        inspector.Position.Value = new Vector2(MarginLeft + HierarchyW + Gap, PanelY);
-        inspector.Size.Value     = new Vector2(InspectorW, PanelHeight);
-        Attach(inspector);
+        inspector.Size.Value = new Vector2(InspectorW, 0f);
 
         var viewport = new ViewportNode { Name = "Viewport" };
-        viewport.Position.Value = new Vector2(MarginLeft + HierarchyW + Gap + InspectorW + Gap, PanelY);
-        viewport.Size.Value     = new Vector2(ViewportW, PanelHeight);
-        viewport.Content        = sample;   // adopts the sample into the living tree
-        Attach(viewport);
+        viewport.Content = sample;   // adopts the sample into the living tree
+
+        shell.Add(hierarchy);
+        shell.Add(inspector);
+        shell.Add(new Expanded(viewport));  // takes the remaining width
+        return shell;
     }
 
     /// <summary>

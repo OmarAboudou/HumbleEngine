@@ -108,9 +108,10 @@ public sealed class InspectorView : UINode
     private const float Inset        = 4f;
 
     /// <summary>
-    /// Tiles the background, header, separator and rows column to fill
-    /// <see cref="UINode.Size"/>. Runs as an <see cref="Effect"/> so it
-    /// adjusts when the panel is resized by the editor layout.
+    /// Tiles the background, header and separator to fill <see cref="UINode.Size"/>,
+    /// and positions the rows column (which measures itself from its rows — no size
+    /// is imposed). Runs as an <see cref="Effect"/> so it adjusts when the editor
+    /// layout resizes the panel.
     /// </summary>
     private void SyncLayout()
     {
@@ -124,7 +125,7 @@ public sealed class InspectorView : UINode
         _separator.Position.Value = new Vector2(0f, HeaderHeight);
         _separator.Size.Value     = new Vector2(sz.X, SepHeight);
 
+        // The rows Column content-sizes itself (the layout protocol); just place it.
         _rows.Position.Value = new Vector2(Inset, HeaderHeight + SepHeight + Inset);
-        _rows.Size.Value     = new Vector2(sz.X - Inset, sz.Y - HeaderHeight - SepHeight - Inset);
     }
 }

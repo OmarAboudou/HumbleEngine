@@ -65,7 +65,7 @@ Node rootScene;
 switch (demoName.ToLowerInvariant())
 {
     case "hierarchy":
-        rootScene = new HierarchyDemoScene { Name = "HierarchyDemo" };
+        rootScene = HierarchyDemoScene.Build();
         break;
     case "layout":
     {
