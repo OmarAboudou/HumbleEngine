@@ -1,9 +1,10 @@
 # Roadmap — Le layout (contraintes ↓ / tailles ↑)
 
-> **EN COURS (2026-06-14)** — deuxième phase de l'ère éditeur. La 13 a posé un
-> éditeur debout avec des tailles **en dur** ; ici on lui donne un vrai moteur de
-> layout, pour que **redimensionner la fenêtre replace les panneaux** et que les
-> conteneurs se mesurent à partir de leur contenu.
+> **TERMINÉE (2026-06-14)** — deuxième phase de l'ère éditeur. La 13 a posé un
+> éditeur debout avec des tailles **en dur** ; ici on lui a donné un vrai moteur de
+> layout : **redimensionner la fenêtre replace les panneaux** et les conteneurs se
+> mesurent à partir de leur contenu. Blocs 1-5 faits (371 tests verts). Différés :
+> `MinSize`/`MaxSize`, `Move`/`Moved`, contexte hérité (`InheritedData`, roadmap 15).
 
 ## Cadrage (tranché avec Omar le 2026-06-14)
 
@@ -94,8 +95,8 @@ nous n'en avons qu'un, d'où le refus d'une enveloppe-`Node`).
   ```csharp
   sealed class FlexParentData : ParentData
   {
-      public Property<bool>  Stretch { get; } = new(false);
-      public Property<float> Factor  { get; } = new(1f);
+      public Property<float> Factor { get; } = new(0f);   // 0 = non-flex (content-sized)
+      public Property<bool>  Tight  { get; } = new(true);  // flex : remplit sa part (Expanded) vs peut être plus petit (Flexible)
   }
   ```
   Chaque champ est une cellule réactive indépendante → le layout auto-track, éditer
@@ -103,14 +104,14 @@ nous n'en avons qu'un, d'où le refus d'une enveloppe-`Node`).
   `Property`). L'inspecteur découvre une ligne par champ.
 - **`Expanded`/`Flexible`** exigent leur enfant (non-null ; une enveloppe vide n'a
   pas de sens). `row.Add(new Expanded(child, factor: 2))` ajoute l'enfant
-  (→ fabrique la parent-data par défaut) puis remplit `Stretch`/`Factor`.
+  (→ fabrique la parent-data par défaut) puis remplit `Factor`/`Tight`.
 
 ### La parent-data dans l'inspecteur (contextuel, gratuit)
 
 `NodeInspector`, après les propriétés propres du nœud, **énumère aussi** les
 `IObservableValue` du slot `node.ParentData`. Le slot étant `null` hors d'un flex,
 c'est **contextuel par construction** : rien d'affiché sauf sous un `Row`/`Column`,
-où apparaissent `Stretch`/`Factor`, éditables et live. Pas d'interface, pas de
+où apparaissent `Factor`/`Tight`, éditables et live. Pas d'interface, pas de
 routage vers le parent.
 
 ### La surface descend jusqu'à la racine
@@ -127,7 +128,7 @@ réactif garde juste ces valeurs à jour, il ne « déclenche » pas de repaint.
 
 Chacun compile, **se voit** dans le Sandbox, et est validé avant le suivant.
 
-### Bloc 1 — `Constraints`, le protocole par nœud, la surface
+### Bloc 1 ✅ — `Constraints`, le protocole par nœud, la surface
 
 Le value type `Constraints` (min/max W/H ; fabriques `Tight`/`Loose`/`Unbounded` ;
 `Constrain(size)` ; `Loosen()`). Le câblage par nœud sur `UINode` : `Incoming`
@@ -138,7 +139,7 @@ taille voulue et fait `ComputeLayout = c.Constrain(voulu)`. Le pont
 `OnResize → SurfaceSize` qui sème `Root.Incoming`. *Démo : un `Panel` contraint à
 la fenêtre, qui suit le resize.*
 
-### Bloc 2 — Les conteneurs : `LinearContainer.ComputeLayout`
+### Bloc 2 ✅ — Les conteneurs : `LinearContainer.ComputeLayout`
 
 `ComputeLayout` d'un `Column`/`Row` : poser `child.Incoming` (desserré), lire les
 `child.Size`, empiler (somme + `Spacing`), poser les `Position`, retourner sa
@@ -146,7 +147,7 @@ taille. Pas encore de flex — content-sizing pur. L'ancien `Relayout` est rempl
 *Démo : les conteneurs imbriqués de la scène échantillon s'empilent correctement
 (fin du chevauchement `Body` à taille nulle).*
 
-### Bloc 3 — Le flex qui descend
+### Bloc 3 ✅ — Le flex qui descend
 
 `ComputeLayout` d'un flex container : mesurer les enfants non-flex (contrainte
 desserrée), calculer l'espace libre, descendre des contraintes **serrées** aux
@@ -156,13 +157,13 @@ descripteurs `Expanded`/`Flexible`. *Démo : la coque de l'éditeur = un `Row` q
 remplit la fenêtre, hiérarchie + inspecteur fixes, **viewport extensible** — il
 s'étire au resize.*
 
-### Bloc 4 — Parent-data dans l'inspecteur
+### Bloc 4 ✅ — Parent-data dans l'inspecteur
 
 `NodeInspector` énumère en plus les `IObservableValue` de `node.ParentData` (groupe
 « Layout »). Contextuel : `null` → rien. *Démo : sélectionner le viewport (enfant
 flex) → l'inspecteur montre `Stretch`/`Factor`, éditables, relayout live.*
 
-### Bloc 5 — Rebranchement de l'éditeur + nettoyage + tests
+### Bloc 5 ✅ — Rebranchement de l'éditeur + nettoyage + tests
 
 `HierarchyDemoScene` en conteneurs (constantes en dur supprimées, la coque reflue
 au resize). Nettoyage : `InspectorView.SyncLayout` cesse d'écrire `_rows.Size` ; on
