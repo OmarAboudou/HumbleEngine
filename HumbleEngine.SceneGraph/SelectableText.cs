@@ -66,6 +66,7 @@ public abstract class SelectableText : UINode
     /// <inheritdoc />
     protected override void OnAttached()
     {
+        base.OnAttached();   // wire the layout computation (UINode)
         Atlas = Tree!.DefaultFontAtlas;
         Remeasure();
     }

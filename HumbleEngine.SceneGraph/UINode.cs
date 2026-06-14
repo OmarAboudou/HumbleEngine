@@ -22,8 +22,22 @@ public abstract class UINode : VisualNode
     /// </summary>
     public Property<Vector2> Position { get; }
 
-    /// <summary>Extent in pixels. The layout reads it; never writes it (this étage).</summary>
+    /// <summary>
+    /// Extent in pixels — the <b>result</b> of the layout, written by the node's own
+    /// layout computation (see <see cref="ComputeLayout"/>). Read by draw, hit-test
+    /// and <see cref="GlobalRect"/>. (During the layout migration some nodes still
+    /// set it directly; once migrated, it is layout-owned.)
+    /// </summary>
     public Property<Vector2> Size { get; }
+
+    /// <summary>
+    /// The constraints the parent imposes — the <b>down channel</b> of the layout
+    /// protocol ("constraints down, sizes up"). A parent <see cref="ComputeLayout"/>
+    /// writes its children's <see cref="Incoming"/>; each node's own computation reads
+    /// it and produces its <see cref="Size"/>. Default <see cref="Constraints.Unbounded"/>
+    /// (free), so a node nobody constrains keeps the size it computes for itself.
+    /// </summary>
+    public Property<Constraints> Incoming { get; }
 
     /// <summary>
     /// Surface in square pixels, derived from <see cref="Size"/> — a read-only
@@ -43,11 +57,43 @@ public abstract class UINode : VisualNode
     /// </summary>
     public bool Hittable { get; set; } = true;
 
+    private bool _layoutWired;
+
     protected UINode()
     {
         Position = CreateProperty(Vector2.Zero);
         Size     = CreateProperty(Vector2.Zero);
+        Incoming = CreateProperty(Constraints.Unbounded);
         Area     = CreateComputed(() => Size.Value.X * Size.Value.Y);
+    }
+
+    /// <summary>
+    /// Computes this node's size within the parent's <paramref name="constraints"/> —
+    /// the "sizes up" half of the protocol. Override to define how the node measures:
+    /// a leaf from its requested/content size, a container from its children (posing
+    /// their <see cref="Incoming"/> and reading their <see cref="Size"/>). Read the
+    /// <paramref name="constraints"/> argument, never this node's own <see cref="Size"/>
+    /// (that would feed back). The default honours the node's current <see cref="Size"/>
+    /// clamped to the constraint — the behaviour of a not-yet-migrated node.
+    /// </summary>
+    protected virtual Vector2 ComputeLayout(Constraints constraints) =>
+        constraints.Constrain(Reactive.Untrack(() => Size.Value));
+
+    /// <summary>
+    /// Wires the node's layout computation when it enters a tree: one
+    /// <see cref="Effect"/> that reads <see cref="Incoming"/> and writes
+    /// <see cref="Size"/> = <see cref="ComputeLayout"/>. Re-runs only when the
+    /// constraint changes; skip-unchanged is free (cells notify on real change only).
+    /// Created here (not in the constructor) so the node is fully built — overrides of
+    /// <see cref="ComputeLayout"/> may read subclass fields. Once, guarded against
+    /// re-attach. Subclasses overriding <see cref="OnAttached"/> must call base.
+    /// </summary>
+    protected override void OnAttached()
+    {
+        base.OnAttached();
+        if (_layoutWired) return;
+        _layoutWired = true;
+        CreateEffect(() => Size.Value = ComputeLayout(Incoming.Value));
     }
 
     /// <summary>
