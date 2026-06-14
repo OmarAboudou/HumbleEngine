@@ -58,7 +58,7 @@ var renderer = graphicsBackend.CreateRenderer(window);
 
 // The root scene depends on the demo: the default Sandbox (animates per frame), the
 // editor hierarchy panel (roadmap 13) over a sample tree, or the layout demo
-// (roadmap 14) — a Panel pinned to the window that follows the resize.
+// (roadmap 14) — an editor shell (a Row) that reflows as the window resizes.
 var demoName = ArgValue("--demo", "sandbox");
 SandboxScene? sandbox = null;
 Node rootScene;
@@ -68,10 +68,29 @@ switch (demoName.ToLowerInvariant())
         rootScene = new HierarchyDemoScene { Name = "HierarchyDemo" };
         break;
     case "layout":
-        var fill = new Panel { Name = "Fill" };
-        fill.Color.Value = new Vector4(0.15f, 0.18f, 0.28f, 1f);
-        rootScene = fill;
+    {
+        // The editor shell: two fixed-width panels and a viewport that takes the rest.
+        // All fill the window height; resizing redistributes the free width live.
+        var shell = new Row { Name = "Shell" };
+        shell.Spacing.Value = 4f;
+
+        var hierarchy = new Panel { Name = "Hierarchy" };
+        hierarchy.Color.Value = new Vector4(0.16f, 0.22f, 0.34f, 1f);
+        hierarchy.Size.Value  = new Vector2(220f, 0f);   // fixed width; height filled
+
+        var inspector = new Panel { Name = "Inspector" };
+        inspector.Color.Value = new Vector4(0.24f, 0.18f, 0.28f, 1f);
+        inspector.Size.Value  = new Vector2(300f, 0f);
+
+        var viewport = new Panel { Name = "Viewport" };
+        viewport.Color.Value = new Vector4(0.12f, 0.14f, 0.18f, 1f);
+
+        shell.Add(hierarchy);
+        shell.Add(inspector);
+        shell.Add(new Expanded(viewport));   // takes the remaining width
+        rootScene = shell;
         break;
+    }
     default:
         sandbox   = new SandboxScene { Name = "Sandbox" };
         rootScene = sandbox;
@@ -97,7 +116,7 @@ Console.WriteLine($"Graphics : {graphicsBackend.Name}");
 Console.WriteLine(demoName.ToLowerInvariant() switch
 {
     "hierarchy" => "Running (hierarchy+inspector+viewport). Click a row to select — inspector shows live properties; the viewport renders the scene. Close the window to exit.",
-    "layout"    => "Running (layout). The panel is pinned to the window — resize to see it follow. Close the window to exit.",
+    "layout"    => "Running (layout). Editor shell: two fixed panels + an expanding viewport — resize to see the viewport take the free width and all panels fill the height. Close the window to exit.",
     _           => "Running (sandbox). Triangle disappears after 5 s; arrows move the blue panel (Shift = faster); "
                    + "hover/click the column tiles; type, select and copy in the fields. Close the window to exit.",
 });
