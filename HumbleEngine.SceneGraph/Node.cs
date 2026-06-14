@@ -69,7 +69,36 @@ public abstract class Node : IDisposable
     /// only — behavior must not depend on the parent's concrete type: legitimate
     /// needs flow through framework protocols, dependencies are injected.
     /// </summary>
-    public Node? Parent { get; private set; }
+    public Node? Parent
+    {
+        get => _parent;
+        private set
+        {
+            _parent = value;
+            // The adoption choke point: the new parent stamps its per-child layout
+            // data on this child (null when detached). Flutter's setupParentData.
+            ParentData = value?.CreateParentData();
+        }
+    }
+
+    private Node? _parent;
+
+    /// <summary>
+    /// Per-child layout data the parent attaches to this node — null unless the
+    /// parent's <see cref="CreateParentData"/> produces one. Set at adoption,
+    /// cleared on departure (the parent owns its meaning; the child just carries it).
+    /// Read by the parent's layout and by the inspector (contextual: present only
+    /// under a parent that defines one). See <see cref="HumbleEngine.ParentData"/>.
+    /// </summary>
+    public ParentData? ParentData { get; private set; }
+
+    /// <summary>
+    /// Produces the per-child <see cref="HumbleEngine.ParentData"/> this node
+    /// attaches to each of its children when it adopts them — Flutter's
+    /// <c>setupParentData</c>. The default is none; a parent type (a flex container)
+    /// overrides it to return its own subtype.
+    /// </summary>
+    protected virtual ParentData? CreateParentData() => null;
 
     /// <summary>True once <see cref="Dispose"/> has run. A disposed node cannot be attached again.</summary>
     public bool IsDisposed { get; private set; }
