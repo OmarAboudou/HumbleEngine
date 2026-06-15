@@ -1,8 +1,17 @@
 # Roadmap — Le contexte hérité (`InheritedData`, anti-prop-drilling)
 
-> **EN COURS (2026-06-14)** — petite phase de l'ère éditeur, dans la foulée du
+> **TERMINÉE (2026-06-15)** — petite phase de l'ère éditeur, dans la foulée du
 > layout. Donner à un descendant de **lire une donnée fournie par un ancêtre**
-> sans la passer de main en main dans tous les constructeurs.
+> sans la passer de main en main dans tous les constructeurs. Blocs 1 (mécanisme
+> `Provide`/`Inherit`/`TryInherit`) et 2 (éditeur rebranché : `Editor : Scene`
+> fournit l'`EditorState`, `HierarchyRow`/`InspectorView` l'héritent) faits.
+>
+> **Dans la foulée** — refonte du flex : la **parent-data** (roadmap 14) est
+> abandonnée au profit de **propriétés inline sur `UINode`** (`FlexFactor`/
+> `FlexTight`, modèle CSS). Donner les valeurs depuis le code redevient direct
+> (`node.FlexFactor.Value = …`) ; `Expanded`/`Flexible` restent en sucre. Le
+> mécanisme `ParentData`/`CreateParentData`/`FlexParentData` est **supprimé**
+> (plus de client). Voir CLAUDE.md (phase courante) pour l'état gravé.
 
 ## Le problème : le prop-drilling
 

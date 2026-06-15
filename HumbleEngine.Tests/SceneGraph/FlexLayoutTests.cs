@@ -108,8 +108,8 @@ public sealed class FlexLayoutTests
     [Test]
     public void ChangingAChildsFactor_Relayouts()
     {
-        // Editing the flex Factor (what the inspector's "Factor" row does) re-runs the
-        // container layout live, because ComputeLayout reads Factor reactively.
+        // Editing the flex factor (what the inspector's "FlexFactor" row does) re-runs the
+        // container layout live, because ComputeLayout reads FlexFactor reactively.
         var a = new Panel();
         var b = new Panel();
         var row = new Row();
@@ -117,8 +117,7 @@ public sealed class FlexLayoutTests
         row.Add(new Expanded(b, 1f));
         using var tree = HostTight(row, 300f, 50f);
 
-        var flexA = (FlexParentData)a.ParentData!;
-        flexA.Factor.Value = 2f; // a now takes 2/3
+        a.FlexFactor.Value = 2f; // a now takes 2/3
 
         Assert.That(a.Size.Value.X, Is.EqualTo(200f).Within(0.01f));
         Assert.That(b.Size.Value.X, Is.EqualTo(100f).Within(0.01f));

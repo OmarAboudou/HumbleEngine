@@ -33,32 +33,28 @@ public abstract class LinearContainer : UINode
         Spacing  = CreateProperty(0f);
     }
 
-    /// <summary>Each child carries a <see cref="FlexParentData"/> — its share of the main axis.</summary>
-    protected override ParentData? CreateParentData() => new FlexParentData();
-
     /// <summary>Adds a non-flex child (content-sized) — sugar for <c>Children.Add</c>.</summary>
     public void Add(UINode child) => Children.Add(child);
 
     /// <summary>
     /// Adds a child that fills its share of the free main-axis space
-    /// (<see cref="Expanded"/>): the descriptor dissolves into the child's
-    /// <see cref="FlexParentData"/>, no extra node enters the tree.
+    /// (<see cref="Expanded"/>): the descriptor sets the child's
+    /// <see cref="UINode.FlexFactor"/>/<see cref="UINode.FlexTight"/>, no extra node
+    /// enters the tree.
     /// </summary>
     public void Add(Expanded child)
     {
         Children.Add(child.Child);
-        var flex = (FlexParentData)child.Child.ParentData!;
-        flex.Factor.Value = child.Factor;
-        flex.Tight.Value  = true;
+        child.Child.FlexFactor.Value = child.Factor;
+        child.Child.FlexTight.Value  = true;
     }
 
     /// <summary>Adds a child that may be smaller than its share (<see cref="Flexible"/>, loose fit).</summary>
     public void Add(Flexible child)
     {
         Children.Add(child.Child);
-        var flex = (FlexParentData)child.Child.ParentData!;
-        flex.Factor.Value = child.Factor;
-        flex.Tight.Value  = false;
+        child.Child.FlexFactor.Value = child.Factor;
+        child.Child.FlexTight.Value  = false;
     }
 
     /// <summary>
@@ -132,11 +128,9 @@ public abstract class LinearContainer : UINode
         return constraints.Constrain(BuildSize(totalMain, crossExtent));
     }
 
-    private static float FactorOf(UINode child) =>
-        child.ParentData is FlexParentData flex ? flex.Factor.Value : 0f;
+    private static float FactorOf(UINode child) => child.FlexFactor.Value;
 
-    private static bool TightOf(UINode child) =>
-        child.ParentData is not FlexParentData flex || flex.Tight.Value;
+    private static bool TightOf(UINode child) => child.FlexTight.Value;
 
     // Builds a child constraint from main-axis bounds; the cross axis is tight to
     // crossMax when filling (stretch), loose otherwise (content).

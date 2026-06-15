@@ -1,3 +1,5 @@
+using HumbleEngine.Tests.SceneGraph;
+
 namespace HumbleEngine.Tests.Editor;
 
 /// <summary>
@@ -7,6 +9,22 @@ namespace HumbleEngine.Tests.Editor;
 /// </summary>
 public sealed class InspectorTests
 {
+    /// <summary>
+    /// Wraps <paramref name="inspector"/> in a <see cref="Column"/> root that
+    /// provides <paramref name="editor"/>, then attaches to a live tree so
+    /// <see cref="Node.OnAttached"/> fires and the selection effect is wired.
+    /// The returned tree must be disposed by the caller.
+    /// </summary>
+    private static SceneTree InEditorTree(InspectorView inspector, EditorState editor)
+    {
+        var root = new Column();
+        root.Provide(editor);
+        var tree = new SceneTree(new FakeRenderer());
+        tree.Root = root;
+        root.Children.Add(inspector);
+        return tree;
+    }
+
     // ── NodeInspector.GetInspectableProperties ────────────────────────────────
 
     [Test]
@@ -78,39 +96,26 @@ public sealed class InspectorTests
     }
 
     [Test]
-    public void GetInspectableProperties_IncludesParentData_UnderAFlexContainer()
-    {
-        var row   = new Row();
-        var child = new Panel();
-        row.Add(new Expanded(child, 2f));
-
-        var names = NodeInspector.GetInspectableProperties(child).Select(p => p.Name).ToList();
-
-        // The flex parent-data fields show up, in addition to the node's own.
-        Assert.That(names, Does.Contain("Factor"));
-        Assert.That(names, Does.Contain("Tight"));
-    }
-
-    [Test]
-    public void GetInspectableProperties_NoParentData_WhenNoParent()
+    public void GetInspectableProperties_IncludesFlexFields_OnEveryUINode()
     {
         var panel = new Panel();
 
         var names = NodeInspector.GetInspectableProperties(panel).Select(p => p.Name).ToList();
 
-        // Contextual: nothing extra without a parent that defines parent-data.
-        Assert.That(names, Does.Not.Contain("Factor"));
-        Assert.That(names, Does.Not.Contain("Tight"));
+        // FlexFactor/FlexTight are plain UINode layout properties now (like Position/Size),
+        // always inspectable — no longer contextual on a flex parent.
+        Assert.That(names, Does.Contain("FlexFactor"));
+        Assert.That(names, Does.Contain("FlexTight"));
     }
 
     [Test]
-    public void GetInspectableProperties_ParentDataValuesAreLive()
+    public void GetInspectableProperties_FlexValuesAreLive()
     {
         var row   = new Row();
         var child = new Panel();
-        row.Add(new Expanded(child, 2f));
+        row.Add(new Expanded(child, 2f)); // sets FlexFactor = 2
 
-        var factor = NodeInspector.GetInspectableProperties(child).Single(p => p.Name == "Factor");
+        var factor = NodeInspector.GetInspectableProperties(child).Single(p => p.Name == "FlexFactor");
 
         Assert.That(((IObservableValue<float>)factor.Value).Value, Is.EqualTo(2f));
     }
@@ -136,7 +141,7 @@ public sealed class InspectorTests
         Assert.That(label.Text.Value, Does.Contain("20"));
     }
 
-    // ── InspectorView rows ────────────────────────────────────────────────────
+    // ── InspectorView rows (require live tree + EditorState context) ──────────
 
     private static Column RowsColumn(InspectorView view) =>
         view.Children.OfType<Column>().Single();
@@ -144,8 +149,9 @@ public sealed class InspectorTests
     [Test]
     public void InspectorView_StartsEmpty_WhenNoSelection()
     {
-        var editor  = new EditorState();
-        var inspector = new InspectorView(editor);
+        var editor    = new EditorState();
+        var inspector = new InspectorView();
+        using var tree = InEditorTree(inspector, editor);
 
         Assert.That(RowsColumn(inspector).Children.Count, Is.EqualTo(0));
     }
@@ -154,9 +160,10 @@ public sealed class InspectorTests
     public void InspectorView_BuildsOneRowPerInspectableProperty()
     {
         var editor    = new EditorState();
-        var inspector = new InspectorView(editor);
-        var node      = new Panel();
+        var inspector = new InspectorView();
+        using var tree = InEditorTree(inspector, editor);
 
+        var node = new Panel();
         editor.Selection.Value = node;
 
         var expected = NodeInspector.GetInspectableProperties(node).Count;
@@ -167,9 +174,10 @@ public sealed class InspectorTests
     public void InspectorView_ClearsRows_WhenSelectionBecomesNull()
     {
         var editor    = new EditorState();
-        var inspector = new InspectorView(editor);
-        var node      = new Panel();
+        var inspector = new InspectorView();
+        using var tree = InEditorTree(inspector, editor);
 
+        var node = new Panel();
         editor.Selection.Value = node;
         editor.Selection.Value = null;
 
@@ -180,9 +188,11 @@ public sealed class InspectorTests
     public void InspectorView_RebuildsRows_OnSelectionChange()
     {
         var editor    = new EditorState();
-        var inspector = new InspectorView(editor);
-        var panel     = new Panel();
-        var label     = new Label();
+        var inspector = new InspectorView();
+        using var tree = InEditorTree(inspector, editor);
+
+        var panel = new Panel();
+        var label = new Label();
 
         editor.Selection.Value = panel;
         var rowsForPanel = RowsColumn(inspector).Children.Count;
@@ -201,9 +211,11 @@ public sealed class InspectorTests
     public void InspectorView_DisposesPreviousRows_OnRebuild()
     {
         var editor    = new EditorState();
-        var inspector = new InspectorView(editor);
-        var nodeA     = new Panel();
-        var nodeB     = new Panel();
+        var inspector = new InspectorView();
+        using var tree = InEditorTree(inspector, editor);
+
+        var nodeA = new Panel();
+        var nodeB = new Panel();
 
         editor.Selection.Value = nodeA;
         var oldRow = RowsColumn(inspector).Children[0];
@@ -222,9 +234,10 @@ public sealed class InspectorTests
         // source values the rows read while binding. Otherwise the field being
         // typed in is disposed mid-keystroke and the focus is lost.
         var editor    = new EditorState();
-        var inspector = new InspectorView(editor);
-        var column    = new Column();   // exposes a writable Property<float> Spacing
+        var inspector = new InspectorView();
+        using var tree = InEditorTree(inspector, editor);
 
+        var column = new Column();   // exposes a writable Property<float> Spacing
         editor.Selection.Value = column;
         var rowsBefore = RowsColumn(inspector).Children.ToArray();
 

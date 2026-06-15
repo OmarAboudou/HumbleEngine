@@ -8,20 +8,20 @@ namespace HumbleEngine;
 /// <para>
 /// The panel's own <see cref="UINode.Size"/> is set by the editor layout (it is a
 /// docked, eventually scrollable region); only the rows self-measure, so the inner
-/// <c>Column</c> can stack them. Click-to-select arrives in the next block.
+/// <c>Column</c> can stack them. Rows inherit the <see cref="EditorState"/> from
+/// the nearest ancestor that provides one (typically <see cref="Editor"/>).
 /// </para>
 /// </summary>
 public sealed class HierarchyView : UINode
 {
     private readonly Column _list;
 
-    /// <summary>Builds the panel mirroring <paramref name="root"/>'s children, selecting into <paramref name="editor"/>.</summary>
-    public HierarchyView(Node root, EditorState editor)
+    /// <summary>Builds the panel mirroring <paramref name="root"/>'s children.</summary>
+    public HierarchyView(Node root)
     {
         ArgumentNullException.ThrowIfNull(root);
-        ArgumentNullException.ThrowIfNull(editor);
         _list = new Column();
         Attach(_list);
-        _list.Children.BindItemsFrom(root.Children, node => new HierarchyRow(node, editor));
+        _list.Children.BindItemsFrom(root.Children, node => new HierarchyRow(node));
     }
 }

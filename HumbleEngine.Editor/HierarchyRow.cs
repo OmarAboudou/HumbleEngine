@@ -6,11 +6,14 @@ namespace HumbleEngine;
 /// <c>BindItemsFrom</c>, so the row follows the real tree. Clicking the row selects
 /// its node in the <see cref="EditorState"/>; a highlight follows the selection.
 /// <para>
+/// The <see cref="EditorState"/> is inherited from the nearest ancestor that provides
+/// one (typically <see cref="Editor"/>), resolved in <see cref="OnAttached"/> — no
+/// manual threading of state through constructors.
+/// </para>
+/// <para>
 /// The label is <see cref="UINode.Hittable"/> = false (decorative): the click falls
-/// through it to the row, which handles selection — text isn't selectable here, like
-/// a Godot button. The row lays itself out and computes its own
-/// <see cref="UINode.Size"/> (containers don't self-measure on this étage), giving
-/// the size cascade for free.
+/// through it to the row, which handles selection. The row lays itself out and
+/// computes its own <see cref="UINode.Size"/>, giving the size cascade for free.
 /// </para>
 /// </summary>
 public sealed class HierarchyRow : UINode
@@ -19,18 +22,17 @@ public sealed class HierarchyRow : UINode
     private static readonly Vector4 Highlight = new(0.25f, 0.45f, 0.85f, 1f);
     private static readonly Vector4 Transparent = new(0f, 0f, 0f, 0f);
 
-    private readonly EditorState _editor;
     private readonly Panel _background;
     private readonly Label _label;
     private readonly NodeList<HierarchyRow> _subRows;
+    private EditorState? _editor;
+    private bool _initialized;
 
     /// <summary>Creates the row for <paramref name="node"/> and its subtree.</summary>
-    public HierarchyRow(Node node, EditorState editor)
+    public HierarchyRow(Node node)
     {
         ArgumentNullException.ThrowIfNull(node);
-        ArgumentNullException.ThrowIfNull(editor);
         Node = node;
-        _editor = editor;
 
         _background = new Panel();
         Attach(_background);
@@ -40,12 +42,7 @@ public sealed class HierarchyRow : UINode
         Attach(_label);
 
         _subRows = CreateChildList<HierarchyRow>();
-        _subRows.BindItemsFrom(node.Children, child => new HierarchyRow(child, editor));
-
-        // Highlight the background while this row's node is the selection.
-        CreateEffect(() =>
-            _background.Color.Value =
-                ReferenceEquals(_editor.Selection.Value, Node) ? Highlight : Transparent);
+        _subRows.BindItemsFrom(node.Children, child => new HierarchyRow(child));
 
         CreateEffect(Layout);
     }
@@ -54,11 +51,23 @@ public sealed class HierarchyRow : UINode
     public Node Node { get; }
 
     /// <inheritdoc />
+    protected override void OnAttached()
+    {
+        if (_initialized) return;
+        _initialized = true;
+        _editor = Inherit<EditorState>();
+        // Highlight the background while this row's node is the selection.
+        CreateEffect(() =>
+            _background.Color.Value =
+                ReferenceEquals(_editor.Selection.Value, Node) ? Highlight : Transparent);
+    }
+
+    /// <inheritdoc />
     protected override bool OnInput(InputEvent inputEvent)
     {
         if (inputEvent is PointerPressed { Button: PointerButton.Left })
         {
-            _editor.Selection.Value = Node;
+            _editor!.Selection.Value = Node;
             return true;
         }
         return false;

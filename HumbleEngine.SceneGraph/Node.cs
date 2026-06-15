@@ -31,6 +31,7 @@ public abstract class Node : IDisposable
     private readonly List<Node> _children = [];
     private readonly SourceObservers _childrenStructure = new();
     private ReadOnlyNodeList? _childrenView;
+    private Dictionary<Type, object>? _provided;
 
     /// <summary>
     /// Internal broadcast of a child's arrival at the given index — the symmetric
@@ -72,33 +73,10 @@ public abstract class Node : IDisposable
     public Node? Parent
     {
         get => _parent;
-        private set
-        {
-            _parent = value;
-            // The adoption choke point: the new parent stamps its per-child layout
-            // data on this child (null when detached). Flutter's setupParentData.
-            ParentData = value?.CreateParentData();
-        }
+        private set => _parent = value;
     }
 
     private Node? _parent;
-
-    /// <summary>
-    /// Per-child layout data the parent attaches to this node — null unless the
-    /// parent's <see cref="CreateParentData"/> produces one. Set at adoption,
-    /// cleared on departure (the parent owns its meaning; the child just carries it).
-    /// Read by the parent's layout and by the inspector (contextual: present only
-    /// under a parent that defines one). See <see cref="HumbleEngine.ParentData"/>.
-    /// </summary>
-    public ParentData? ParentData { get; private set; }
-
-    /// <summary>
-    /// Produces the per-child <see cref="HumbleEngine.ParentData"/> this node
-    /// attaches to each of its children when it adopts them — Flutter's
-    /// <c>setupParentData</c>. The default is none; a parent type (a flex container)
-    /// overrides it to return its own subtype.
-    /// </summary>
-    protected virtual ParentData? CreateParentData() => null;
 
     /// <summary>True once <see cref="Dispose"/> has run. A disposed node cannot be attached again.</summary>
     public bool IsDisposed { get; private set; }
@@ -346,6 +324,49 @@ public abstract class Node : IDisposable
     /// </summary>
     protected virtual void OnDispose()
     {
+    }
+
+    /// <summary>
+    /// Publishes <paramref name="value"/> under type <typeparamref name="T"/> for
+    /// this node's subtree. Any descendant can retrieve it with <see cref="Inherit{T}"/>.
+    /// Calling this more than once overwrites the previous value. The provider is
+    /// this node itself — descendants start their search from their parent.
+    /// </summary>
+    public void Provide<T>(T value) where T : class
+    {
+        _provided ??= new Dictionary<Type, object>();
+        _provided[typeof(T)] = value;
+    }
+
+    /// <summary>
+    /// Walks up the ancestor chain and returns the nearest value published under
+    /// <typeparamref name="T"/> via <see cref="Provide{T}"/>.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">No ancestor provides <typeparamref name="T"/>.</exception>
+    public T Inherit<T>() where T : class
+    {
+        if (TryInherit<T>(out var value))
+            return value!;
+        throw new InvalidOperationException(
+            $"No ancestor provides {typeof(T).Name}. Call Provide<{typeof(T).Name}>() on an ancestor first.");
+    }
+
+    /// <summary>
+    /// Tries to walk up the ancestor chain for a value published under
+    /// <typeparamref name="T"/>. Returns false when no ancestor provides it.
+    /// </summary>
+    public bool TryInherit<T>(out T? value) where T : class
+    {
+        for (var node = Parent; node is not null; node = node.Parent)
+        {
+            if (node._provided is not null && node._provided.TryGetValue(typeof(T), out var obj))
+            {
+                value = (T)obj;
+                return true;
+            }
+        }
+        value = null;
+        return false;
     }
 
     /// <summary>

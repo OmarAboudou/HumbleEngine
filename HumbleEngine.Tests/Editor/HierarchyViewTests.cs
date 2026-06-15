@@ -22,6 +22,24 @@ public sealed class HierarchyViewTests
     private static Panel BackgroundOf(HierarchyRow row) =>
         row.Children.OfType<Panel>().Single();
 
+    /// <summary>
+    /// Wraps <paramref name="view"/> in a <see cref="Column"/> root that provides
+    /// <paramref name="editor"/>, then attaches both to a live tree so that
+    /// <see cref="Node.OnAttached"/> fires (rows inherit the <see cref="EditorState"/>).
+    /// The returned tree must be disposed by the caller.
+    /// </summary>
+    private static SceneTree InEditorTree(UINode view, EditorState editor)
+    {
+        var root = new Column();
+        root.Provide(editor);
+        var tree = new SceneTree(new FakeRenderer());
+        tree.Root = root;
+        root.Children.Add(view);
+        return tree;
+    }
+
+    // ── Structure ────────────────────────────────────────────────────────────
+
     [Test]
     public void TopRows_MirrorRootChildren_InOrder()
     {
@@ -31,7 +49,7 @@ public sealed class HierarchyViewTests
         root.Children.Add(a);
         root.Children.Add(b);
 
-        var view = new HierarchyView(root, new EditorState());
+        var view = new HierarchyView(root);
 
         Assert.That(TopRows(view).Select(r => r.Node), Is.EqualTo(new Node[] { a, b }));
     }
@@ -45,7 +63,7 @@ public sealed class HierarchyViewTests
         parent.Children.Add(child);
         root.Children.Add(parent);
 
-        var view = new HierarchyView(root, new EditorState());
+        var view = new HierarchyView(root);
 
         var parentRow = TopRows(view).Single();
         Assert.That(parentRow.Node, Is.SameAs(parent));
@@ -56,7 +74,7 @@ public sealed class HierarchyViewTests
     public void Rows_UpdateLive_WhenTheTreeChanges()
     {
         var root = new Column();
-        var view = new HierarchyView(root, new EditorState());
+        var view = new HierarchyView(root);
         Assert.That(TopRows(view), Is.Empty);
 
         var a = new Panel();
@@ -70,21 +88,21 @@ public sealed class HierarchyViewTests
     [Test]
     public void Row_LabelText_IsNameWhenPresent_ElseType()
     {
-        var editor = new EditorState();
-
-        Assert.That(LabelOf(new HierarchyRow(new Panel { Name = "Hero" }, editor)), Is.EqualTo("Hero"));
-        Assert.That(LabelOf(new HierarchyRow(new Panel(), editor)), Is.EqualTo("Panel"));
+        Assert.That(LabelOf(new HierarchyRow(new Panel { Name = "Hero" })), Is.EqualTo("Hero"));
+        Assert.That(LabelOf(new HierarchyRow(new Panel())), Is.EqualTo("Panel"));
     }
+
+    // ── Selection / input (require live tree + EditorState context) ──────────
 
     [Test]
     public void ClickingARow_SelectsItsNode()
     {
-        var editor = new EditorState();
         var root = new Column();
         var a = new Panel { Name = "Hero" };
         root.Children.Add(a);
-        var view = new HierarchyView(root, editor);
-        using var tree = new SceneTree(new FakeRenderer()) { Root = view }; // labels measure → rows get a size
+        var view = new HierarchyView(root);
+        var editor = new EditorState();
+        using var tree = InEditorTree(view, editor);
 
         tree.RouteInput(new PointerPressed(PointerButton.Left, new Vector2(2f, 2f)));
 
@@ -94,11 +112,13 @@ public sealed class HierarchyViewTests
     [Test]
     public void Row_Background_HighlightsWhenItsNodeIsSelected()
     {
-        var editor = new EditorState();
         var root = new Column();
         var a = new Panel { Name = "A" };
         root.Children.Add(a);
-        var view = new HierarchyView(root, editor);
+        var view = new HierarchyView(root);
+        var editor = new EditorState();
+        using var tree = InEditorTree(view, editor);
+
         var background = BackgroundOf(TopRows(view).Single());
 
         Assert.That(background.Color.Value.W, Is.EqualTo(0f)); // transparent: not selected

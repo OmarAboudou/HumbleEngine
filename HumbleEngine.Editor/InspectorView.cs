@@ -27,14 +27,15 @@ public sealed class InspectorView : UINode
     // Plain list — not a NodeList — so iterating it inside an Effect adds no
     // spurious dependency on the column's structure signal.
     private readonly List<UINode> _activeRows = [];
+    private bool _initialized;
 
     /// <summary>
-    /// Builds the inspector panel wired to <paramref name="editor"/>'s selection.
+    /// Builds the inspector panel. Wires to <see cref="EditorState.Selection"/>
+    /// in <see cref="OnAttached"/> by inheriting the state from the nearest ancestor
+    /// that provides one (typically <see cref="Editor"/>).
     /// </summary>
-    public InspectorView(EditorState editor)
+    public InspectorView()
     {
-        ArgumentNullException.ThrowIfNull(editor);
-
         _background = new Panel { Name = "InspectorBg" };
         _background.Color.Value = BgColor;
         Attach(_background);
@@ -51,6 +52,16 @@ public sealed class InspectorView : UINode
         _rows.Spacing.Value = 2f;
         Attach(_rows);
 
+        // Sync background + children sizes when this panel's own Size changes.
+        CreateEffect(SyncLayout);
+    }
+
+    /// <inheritdoc />
+    protected override void OnAttached()
+    {
+        if (_initialized) return;
+        _initialized = true;
+        var editor = Inherit<EditorState>();
         // Rebuild the rows every time the selection changes — and only then.
         // Reading Selection.Value auto-tracks (the one intended dependency); the
         // rebuild itself runs untracked, because building the rows reads the source
@@ -62,9 +73,6 @@ public sealed class InspectorView : UINode
             var selected = editor.Selection.Value;
             Reactive.Untrack(() => Rebuild(selected));
         });
-
-        // Sync background + children sizes when this panel's own Size changes.
-        CreateEffect(SyncLayout);
     }
 
     // ── Rebuild ───────────────────────────────────────────────────────────────

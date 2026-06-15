@@ -1,14 +1,13 @@
 namespace HumbleEngine.Tests.SceneGraph;
 
 /// <summary>
-/// Unit tests for the flex descriptors and parent-data: a <see cref="LinearContainer"/>
-/// stamps a <see cref="FlexParentData"/> on every child, and the <see cref="Expanded"/>/
-/// <see cref="Flexible"/> descriptors dissolve into it at <c>Add</c> (no extra node).
+/// Unit tests for the flex inline properties and descriptors: every
+/// <see cref="UINode"/> carries <see cref="UINode.FlexFactor"/>/<see cref="UINode.FlexTight"/>,
+/// and the <see cref="Expanded"/>/<see cref="Flexible"/> descriptors set them at
+/// <c>Add</c> (no extra node).
 /// </summary>
 public sealed class FlexTests
 {
-    private static FlexParentData Flex(UINode node) => (FlexParentData)node.ParentData!;
-
     [Test]
     public void PlainChild_IsNotFlex()
     {
@@ -17,8 +16,7 @@ public sealed class FlexTests
 
         row.Children.Add(child);
 
-        Assert.That(child.ParentData, Is.InstanceOf<FlexParentData>());
-        Assert.That(Flex(child).Factor.Value, Is.EqualTo(0f)); // 0 = content-sized
+        Assert.That(child.FlexFactor.Value, Is.EqualTo(0f)); // 0 = content-sized
     }
 
     [Test]
@@ -30,8 +28,8 @@ public sealed class FlexTests
         row.Add(new Expanded(child, factor: 2f));
 
         Assert.That(child.Parent, Is.SameAs(row));
-        Assert.That(Flex(child).Factor.Value, Is.EqualTo(2f));
-        Assert.That(Flex(child).Tight.Value,  Is.True);
+        Assert.That(child.FlexFactor.Value, Is.EqualTo(2f));
+        Assert.That(child.FlexTight.Value,  Is.True);
     }
 
     [Test]
@@ -42,8 +40,8 @@ public sealed class FlexTests
 
         row.Add(new Flexible(child, factor: 3f));
 
-        Assert.That(Flex(child).Factor.Value, Is.EqualTo(3f));
-        Assert.That(Flex(child).Tight.Value,  Is.False);
+        Assert.That(child.FlexFactor.Value, Is.EqualTo(3f));
+        Assert.That(child.FlexTight.Value,  Is.False);
     }
 
     [Test]
@@ -54,7 +52,17 @@ public sealed class FlexTests
 
         row.Add(new Expanded(child));
 
-        Assert.That(Flex(child).Factor.Value, Is.EqualTo(1f));
+        Assert.That(child.FlexFactor.Value, Is.EqualTo(1f));
+    }
+
+    [Test]
+    public void RawFactor_SetDirectly_IsLoose()
+    {
+        var child = new Panel();
+
+        child.FlexFactor.Value = 1f; // no descriptor
+
+        Assert.That(child.FlexTight.Value, Is.False); // a raw factor is loose by default
     }
 
     [Test]
@@ -66,24 +74,12 @@ public sealed class FlexTests
         row.Add(child);
 
         Assert.That(child.Parent, Is.SameAs(row));
-        Assert.That(Flex(child).Factor.Value, Is.EqualTo(0f));
+        Assert.That(child.FlexFactor.Value, Is.EqualTo(0f));
     }
 
     [Test]
     public void Expanded_RequiresAChild()
     {
         Assert.That(() => new Expanded(null!), Throws.ArgumentNullException);
-    }
-
-    [Test]
-    public void LeavingTheContainer_ClearsTheFlexData()
-    {
-        var row   = new Row();
-        var child = new Panel();
-        row.Add(new Expanded(child));
-
-        row.Children.Remove(child);
-
-        Assert.That(child.ParentData, Is.Null);
     }
 }

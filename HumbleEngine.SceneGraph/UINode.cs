@@ -49,6 +49,25 @@ public abstract class UINode : VisualNode
     public Computed<float> Area { get; }
 
     /// <summary>
+    /// Share of a <see cref="LinearContainer"/>'s free main-axis space this node
+    /// claims when it is a flex child. 0 (the default) means <b>not flex</b>: the node
+    /// takes its content size. &gt; 0 means it takes a slice of the leftover space
+    /// proportional to the factor — read by the parent container's layout, ignored by
+    /// any other parent. A layout property of the node, like <see cref="Position"/> and
+    /// <see cref="Size"/>: set it directly (<c>node.FlexFactor.Value = 1f</c>) or through
+    /// the <see cref="Expanded"/>/<see cref="Flexible"/> sugar at <c>Add</c>.
+    /// </summary>
+    public Property<float> FlexFactor { get; }
+
+    /// <summary>
+    /// When flex (<see cref="FlexFactor"/> &gt; 0), whether the node fills its share
+    /// exactly (<c>true</c>, Flutter's <c>Expanded</c>) or may be smaller, capped at the
+    /// share (<c>false</c>, the default, Flutter's <c>Flexible</c>). Irrelevant when not
+    /// flex. A raw factor set without a descriptor is therefore loose.
+    /// </summary>
+    public Property<bool> FlexTight { get; }
+
+    /// <summary>
     /// Whether the pointer hit-test can target this node. Default true. Set false to
     /// make it transparent to picking — the click passes through to whatever sits
     /// behind it (a decorative label over a clickable row). This is Godot's
@@ -61,10 +80,12 @@ public abstract class UINode : VisualNode
 
     protected UINode()
     {
-        Position = CreateProperty(Vector2.Zero);
-        Size     = CreateProperty(Vector2.Zero);
-        Incoming = CreateProperty(Constraints.Unbounded);
-        Area     = CreateComputed(() => Size.Value.X * Size.Value.Y);
+        Position   = CreateProperty(Vector2.Zero);
+        Size       = CreateProperty(Vector2.Zero);
+        Incoming   = CreateProperty(Constraints.Unbounded);
+        Area       = CreateComputed(() => Size.Value.X * Size.Value.Y);
+        FlexFactor = CreateProperty(0f);
+        FlexTight  = CreateProperty(false);
     }
 
     /// <summary>
