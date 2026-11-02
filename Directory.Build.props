@@ -5,8 +5,4 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Using Include="HumbleEngine.Core.HelperFunctions" Static="true" />
-  </ItemGroup>
 </Project>
